@@ -80,7 +80,9 @@ export async function getOwnerDashboard(): Promise<OwnerDashboard> {
       supabase.from('payments').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     ]);
 
-  const obligations = (obRes.data ?? []) as unknown as KpiObligation[];
+  const obligations: KpiObligation[] = (
+    (obRes.data ?? []) as { rider_id: string; due_date: string; amount_due: number; status: string }[]
+  ).map((o) => ({ riderId: o.rider_id, dueDate: o.due_date, amountDue: o.amount_due, status: o.status }));
   const payments = ((payRes.data ?? []) as { amount: number; status: string; method: string }[]).map(
     (p) => ({ amount: p.amount, status: p.status, method: p.method, completedDate: today }),
   );

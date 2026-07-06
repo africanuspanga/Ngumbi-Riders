@@ -24,7 +24,8 @@ the rest are scaffolded destinations for later phases (⬜).
 | `/rider/calendar` | ✅ | 6 |
 | `/rider/contract`, `/contracts/[id]`, `/motorcycle`, `/documents` | ⬜ | 6 |
 | `/rider/incidents` + `/incidents/new` + `/exemptions` | ✅ | 7 |
-| `/rider/notifications`, `/settings` | ⬜ | 8 |
+| `/rider/notifications` | ✅ | 8 |
+| `/rider/settings` | ⬜ | 8 |
 
 ## Owner (`app/owner`) — gated by `proxy.ts` + `owner/layout.tsx`
 
@@ -40,7 +41,8 @@ the rest are scaffolded destinations for later phases (⬜).
 | `/owner/reconciliation` | ✅ | 5 |
 | `/owner/incidents` + `/exemptions` | ✅ | 7 |
 | `/owner/imports` CSV/XLSX wizard | ✅ | 3 |
-| `/owner/announcements`, `/reports`, `/expenses` | ⬜ | 8–9 |
+| `/owner/announcements` | ✅ | 8 |
+| `/owner/reports`, `/expenses` | ⬜ | 9 |
 | `/owner/settings`, `/audit`, `/system` | ⬜ | 9–10 |
 
 ## API route handlers (`app/api`)
@@ -55,7 +57,8 @@ the rest are scaffolded destinations for later phases (⬜).
 | `POST /api/applications` | 🟡 | Phase 2 — DB-ready, activates with creds |
 | `/api/uploads/sign` | ⬜ | Phase 2 (optional; submit currently uploads inline) |
 | `/api/payments/snippe/initiate` + `/api/payments/[id]/status` + `/api/webhooks/snippe` | ✅ | Phase 5 |
-| `/api/reports/[report]/export`, `/api/push/subscribe` | ⬜ | Phase 8–9 |
+| `/api/push/subscribe` + `/api/cron/*` (6 jobs) | ✅ | Phase 8 |
+| `/api/reports/[report]/export` | ⬜ | Phase 9 |
 
 ## Feature-based folder structure (spec §29)
 

@@ -26,7 +26,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Never bundle server-only secrets or the admin client into client code.
   // @react-pdf/renderer is a heavy Node renderer kept out of the bundle.
-  serverExternalPackages: ['@supabase/supabase-js', '@react-pdf/renderer'],
+  serverExternalPackages: ['@supabase/supabase-js', '@react-pdf/renderer', 'web-push'],
   async headers() {
     return [
       {

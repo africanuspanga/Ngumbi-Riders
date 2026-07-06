@@ -54,8 +54,9 @@ These are intentionally deferred; the tables exist so they slot in cleanly.
   dashboard; rider balance function.
 - **Phase 7** `00xx_exemption_risk` — `private.apply_exemption_waiver`,
   `private.apply_postponement`, `private.calculate_rider_risk`.
-- **Phase 8** `00xx_notifications_cron` — Supabase Cron schedules (obligation
-  processor, reminders, reconciliation, daily summary), notification dedupe fns.
+- **Phase 8** — DONE in application code: cron endpoints (CRON_SECRET-guarded) +
+  `vercel.json` schedules; no new migration (uses existing notifications /
+  message_outbox / daily_summaries / system_job_runs tables).
 - **Phase 9** `00xx_reports_export` — expense/margin aggregation, reconciliation
   views.
 - **Phase 10** `00xx_hardening` — retention jobs, data-quality check functions,

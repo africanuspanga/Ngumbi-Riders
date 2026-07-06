@@ -71,6 +71,14 @@ export default async function RiderHome() {
             <Link href="/rider/exemptions" className="rounded-[--radius-card] border border-border bg-white p-4 text-center font-semibold text-primary-dark hover:bg-surface">
               Misamaha
             </Link>
+            <Link href="/rider/notifications" className="rounded-[--radius-card] border border-border bg-white p-4 text-center font-semibold text-primary-dark hover:bg-surface">
+              Arifa
+              {home.unreadNotifications > 0 && (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-overdue px-1 text-xs text-white">
+                  {home.unreadNotifications}
+                </span>
+              )}
+            </Link>
           </div>
 
           {home.motorcycle && (

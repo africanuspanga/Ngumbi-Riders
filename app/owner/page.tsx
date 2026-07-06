@@ -110,6 +110,7 @@ export default async function OwnerHome() {
         <NavCard href="/owner/payments" title="Payments" />
         <NavCard href="/owner/incidents" title="Incidents" />
         <NavCard href="/owner/exemptions" title="Exemptions" />
+        <NavCard href="/owner/announcements" title="Announcements" />
         <NavCard href="/owner/imports" title="Imports" />
       </nav>
     </div>

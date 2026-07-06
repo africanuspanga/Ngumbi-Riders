@@ -124,6 +124,23 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 
 **Exit criteria:** operational exceptions are tracked without corrupting contract history — **code-complete** (exemption decisions run through controlled functions that preserve the original due date; paid history untouched); live run pending Supabase creds.
 
+## Phase 8 — Notifications, PWA and Resend (code-complete; DB + creds pending)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| **Obligation status processor** | ✅ | `lib/obligations/transitions` (pure, 5 tests) + `/api/cron/obligation-status`: scheduled→due, unpaid→overdue past deadline, rider reminders + owner overdue digest (deduped). |
+| In-app notifications | ✅ | `lib/notifications/service` (dedupe) + `/rider/notifications` (mark read, unread badge). |
+| Announcements | ✅ | `/owner/announcements` — broadcast to all-active / arrears → notifications + push, audited. |
+| PWA | ✅ | Manifest (Phase 0), service worker (`public/sw.js`, network-first + offline, no sensitive caching), SW registration, install-friendly, `PushToggle`. |
+| Web push | 🟡 | `lib/push/webpush` + `/api/push/subscribe`; disabled until VAPID keys set. |
+| Resend daily summary | ✅ | `/api/cron/daily-summary` — KPI email, idempotent via `daily_summaries`; disabled until `RESEND_API_KEY`. |
+| Message outbox (SMS/WhatsApp) | ✅ | `lib/messaging/outbox` — email delivered; SMS/WhatsApp adapters **flagged off** (§3.7). |
+| Scheduled jobs | ✅ | Cron endpoints (CRON_SECRET-guarded) + `vercel.json`: obligation-status, reservation-cleanup, reconcile-pending, outbox, risk-recalc, daily-summary. Each writes `system_job_runs`; idempotent. |
+
+**Exit criteria:** the app is installable and reminders work reliably — **code-complete**; live cron + push/email pending Supabase creds + Snippe/Resend/VAPID keys.
+
+**Also fixed:** owner-dashboard KPI query mapped snake_case rows to the camelCase KPI shape (would have zeroed KPIs at runtime); now correct.
+
 ---
 
 ## Verification snapshot (local)
@@ -131,8 +148,8 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 ```
 npm run typecheck   # ✅ tsc --noEmit clean
 npm run lint        # ✅ eslint clean
-npm run test        # ✅ 139 passed, 10 RLS skipped (no DB)
-npm run build       # ✅ 37 routes compiled, proxy active
+npm run test        # ✅ 144 passed, 10 RLS skipped (no DB)
+npm run build       # ✅ 49 routes compiled, proxy active
 ```
 
 ## Blocked / awaiting input

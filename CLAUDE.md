@@ -23,10 +23,17 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ---
 
-## 2. Current status — Phases 0–7 code-complete (live-DB run pending)
+## 2. Current status — Phases 0–8 code-complete (live-DB run pending)
 
 Verified locally: `npm run typecheck` ✅ · `npm run lint` ✅ ·
-`npm run test` ✅ (139 unit pass, 10 RLS skip) · `npm run build` ✅ (37 routes).
+`npm run test` ✅ (144 unit pass, 10 RLS skip) · `npm run build` ✅ (49 routes).
+
+**Phase 8 (code-complete):** obligation status processor (pure, tested) + 6
+CRON_SECRET-guarded cron jobs (`vercel.json`) writing `system_job_runs`; in-app
+notifications (`/rider/notifications`) + owner announcements; PWA service worker
+(`public/sw.js`) + registration + web-push (`/api/push/subscribe`, disabled until
+VAPID); Resend daily summary (idempotent) + message outbox (email on; SMS/WhatsApp
+flagged off). Integrations no-op cleanly until their keys are set.
 
 **Phase 7 (code-complete):** rider incident reporting + owner queue, exemption
 requests with owner **waive/postpone/reject** through controlled DB functions
@@ -126,8 +133,9 @@ Then update `IMPLEMENTATION_STATUS.md` (mark RLS proof ✅) and start **Phase 2*
       complete; live data pending DB*
 - [x] **Phase 7** Incidents, exemption waiver/postponement (controlled fns),
       explainable risk — *code-complete; live run pending DB*
-- [ ] **Phase 8** In-app notifications, PWA (SW/install/push), Resend daily
-      summary + receipts, SMS/WhatsApp adapter interfaces (flagged off)
+- [x] **Phase 8** In-app notifications, PWA (SW/push), Resend daily summary,
+      SMS/WhatsApp outbox (flagged off), 6 cron jobs — *code-complete; live cron
+      + push/email pending DB + keys*
 - [ ] **Phase 9** All reports + expense ledger + PDF/XLSX/CSV/print exports
 - [ ] **Phase 10** Hardening, security/RLS review, real-data staging, launch
 

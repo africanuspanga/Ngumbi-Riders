@@ -5,6 +5,19 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-026 · Jobs are cron endpoints; integrations no-op until configured
+Scheduled work (spec §27) runs as CRON_SECRET-guarded route handlers scheduled by
+`vercel.json` (Vercel Cron sends `Authorization: Bearer <CRON_SECRET>`), each
+wrapped by `runJob` which records a `system_job_runs` row and is idempotent. The
+obligation status processor's transition logic is pure and unit-tested. Every
+external integration degrades gracefully: Resend, web-push and SMS/WhatsApp all
+return `not_configured` / `skipped` until their keys/providers are set, so the
+app runs end-to-end before any of them exist (SMS/WhatsApp stay off per §36.16).
+In-app notifications are the source of truth; push is supplementary. The service
+worker is network-first and never caches sensitive data (§26.2). Also fixed a
+latent bug: the owner-dashboard KPI query cast snake_case rows to the camelCase
+KPI shape — now mapped, so live KPIs aren't silently zero.
+
 ## D-025 · Exemptions preserve history; risk is explainable and pure
 Exemption decisions never mutate obligations directly. `apply_exemption_waiver`
 marks the obligation `exempted` (keeping its due_date); `apply_postponement`
