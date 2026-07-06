@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { requireRider } from '@/lib/auth/session';
 import { LogoutButton } from '@/components/auth/LogoutButton';
 
@@ -14,8 +15,16 @@ export default async function RiderHome() {
         </h1>
         <LogoutButton />
       </header>
-      <p className="text-muted">
-        Dashibodi kamili itapatikana Awamu ya 6. Umeingia kama mwendeshaji.
+      <div className="grid grid-cols-2 gap-3">
+        <Link href="/rider/pay" className="rounded-[--radius-card] bg-primary p-5 text-center text-lg font-bold text-white hover:bg-primary-hover">
+          Lipa Sasa
+        </Link>
+        <Link href="/rider/payments" className="rounded-[--radius-card] border border-border bg-white p-5 text-center font-semibold text-primary-dark hover:bg-surface">
+          Malipo yangu
+        </Link>
+      </div>
+      <p className="text-sm text-muted">
+        Dashibodi kamili (kalenda, salio) itapatikana Awamu ya 6.
       </p>
     </div>
   );

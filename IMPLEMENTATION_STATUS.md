@@ -83,6 +83,24 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 
 **Exit criteria:** a signed contract can activate and produce an accurate obligation calendar — **code-complete**; live activation pending Supabase creds.
 
+## Phase 5 — Payments and Snippe (code-complete; DB + creds pending)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| **Whole-obligation selection** | ✅ | `lib/payments/selection` — presets (today / clear-arrears / arrears+today / next N), **oldest-first allocation**, partial-payment rejection. 10 unit tests. |
+| Snippe mobile-money integration | ✅ | `lib/snippe/client` — create payment, status, USSD re-push; server-only key; TZS; min 500. |
+| **Signed webhook verification** | ✅ | `/api/webhooks/snippe` — raw-body HMAC-SHA256 over `{ts}.{body}`, 5-min freshness, constant-time compare. 8 unit tests (incl. tamper/stale/wrong-secret). |
+| Idempotency + replay-safety | ✅ | ≤30-char Snippe key; unique `provider_event_id`/`payload_hash`; idempotent settlement — replayed webhook is a no-op. |
+| Allocations + settlement | ✅ | Migration 0014 `record_completed_payment` (SECURITY DEFINER, service-role): allocates whole obligations, enforces allocations = amount, writes receipt, releases reservations — atomically. |
+| Reservations / one-pending | ✅ | Partial-unique reservation index; one active pending attempt per rider+contract (§12.5). |
+| Rider pay flow | ✅ | `/rider/pay` — option select, payer phone, initiate (`/api/payments/snippe/initiate`), conservative status polling (`/api/payments/[id]/status`), never optimistic. |
+| Receipts | ✅ | Receipt number `NGR-RCPT-YYYY-…`, verification code; `/rider/payments` + `/rider/payments/[id]` in-app receipt. |
+| Owner cash payments | ✅ | `/owner/payments/cash` — owner-only; server recomputes amount from selected whole obligations; same settlement function. |
+| Owner payments + reconciliation | ✅ | `/owner/payments` list, `/owner/reconciliation` (pending/failed/stale). |
+| Receipt PDF / reversal / recon cron | ⬜ | Follow-ups: A4 receipt PDF (§13), payment-reversal handling, and the pending-reconciliation cron (Phase 8). |
+
+**Exit criteria:** a rider payment settles the correct obligations exactly once — **code-complete** (idempotent webhook + atomic settlement + reservation uniqueness); live run pending Supabase creds + Snippe keys.
+
 ---
 
 ## Verification snapshot (local)
@@ -90,8 +108,8 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 ```
 npm run typecheck   # ✅ tsc --noEmit clean
 npm run lint        # ✅ eslint clean
-npm run test        # ✅ 96 passed, 10 RLS skipped (no DB)
-npm run build       # ✅ 25 routes compiled, proxy active
+npm run test        # ✅ 116 passed, 10 RLS skipped (no DB)
+npm run build       # ✅ 31 routes compiled, proxy active
 ```
 
 ## Blocked / awaiting input

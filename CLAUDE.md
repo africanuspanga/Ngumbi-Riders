@@ -23,10 +23,18 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ---
 
-## 2. Current status — Phases 0–4 code-complete (live-DB run pending)
+## 2. Current status — Phases 0–5 code-complete (live-DB run pending)
 
 Verified locally: `npm run typecheck` ✅ · `npm run lint` ✅ ·
-`npm run test` ✅ (96 unit pass, 10 RLS skip) · `npm run build` ✅ (25 routes).
+`npm run test` ✅ (116 unit pass, 10 RLS skip) · `npm run build` ✅ (31 routes).
+
+**Phase 5 (code-complete; activates when creds + Snippe keys land):** whole-
+obligation selection with **oldest-first allocation** and partial-payment
+rejection (`lib/payments/selection`), Snippe client, `/rider/pay` flow with
+conservative status polling, **signed webhook** (`/api/webhooks/snippe`: raw-body
+HMAC, 5-min freshness, replay-safe dedupe), atomic settlement (migration 0014
+`record_completed_payment`), receipts, owner **cash payments** + payments list +
+reconciliation.
 
 **Phase 3 (code-complete):** motorcycle register, rider register + manual
 creation, assignment history + exceptional transfer, CSV/XLSX import wizard
@@ -97,9 +105,10 @@ Then update `IMPLEMENTATION_STATUS.md` (mark RLS proof ✅) and start **Phase 2*
       UTC-from-EAT), transactional activation, lifecycle — *code-complete; live
       run pending DB. Follow-ups: extend/renegotiate + regenerate-future +
       addendum PDF (§10.4)*
-- [ ] **Phase 5** Payments: whole-obligation selection, **Snippe** integration,
-      signed webhook verification, idempotency, allocations, receipts,
-      reconciliation, owner-only cash payments
+- [x] **Phase 5** Payments: whole-obligation selection (oldest-first), **Snippe**
+      integration, signed webhook + idempotency, atomic allocations, receipts,
+      reconciliation, owner cash payments — *code-complete; live run pending DB +
+      Snippe keys. Follow-ups: receipt PDF, reversal handling, recon cron*
 - [ ] **Phase 6** Owner KPI dashboard + rider dashboard/calendar/progress/receipts
 - [ ] **Phase 7** Incidents, exemption waiver/postponement, explainable risk
 - [ ] **Phase 8** In-app notifications, PWA (SW/install/push), Resend daily

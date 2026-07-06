@@ -20,7 +20,7 @@ the rest are scaffolded destinations for later phases (⬜).
 |-------|--------|-------|
 | `/rider` dashboard | ✅ (placeholder) | 1 → 6 |
 | `/rider/settings/pin` change PIN | ✅ | 1 |
-| `/rider/pay`, `/payments`, `/payments/[id]` | ⬜ | 5 |
+| `/rider/pay` + `/payments` + `/payments/[id]` | ✅ | 5 |
 | `/rider/calendar`, `/contract`, `/contracts/[id]`, `/motorcycle`, `/documents` | ⬜ | 4–6 |
 | `/rider/incidents`, `/incidents/new`, `/exemptions` | ⬜ | 7 |
 | `/rider/notifications`, `/settings` | ⬜ | 8 |
@@ -35,7 +35,8 @@ the rest are scaffolded destinations for later phases (⬜).
 | `/owner/riders` + `/new` + `/[id]` | ✅ | 3 |
 | `/owner/motorcycles` + `/new` + `/[id]` | ✅ | 3 |
 | `/owner/contracts` + `/new` + `/[id]` | ✅ | 4 |
-| `/owner/payments[/cash]`, `/reconciliation` | ⬜ | 5 |
+| `/owner/payments` + `/cash` | ✅ | 5 |
+| `/owner/reconciliation` | ✅ | 5 |
 | `/owner/incidents`, `/exemptions` | ⬜ | 7 |
 | `/owner/imports` CSV/XLSX wizard | ✅ | 3 |
 | `/owner/announcements`, `/reports`, `/expenses` | ⬜ | 8–9 |
@@ -52,7 +53,7 @@ the rest are scaffolded destinations for later phases (⬜).
 | `GET /api/health` | ✅ | liveness |
 | `POST /api/applications` | 🟡 | Phase 2 — DB-ready, activates with creds |
 | `/api/uploads/sign` | ⬜ | Phase 2 (optional; submit currently uploads inline) |
-| `/api/payments/snippe/initiate`, `/api/payments/[id]/status`, `/api/webhooks/snippe` | ⬜ | Phase 5 |
+| `/api/payments/snippe/initiate` + `/api/payments/[id]/status` + `/api/webhooks/snippe` | ✅ | Phase 5 |
 | `/api/reports/[report]/export`, `/api/push/subscribe` | ⬜ | Phase 8–9 |
 
 ## Feature-based folder structure (spec §29)
