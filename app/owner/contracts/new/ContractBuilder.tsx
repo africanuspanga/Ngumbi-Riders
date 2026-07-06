@@ -1,0 +1,169 @@
+'use client';
+
+import { useForm, useWatch } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import {
+  contractBuilderSchema,
+  type ContractBuilderInput,
+  WEEKDAY_LABELS,
+} from '@/lib/contracts/validation';
+import { createContract } from '@/lib/contracts/actions';
+import {
+  endDateFromDuration,
+  scheduleSummary,
+} from '@/lib/obligations/schedule';
+import { formatTZS } from '@/lib/money/format';
+import { TextField, SelectField, TextAreaField } from '@/components/forms/Field';
+
+type Option = { id: string; label: string };
+
+export function ContractBuilder({
+  riders,
+  motorcycles,
+  defaultAmount,
+}: {
+  riders: Option[];
+  motorcycles: Option[];
+  defaultAmount: number;
+}) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    control,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<ContractBuilderInput>({
+    resolver: zodResolver(contractBuilderSchema),
+    defaultValues: {
+      scheduleType: 'daily',
+      selectedWeekdays: [],
+      ownershipTransfers: false,
+      installmentAmount: defaultAmount || undefined,
+      paymentDeadlineTime: '18:00',
+    },
+  });
+
+  const values = useWatch({ control });
+  const weekdays = values.selectedWeekdays ?? [];
+
+  function toggleWeekday(day: number) {
+    const next = weekdays.includes(day)
+      ? weekdays.filter((d) => d !== day)
+      : [...weekdays, day].sort();
+    setValue('selectedWeekdays', next, { shouldValidate: true });
+  }
+
+  // Live preview (spec §10.3 step 3).
+  let preview: { count: number; total: number; endDate: string } | null = null;
+  try {
+    if (values.startDate && values.durationMonths && values.installmentAmount) {
+      const endDate = endDateFromDuration(values.startDate, Number(values.durationMonths));
+      const { count, total } = scheduleSummary(
+        {
+          startDate: values.startDate,
+          endDate,
+          scheduleType: values.scheduleType ?? 'daily',
+          selectedWeekdays: weekdays,
+          deadlineTime: values.paymentDeadlineTime || '18:00',
+        },
+        Number(values.installmentAmount),
+      );
+      preview = { count, total, endDate };
+    }
+  } catch {
+    preview = null;
+  }
+
+  async function onSubmit(v: ContractBuilderInput) {
+    setError(null);
+    const res = await createContract(v);
+    if (res.ok && res.data) {
+      router.push(`/owner/contracts/${res.data.id}`);
+      router.refresh();
+    } else {
+      setError('Could not create the contract. Check the fields.');
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+      <SelectField label="Rider" required error={errors.riderId?.message} defaultValue="" {...register('riderId')}>
+        <option value="" disabled>Select rider…</option>
+        {riders.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+      </SelectField>
+      <SelectField label="Motorcycle" required error={errors.motorcycleId?.message} defaultValue="" {...register('motorcycleId')}>
+        <option value="" disabled>Select motorcycle…</option>
+        {motorcycles.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+      </SelectField>
+
+      <div className="grid grid-cols-2 gap-4">
+        <TextField label="Start date" type="date" required error={errors.startDate?.message} {...register('startDate')} />
+        <TextField label="Duration (months)" type="number" min={1} required error={errors.durationMonths?.message} {...register('durationMonths')} />
+      </div>
+
+      <SelectField label="Schedule" required error={errors.scheduleType?.message} {...register('scheduleType')}>
+        <option value="daily">Every day</option>
+        <option value="selected_weekdays">Selected weekdays</option>
+      </SelectField>
+
+      {values.scheduleType === 'selected_weekdays' && (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-foreground">Weekdays</span>
+          <div className="flex flex-wrap gap-2">
+            {WEEKDAY_LABELS.map((label, day) => (
+              <button
+                key={day}
+                type="button"
+                onClick={() => toggleWeekday(day)}
+                className={`min-h-11 rounded-[--radius-card] border px-3 text-sm font-semibold ${
+                  weekdays.includes(day) ? 'border-primary bg-primary text-white' : 'border-border bg-white text-muted'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {errors.selectedWeekdays && (
+            <span className="text-xs text-overdue">{errors.selectedWeekdays.message}</span>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-4">
+        <TextField label="Installment amount (TZS)" type="number" min={1} required error={errors.installmentAmount?.message} {...register('installmentAmount')} />
+        <TextField label="Payment deadline" type="time" required error={errors.paymentDeadlineTime?.message} {...register('paymentDeadlineTime')} />
+      </div>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" className="h-5 w-5" {...register('ownershipTransfers')} />
+        <span>Ownership transfers to rider at completion</span>
+      </label>
+      {values.ownershipTransfers && (
+        <TextAreaField label="Ownership transfer notes" error={errors.ownershipTransferNotes?.message} {...register('ownershipTransferNotes')} />
+      )}
+      <TextAreaField label="Special terms" error={errors.specialTerms?.message} {...register('specialTerms')} />
+
+      {preview && (
+        <div className="rounded-[--radius-card] border border-primary bg-surface p-4 text-sm">
+          <p className="font-semibold text-primary-dark">Preview</p>
+          <p className="text-foreground">
+            {preview.count} obligations · total {formatTZS(preview.total)} · ends {preview.endDate}
+          </p>
+        </div>
+      )}
+
+      {error && <p role="alert" className="text-sm font-medium text-overdue">{error}</p>}
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+      >
+        {isSubmitting ? 'Creating…' : 'Create draft contract'}
+      </button>
+    </form>
+  );
+}

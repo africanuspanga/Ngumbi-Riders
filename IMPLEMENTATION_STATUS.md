@@ -69,6 +69,20 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 
 **Exit criteria:** existing riders and motorcycles can be loaded safely — **code-complete**; live import run pending Supabase creds. Remaining import types (guarantors, contracts, assignments, historical obligations/payments, expenses) deferred to their phases.
 
+## Phase 4 — Contracts and schedule engine (code-complete; DB pending)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| **Obligation schedule engine** | ✅ | `lib/obligations/schedule` — daily / selected-weekday, leap-year & month-boundary safe, UTC-from-EAT due timestamps. **15 unit tests** (incl. 18:00 EAT → 15:00Z). |
+| Contract builder + live preview | ✅ | `/owner/contracts/new` — rider/moto, duration→end date, schedule, amount, deadline, ownership transfer; live obligation count + total value (§10.3 step 3). |
+| Contract register + detail | ✅ | `/owner/contracts` + `/[id]` with terms, obligation stats, signatures. |
+| On-screen signatures + physical fallback | ✅ | Owner + rider drawn signatures (stored PNGs) or an uploaded signed copy with SHA-256 hash (§10.3, §10.5). |
+| Template + PDF generation | ✅ | `@react-pdf/renderer` A4 contract from versioned template; stored in private bucket with SHA-256 hash. |
+| **Transactional activation** | ✅ | `activate_contract_and_generate_obligations` (migration 0013, SECURITY DEFINER, owner-guarded): TS computes the schedule, DB commits obligations + flips status to active in one transaction. Requires signatures. |
+| Lifecycle actions | 🟡 | Pause / resume / complete-early / terminate (cancels future unpaid obligations, preserves paid history). Extend / renegotiate / schedule-change + `regenerate_future_obligations` + addendum PDF are follow-ups (§10.4, §3.4). |
+
+**Exit criteria:** a signed contract can activate and produce an accurate obligation calendar — **code-complete**; live activation pending Supabase creds.
+
 ---
 
 ## Verification snapshot (local)
@@ -76,8 +90,8 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 ```
 npm run typecheck   # ✅ tsc --noEmit clean
 npm run lint        # ✅ eslint clean
-npm run test        # ✅ 81 passed, 10 RLS skipped (no DB)
-npm run build       # ✅ 23 routes compiled, proxy active
+npm run test        # ✅ 96 passed, 10 RLS skipped (no DB)
+npm run build       # ✅ 25 routes compiled, proxy active
 ```
 
 ## Blocked / awaiting input

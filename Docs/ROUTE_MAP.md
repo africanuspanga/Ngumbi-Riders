@@ -34,7 +34,7 @@ the rest are scaffolded destinations for later phases (⬜).
 | `/owner/applications/[id]` review + convert | ✅ | 2 |
 | `/owner/riders` + `/new` + `/[id]` | ✅ | 3 |
 | `/owner/motorcycles` + `/new` + `/[id]` | ✅ | 3 |
-| `/owner/contracts[/new][/id]` | ⬜ | 4 |
+| `/owner/contracts` + `/new` + `/[id]` | ✅ | 4 |
 | `/owner/payments[/cash]`, `/reconciliation` | ⬜ | 5 |
 | `/owner/incidents`, `/exemptions` | ⬜ | 7 |
 | `/owner/imports` CSV/XLSX wizard | ✅ | 3 |

@@ -23,17 +23,22 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ---
 
-## 2. Current status — Phases 0–3 code-complete (live-DB run pending)
+## 2. Current status — Phases 0–4 code-complete (live-DB run pending)
 
 Verified locally: `npm run typecheck` ✅ · `npm run lint` ✅ ·
-`npm run test` ✅ (81 unit pass, 10 RLS skip) · `npm run build` ✅ (23 routes).
+`npm run test` ✅ (96 unit pass, 10 RLS skip) · `npm run build` ✅ (25 routes).
 
-**Phase 3 (code-complete; activates when creds land):** motorcycle register
-(`/owner/motorcycles` list/new/detail), rider register + **manual creation**
-(`/owner/riders`), assignment history + **exceptional transfer**
-(`lib/assignments`), and the **CSV/XLSX import wizard** (`/owner/imports`:
-template → upload → dry-run validate + dedupe → commit + temp-PIN report) for
-riders and motorcycles (papaparse + exceljs).
+**Phase 3 (code-complete):** motorcycle register, rider register + manual
+creation, assignment history + exceptional transfer, CSV/XLSX import wizard
+(riders + motorcycles).
+
+**Phase 4 (code-complete; activates when creds land):** the **obligation
+schedule engine** (`lib/obligations/schedule` — daily/weekday, leap-year & month
+safe, UTC-from-EAT, 15 tests), contract builder with live preview, register +
+detail, **on-screen signatures + physical-copy fallback**, **PDF generation**
+(`@react-pdf/renderer`, SHA-256 hash), and **transactional activation** (migration
+0013 SECURITY DEFINER function generates the obligation calendar + activates in
+one transaction). Lifecycle: pause/resume/complete-early/terminate.
 
 **Phase 2 (all code-complete; activates when Supabase creds land):** public
 multi-step application form (`/apply`, 9 steps, RHF + zod, session draft,
@@ -87,9 +92,11 @@ Then update `IMPLEMENTATION_STATUS.md` (mark RLS proof ✅) and start **Phase 2*
 - [x] **Phase 3** Rider + motorcycle registers, manual rider creation,
       assignment history + transfer, CSV/XLSX import wizard (riders +
       motorcycles) — *code-complete; live run pending DB*
-- [ ] **Phase 4** Contract engine: template + PDF, signatures + physical-upload
-      fallback, **obligation generation** (daily/weekday, leap-year safe, UTC
-      from EAT), lifecycle events/versions
+- [x] **Phase 4** Contract engine: builder + preview, template + PDF, signatures
+      + physical fallback, **obligation generation** (daily/weekday, leap-safe,
+      UTC-from-EAT), transactional activation, lifecycle — *code-complete; live
+      run pending DB. Follow-ups: extend/renegotiate + regenerate-future +
+      addendum PDF (§10.4)*
 - [ ] **Phase 5** Payments: whole-obligation selection, **Snippe** integration,
       signed webhook verification, idempotency, allocations, receipts,
       reconciliation, owner-only cash payments

@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
+    "@react-pdf/renderer": "^4.5.1",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.58.0",
     "exceljs": "^4.4.0",

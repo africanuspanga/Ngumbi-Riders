@@ -21,6 +21,7 @@ reset` (local, needs Docker).
 | `0010_rls.sql` | RLS enabled on every table + the full owner/rider policy matrix. |
 | `0011_storage.sql` | 7 private storage buckets + owner-only object policy (rider access is server-mediated signed URLs). |
 | `0012_rate_limits.sql` | Generic `rate_limit_events` table (RLS-enabled, service-role only) for durable throttling of public actions (application submission, uploads). |
+| `0013_contract_functions.sql` | `activate_contract_and_generate_obligations` — SECURITY DEFINER, owner-guarded; commits the TS-computed obligation calendar and flips the contract to active in one transaction (§11, §22.3). |
 | `seed.sql` | Non-auth reference data (settings defaults, template v1, demo motorcycles). Auth users via `scripts/seed.ts`. |
 
 ### Constraints already enforced (spec §22.2)

@@ -20,6 +20,7 @@ export default async function OwnerHome() {
         <NavCard href="/owner/applications" title="Applications" desc="Review applicants, verify documents, convert to riders." />
         <NavCard href="/owner/riders" title="Riders" desc="Rider directory, profiles and manual creation." />
         <NavCard href="/owner/motorcycles" title="Motorcycles" desc="Fleet register and assignment status." />
+        <NavCard href="/owner/contracts" title="Contracts" desc="Build, sign and activate lease agreements." />
         <NavCard href="/owner/imports" title="Imports" desc="Load existing riders and motorcycles from CSV/Excel." />
       </nav>
 
