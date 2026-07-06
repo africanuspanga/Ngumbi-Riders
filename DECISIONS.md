@@ -5,6 +5,18 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-025 · Exemptions preserve history; risk is explainable and pure
+Exemption decisions never mutate obligations directly. `apply_exemption_waiver`
+marks the obligation `exempted` (keeping its due_date); `apply_postponement`
+marks the original `postponed` (kept for history) and inserts a NEW scheduled
+obligation at the new date, with a unique-per-date conflict guard — so paid and
+past obligations are never rewritten (§3.4, §16.2). Both are SECURITY DEFINER +
+owner-guarded, called with the owner JWT. Risk scoring (`lib/risk/scoring`) is a
+transparent rule engine returning a level PLUS the reasons, unit-tested;
+thresholds are parameterised for owner tuning, and a manual override always wins.
+Manual override currently isn't "sticky" against a later recompute (owner runs
+whichever they intend) — a `risk_manual` flag is a small follow-up.
+
 ## D-024 · Dashboards: KPI math is pure and unit-tested to the spec definitions
 All dashboard numbers are computed by pure functions (`lib/dashboard/kpis`,
 `lib/dashboard/rider`) so §14.1's exact definitions are pinned by tests — in

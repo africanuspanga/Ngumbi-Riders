@@ -23,10 +23,16 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ---
 
-## 2. Current status — Phases 0–6 code-complete (live-DB run pending)
+## 2. Current status — Phases 0–7 code-complete (live-DB run pending)
 
 Verified locally: `npm run typecheck` ✅ · `npm run lint` ✅ ·
-`npm run test` ✅ (131 unit pass, 10 RLS skip) · `npm run build` ✅ (32 routes).
+`npm run test` ✅ (139 unit pass, 10 RLS skip) · `npm run build` ✅ (37 routes).
+
+**Phase 7 (code-complete):** rider incident reporting + owner queue, exemption
+requests with owner **waive/postpone/reject** through controlled DB functions
+(migration 0015 — postpone preserves the original obligation as `postponed` and
+creates a new one, never corrupting history), and explainable rule-based **risk
+scoring** (`lib/risk/scoring`) with owner recompute + manual override.
 
 **Phase 6 (code-complete):** owner **KPI dashboard** (`/owner` — expected/settled/
 collected/outstanding, collection rate, arrears aging, who-hasn't-paid, ending
@@ -118,7 +124,8 @@ Then update `IMPLEMENTATION_STATUS.md` (mark RLS proof ✅) and start **Phase 2*
       Snippe keys. Follow-ups: receipt PDF, reversal handling, recon cron*
 - [x] **Phase 6** Owner KPI dashboard + rider dashboard/calendar/progress — *code
       complete; live data pending DB*
-- [ ] **Phase 7** Incidents, exemption waiver/postponement, explainable risk
+- [x] **Phase 7** Incidents, exemption waiver/postponement (controlled fns),
+      explainable risk — *code-complete; live run pending DB*
 - [ ] **Phase 8** In-app notifications, PWA (SW/install/push), Resend daily
       summary + receipts, SMS/WhatsApp adapter interfaces (flagged off)
 - [ ] **Phase 9** All reports + expense ledger + PDF/XLSX/CSV/print exports

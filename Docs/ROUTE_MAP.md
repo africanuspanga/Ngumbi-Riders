@@ -23,7 +23,7 @@ the rest are scaffolded destinations for later phases (⬜).
 | `/rider/pay` + `/payments` + `/payments/[id]` | ✅ | 5 |
 | `/rider/calendar` | ✅ | 6 |
 | `/rider/contract`, `/contracts/[id]`, `/motorcycle`, `/documents` | ⬜ | 6 |
-| `/rider/incidents`, `/incidents/new`, `/exemptions` | ⬜ | 7 |
+| `/rider/incidents` + `/incidents/new` + `/exemptions` | ✅ | 7 |
 | `/rider/notifications`, `/settings` | ⬜ | 8 |
 
 ## Owner (`app/owner`) — gated by `proxy.ts` + `owner/layout.tsx`
@@ -38,7 +38,7 @@ the rest are scaffolded destinations for later phases (⬜).
 | `/owner/contracts` + `/new` + `/[id]` | ✅ | 4 |
 | `/owner/payments` + `/cash` | ✅ | 5 |
 | `/owner/reconciliation` | ✅ | 5 |
-| `/owner/incidents`, `/exemptions` | ⬜ | 7 |
+| `/owner/incidents` + `/exemptions` | ✅ | 7 |
 | `/owner/imports` CSV/XLSX wizard | ✅ | 3 |
 | `/owner/announcements`, `/reports`, `/expenses` | ⬜ | 8–9 |
 | `/owner/settings`, `/audit`, `/system` | ⬜ | 9–10 |

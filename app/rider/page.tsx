@@ -65,6 +65,12 @@ export default async function RiderHome() {
             <Link href="/rider/payments" className="rounded-[--radius-card] border border-border bg-white p-4 text-center font-semibold text-primary-dark hover:bg-surface">
               Malipo yangu
             </Link>
+            <Link href="/rider/incidents/new" className="rounded-[--radius-card] border border-border bg-white p-4 text-center font-semibold text-primary-dark hover:bg-surface">
+              Ripoti tukio
+            </Link>
+            <Link href="/rider/exemptions" className="rounded-[--radius-card] border border-border bg-white p-4 text-center font-semibold text-primary-dark hover:bg-surface">
+              Misamaha
+            </Link>
           </div>
 
           {home.motorcycle && (

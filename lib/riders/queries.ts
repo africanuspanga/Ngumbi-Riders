@@ -16,6 +16,7 @@ export type RiderListItem = {
 };
 
 export type RiderDetail = RiderListItem & {
+  risk_reasons: string[];
   middle_name: string | null;
   email: string | null;
   date_of_birth: string | null;

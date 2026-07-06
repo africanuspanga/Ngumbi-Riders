@@ -8,7 +8,55 @@ import {
   transferMotorcycle,
   releaseAssignment,
 } from '@/lib/assignments/actions';
-import type { RiderStatus } from '@/lib/supabase/types';
+import { recomputeRiderRisk, setManualRisk } from '@/lib/risk/actions';
+import type { RiderStatus, RiskLevel } from '@/lib/supabase/types';
+
+const RISK_LEVELS: RiskLevel[] = ['low', 'medium', 'high', 'critical'];
+
+export function RiskControls({ id, current, reasons }: { id: string; current: RiskLevel; reasons: string[] }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [note, setNote] = useState('');
+  const [override, setOverride] = useState<RiskLevel>(current);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div>
+        <span className="text-sm">Current: <strong className="capitalize">{current}</strong></span>
+        {reasons.length > 0 && (
+          <ul className="mt-1 list-inside list-disc text-xs text-muted">
+            {reasons.map((r, i) => <li key={i}>{r}</li>)}
+          </ul>
+        )}
+      </div>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => start(async () => { await recomputeRiderRisk(id); router.refresh(); })}
+        className="self-start rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+      >
+        {pending ? '…' : 'Recompute risk'}
+      </button>
+      <div className="flex flex-col gap-2 border-t border-border pt-2">
+        <span className="text-xs font-semibold text-muted">Manual override</span>
+        <div className="flex flex-wrap gap-2">
+          <select className="input max-w-[8rem]" value={override} onChange={(e) => setOverride(e.target.value as RiskLevel)}>
+            {RISK_LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+          <input className="input flex-1" placeholder="Reason / note" value={note} onChange={(e) => setNote(e.target.value)} />
+        </div>
+        <button
+          type="button"
+          disabled={pending || !note.trim()}
+          onClick={() => start(async () => { await setManualRisk(id, override, note); router.refresh(); })}
+          className="self-start rounded-[--radius-card] bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+        >
+          Apply override
+        </button>
+      </div>
+    </div>
+  );
+}
 
 type MotoOption = { id: string; registration_number: string };
 

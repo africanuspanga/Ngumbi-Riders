@@ -113,6 +113,17 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 
 **Exit criteria:** both users can understand current payment status without manual calculation — **code-complete**; live data pending Supabase creds.
 
+## Phase 7 — Incidents, exemptions and risk (code-complete; DB pending)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Incident reporting | ✅ | Rider `/rider/incidents` + `/new` (6 categories, date/time, description, location); owner queue `/owner/incidents` with status controls. |
+| Exemption requests | ✅ | Rider `/rider/exemptions` requests relief for a specific obligation. |
+| **Waiver / postponement decisions** | ✅ | `/owner/exemptions` — waive / postpone / reject via controlled DB functions (migration 0015): waiver → obligation `exempted`; postpone → original `postponed` (kept) + **new obligation** at the new date, with a date-conflict guard. Rider notified. |
+| **Explainable risk scoring** | ✅ | `lib/risk/scoring` — rule-based low/medium/high/critical with recorded reasons; owner recompute + manual override (with note) on the rider profile. 8 unit tests. |
+
+**Exit criteria:** operational exceptions are tracked without corrupting contract history — **code-complete** (exemption decisions run through controlled functions that preserve the original due date; paid history untouched); live run pending Supabase creds.
+
 ---
 
 ## Verification snapshot (local)
@@ -120,8 +131,8 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 ```
 npm run typecheck   # ✅ tsc --noEmit clean
 npm run lint        # ✅ eslint clean
-npm run test        # ✅ 131 passed, 10 RLS skipped (no DB)
-npm run build       # ✅ 32 routes compiled, proxy active
+npm run test        # ✅ 139 passed, 10 RLS skipped (no DB)
+npm run build       # ✅ 37 routes compiled, proxy active
 ```
 
 ## Blocked / awaiting input

@@ -7,6 +7,7 @@ import {
   RiderStatusActions,
   RiderRevealSecrets,
   AssignmentActions,
+  RiskControls,
 } from './rider-actions';
 
 export const metadata = { title: 'Rider' };
@@ -107,6 +108,10 @@ export default async function RiderDetailPage({
             ))}
           </ul>
         )}
+      </Section>
+
+      <Section title="Risk">
+        <RiskControls id={rider.id} current={rider.risk_level} reasons={rider.risk_reasons ?? []} />
       </Section>
 
       <Section title="Status">
