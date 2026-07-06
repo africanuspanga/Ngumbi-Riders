@@ -36,6 +36,25 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 
 **Exit criteria:** Owner + test riders can sign in — code complete, ✅ pending live DB. Cross-rider access impossible — enforced by RLS; proof pending RLS test run against a live DB.
 
+## Phase 2 — Applications and documents (IN PROGRESS)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Public multi-step form (9 steps) | ✅ | `/apply` — RHF + zod, per-step validation, session draft autosave, mobile-first Swahili. |
+| Applicant + contact + NIDA + emergency fields | ✅ | Full §8.2 field set with validation (18+, E.164 phone, 20-digit NIDA). |
+| Two guarantors | ✅ | Both guarantor field sets (§8.4) required and validated. |
+| Document uploads (client) | ✅ | 13 required docs; type/size validation shared with server (`lib/applications/documents`). |
+| Drawn declaration + signature | ✅ | Canvas `SignaturePad` → transparent PNG; declaration acceptance required. |
+| PII encryption (NIDA/licence) | ✅ | AES-256-GCM (`lib/security/crypto`), versioned payload, unit tested. |
+| Application reference | ✅ | `NGR-APP-YYYY-000123` generator, unit tested. |
+| `/apply/success` confirmation | ✅ | Shows reference. |
+| Submission endpoint `/api/applications` | 🟡 | DB-ready: validates, encrypts, inserts application+guarantors, uploads docs, duplicate flag by phone. **Activates when Supabase creds land.** |
+| Owner review pipeline (`/owner/applications`) | ⬜ | Next Phase 2 task. |
+| Signed upload flow / server file-signature scan | 🟡 | Files uploaded via service role in the submit route; deeper magic-byte scan + submission rate-limit are follow-ups. |
+| English i18n for the form | ⬜ | Form currently Swahili-inline (spec is Swahili-first); English strings are a follow-up. |
+
+**Exit criteria:** public applicant submits a complete application + owner reviews it — form ✅, submission ready (pending DB), owner review ⬜.
+
 ---
 
 ## Verification snapshot (local)
@@ -43,8 +62,8 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 ```
 npm run typecheck   # ✅ tsc --noEmit clean
 npm run lint        # ✅ eslint clean
-npm run test        # ✅ 28 passed, 10 RLS skipped (no DB)
-npm run build       # ✅ 14 routes compiled, proxy active
+npm run test        # ✅ 50 passed, 10 RLS skipped (no DB)
+npm run build       # ✅ 17 routes compiled, proxy active
 ```
 
 ## Blocked / awaiting input

@@ -23,10 +23,17 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ---
 
-## 2. Current status — Phases 0 & 1 COMPLETE (code), pending live-DB proof
+## 2. Current status — Phases 0 & 1 done; Phase 2 UI in progress
 
 Verified locally: `npm run typecheck` ✅ · `npm run lint` ✅ ·
-`npm run test` ✅ (28 unit pass, 10 RLS skip) · `npm run build` ✅ (14 routes).
+`npm run test` ✅ (50 unit pass, 10 RLS skip) · `npm run build` ✅ (17 routes).
+
+**Phase 2 so far:** public multi-step application form (`/apply`, 9 steps, RHF +
+zod, session draft, signature pad, 13 document uploads), AES-256-GCM PII
+encryption, application reference generator, `/apply/success`, and a DB-ready
+submission endpoint (`/api/applications`) that activates when creds land.
+**Remaining Phase 2:** owner review pipeline (`/owner/applications`), submission
+rate-limit + file magic-byte scan, English i18n for the form.
 
 **Done**
 - Foundations: Next 16.2 App Router, Tailwind v4 tokens, i18n (sw/en), env
@@ -64,8 +71,9 @@ Then update `IMPLEMENTATION_STATUS.md` (mark RLS proof ✅) and start **Phase 2*
 
 - [x] **Phase 0** Foundations
 - [x] **Phase 1** Database, auth, RLS *(code done; live-DB RLS proof pending)*
-- [ ] **Phase 2** Public application form (9 steps), 2 guarantors, private
-      uploads + signed URLs, duplicate warnings, owner review pipeline
+- [~] **Phase 2** Application form + validation + PII encryption + submit
+      endpoint DONE; **remaining: owner review pipeline, submission rate-limit +
+      file magic-byte scan, English i18n**
 - [ ] **Phase 3** Rider + motorcycle registers, manual rider creation,
       assignment history, CSV/XLSX import wizard
 - [ ] **Phase 4** Contract engine: template + PDF, signatures + physical-upload

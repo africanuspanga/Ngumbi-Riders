@@ -19,4 +19,4 @@ process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'test-service-role-key';
 process.env.AUTH_PIN_PEPPER ??=
   'test-only-pepper-please-override-with-32+chars-in-env';
 process.env.PII_ENCRYPTION_KEY ??=
-  'dGVzdC1vbmx5LTMyLWJ5dGUta2V5LWJhc2U2NGVuYw==';
+  'BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=';

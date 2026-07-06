@@ -16,7 +16,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
       SUPABASE_SERVICE_ROLE_KEY: ci-placeholder
       AUTH_PIN_PEPPER: ci-placeholder-pepper-please-change-32chars
-      PII_ENCRYPTION_KEY: dGVzdC1vbmx5LTMyLWJ5dGUta2V5LWJhc2U2NGVuYw==
+      PII_ENCRYPTION_KEY: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

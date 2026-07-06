@@ -9,8 +9,8 @@ the rest are scaffolded destinations for later phases (⬜).
 |-------|--------|-------|
 | `/` landing | ✅ | 0 |
 | `/login` rider + owner entry | ✅ | 1 |
-| `/apply` application form | ⬜ | 2 |
-| `/apply/success` | ⬜ | 2 |
+| `/apply` application form | ✅ | 2 |
+| `/apply/success` | ✅ | 2 |
 | `/privacy`, `/terms` | ⬜ | 2 |
 | `/offline` PWA fallback | ✅ | 0 |
 
@@ -48,7 +48,8 @@ the rest are scaffolded destinations for later phases (⬜).
 | `POST /api/auth/owner-login` | ✅ | email/password, role-verified |
 | `POST /api/auth/logout` | ✅ | clears session |
 | `GET /api/health` | ✅ | liveness |
-| `/api/applications`, `/api/uploads/sign` | ⬜ | Phase 2 |
+| `POST /api/applications` | 🟡 | Phase 2 — DB-ready, activates with creds |
+| `/api/uploads/sign` | ⬜ | Phase 2 (optional; submit currently uploads inline) |
 | `/api/payments/snippe/initiate`, `/api/payments/[id]/status`, `/api/webhooks/snippe` | ⬜ | Phase 5 |
 | `/api/reports/[report]/export`, `/api/push/subscribe` | ⬜ | Phase 8–9 |
 

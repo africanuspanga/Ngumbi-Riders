@@ -5,6 +5,30 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-016 · Application submission endpoint is DB-ready, not yet live
+`/api/applications` fully validates, encrypts PII, inserts the application +
+guarantors, and uploads documents via the service-role client — but it only runs
+once Supabase creds are configured. The per-year reference sequence is computed
+by counting applications in the year (race-tolerant; the unique `reference`
+constraint + a 3-try retry protect against collisions). Submission **rate
+limiting** and a deep file **magic-byte scan** are tracked follow-ups (the
+endpoint is the wire-up point when creds land).
+
+## D-015 · Application form: Swahili-inline strings + react-hook-form
+The 9-step wizard uses `react-hook-form` + `@hookform/resolvers/zod` (the
+spec-recommended stack for complex forms, §1.3) with per-step `trigger()`
+validation and sessionStorage draft autosave (§8.6). Strings are inline Swahili
+(the form is Swahili-first, §6.2); an English i18n pass is a follow-up. zod v4
+works with resolvers v3.10 for our schemas.
+
+## D-014 · NIDA/licence encrypted with AES-256-GCM; duplicate detection by phone
+Sensitive identifiers are stored as versioned AES-256-GCM ciphertext
+(`v1.<iv>.<tag>.<ct>`, `lib/security/crypto`, key = `PII_ENCRYPTION_KEY`).
+Because a random IV makes ciphertext non-searchable, duplicate detection
+currently keys on the **plaintext phone** (never silently blocks — flags for the
+owner, §8.6). A deterministic **blind index** (HMAC) column for NIDA/licence
+equality search is a tracked follow-up before Phase 3 conversion.
+
 ## D-013 · `.env.local` placeholders committed? No
 `.env.local` holds dummy values so `npm run build`/tests run without real
 secrets. It is gitignored and never committed. Only `.env.example` (no secrets)
