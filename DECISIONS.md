@@ -5,6 +5,15 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-018 · Bilingual form: validation messages are i18n keys, not strings
+The application form is fully translated (`apply` namespace, sw + en). To keep
+validation localized too, the shared zod schema now emits stable message KEYS
+(`phone`, `nida`, `age`, …) instead of hardcoded Swahili; the form maps them via
+`apply.errors.*` with a generic fallback for un-keyed built-ins. Language is
+chosen with a cookie-based `LanguageSwitcher` (no locale in the URL — keeps rider
+links clean), present on apply/landing/login. Supersedes D-015's "Swahili-inline"
+note. Verified both languages render server-side.
+
 ## D-017 · Submission hardening: magic-byte scan + generic durable rate limiter
 Uploaded files are re-checked server-side against their real leading bytes
 (`lib/applications/file-signature`) so a spoofed MIME type/extension cannot get a

@@ -37,5 +37,124 @@
     "weak": "PIN hii ni rahisi mno. Chagua nyingine.",
     "mismatch": "PIN mpya hazilingani.",
     "mustChange": "Tafadhali badilisha PIN yako ya muda kabla ya kuendelea."
+  },
+  "apply": {
+    "header": {
+      "back": "← Ng'umbi Riders",
+      "title": "Maombi ya mwendeshaji",
+      "subtitle": "Jaza fomu hii kwa hatua. Taarifa zako huhifadhiwa kwenye kifaa hiki hadi utakapotuma."
+    },
+    "steps": {
+      "personal": "Taarifa binafsi",
+      "contact": "Mawasiliano na anuani",
+      "nida": "NIDA na leseni",
+      "experience": "Uzoefu na dharura",
+      "guarantor1": "Mdhamini wa kwanza",
+      "guarantor2": "Mdhamini wa pili",
+      "documents": "Nyaraka",
+      "declaration": "Tamko na sahihi",
+      "review": "Kagua na tuma"
+    },
+    "nav": {
+      "back": "Rudi",
+      "continue": "Endelea",
+      "submit": "Tuma maombi",
+      "submitting": "Inatuma…"
+    },
+    "fields": {
+      "firstName": "Jina la kwanza",
+      "middleName": "Jina la kati",
+      "lastName": "Jina la mwisho",
+      "dob": "Tarehe ya kuzaliwa",
+      "gender": "Jinsia",
+      "genderChoose": "Chagua…",
+      "genderMale": "Mwanaume",
+      "genderFemale": "Mwanamke",
+      "phone": "Namba ya simu",
+      "phoneHint": "Mfano: 0712 345 678",
+      "altPhone": "Namba nyingine ya simu",
+      "email": "Barua pepe",
+      "region": "Mkoa",
+      "district": "Wilaya",
+      "ward": "Kata",
+      "street": "Mtaa",
+      "fullAddress": "Anuani kamili",
+      "nida": "Namba ya NIDA",
+      "nidaHint": "Tarakimu 20",
+      "licence": "Namba ya leseni ya udereva",
+      "experience": "Uzoefu wa kuendesha pikipiki",
+      "emergencyName": "Jina la mtu wa dharura",
+      "emergencyPhone": "Simu ya mtu wa dharura",
+      "emergencyRelationship": "Uhusiano",
+      "guarantorIntro": "Taarifa za mdhamini. Wadhamini wawili wanahitajika.",
+      "gFullName": "Jina kamili",
+      "gPhone": "Namba ya simu",
+      "gNida": "Namba ya NIDA",
+      "gAddress": "Anuani ya makazi",
+      "gRelationship": "Uhusiano na muombaji",
+      "gOccupation": "Kazi",
+      "gEmployer": "Mwajiri au biashara"
+    },
+    "docs": {
+      "applicantHeading": "Nyaraka za muombaji",
+      "guarantorHeading": "Nyaraka za mdhamini {n}",
+      "missing": "Tafadhali pakia nyaraka zote zinazohitajika.",
+      "applicant": {
+        "nida_front": "NIDA (mbele)",
+        "nida_back": "NIDA (nyuma)",
+        "licence": "Leseni ya udereva",
+        "photo": "Picha ya pasipoti",
+        "declaration": "Tamko lililosainiwa"
+      },
+      "guarantor": {
+        "photo": "Picha ya pasipoti",
+        "nida_front": "NIDA (mbele)",
+        "nida_back": "NIDA (nyuma)",
+        "declaration": "Tamko la mdhamini"
+      }
+    },
+    "declaration": {
+      "text": "Ninathibitisha kuwa taarifa nilizotoa ni za kweli na sahihi. Natambua kuwa taarifa za uongo zinaweza kusababisha maombi yangu kukataliwa.",
+      "checkbox": "Nakubali masharti na tamko hapo juu.",
+      "signature": "Sahihi",
+      "clear": "Futa"
+    },
+    "review": {
+      "name": "Jina",
+      "phone": "Simu",
+      "regionDistrict": "Mkoa/Wilaya",
+      "guarantors": "Wadhamini",
+      "uploaded": "Nyaraka zilizopakiwa",
+      "note": "Hakikisha taarifa zote ni sahihi kabla ya kutuma. Baada ya kutuma utapata namba ya kumbukumbu."
+    },
+    "errors": {
+      "required": "Sehemu hii inahitajika",
+      "name": "Jina si sahihi",
+      "phone": "Namba ya simu si sahihi",
+      "nida": "Namba ya NIDA ni tarakimu 20",
+      "licence": "Namba ya leseni si sahihi",
+      "age": "Lazima uwe na umri wa miaka 18 au zaidi",
+      "date": "Tarehe si sahihi",
+      "email": "Barua pepe si sahihi",
+      "declaration": "Lazima ukubali masharti",
+      "signature": "Sahihi inahitajika",
+      "generic": "Thamani si sahihi",
+      "rateLimited": "Umejaribu mara nyingi. Tafadhali subiri kidogo.",
+      "fileRejected": "Faili moja au zaidi halikubaliki. Kagua nyaraka zako.",
+      "submitFailed": "Imeshindikana kutuma maombi. Jaribu tena.",
+      "network": "Hitilafu ya mtandao. Jaribu tena.",
+      "duplicate": "Maombi yenye taarifa hizi tayari yapo."
+    },
+    "success": {
+      "title": "Maombi yamepokelewa",
+      "message": "Asante. Maombi yako yamepokelewa na yatakaguliwa. Tunza namba yako ya kumbukumbu.",
+      "refLabel": "Namba ya kumbukumbu",
+      "home": "Rudi mwanzo"
+    }
+  },
+  "lang": {
+    "sw": "Kiswahili",
+    "en": "Kiingereza",
+    "switchTo": "English"
   }
 }

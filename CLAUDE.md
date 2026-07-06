@@ -32,9 +32,9 @@ Verified locally: `npm run typecheck` ✅ · `npm run lint` ✅ ·
 zod, session draft, signature pad, 13 document uploads), AES-256-GCM PII
 encryption, application reference generator, `/apply/success`, DB-ready
 submission endpoint (`/api/applications`) with **server magic-byte file scan**
-and **durable per-IP submission rate limiting** (migration 0012).
-**Remaining Phase 2:** owner review pipeline (`/owner/applications`), English
-i18n for the form.
+and **durable per-IP submission rate limiting** (migration 0012). **Bilingual
+(sw/en)** form with locale-aware validation + a cookie `LanguageSwitcher`.
+**Remaining Phase 2:** owner review pipeline (`/owner/applications`).
 
 **Done**
 - Foundations: Next 16.2 App Router, Tailwind v4 tokens, i18n (sw/en), env
@@ -73,8 +73,8 @@ Then update `IMPLEMENTATION_STATUS.md` (mark RLS proof ✅) and start **Phase 2*
 - [x] **Phase 0** Foundations
 - [x] **Phase 1** Database, auth, RLS *(code done; live-DB RLS proof pending)*
 - [~] **Phase 2** Application form + validation + PII encryption + submit
-      endpoint + magic-byte scan + rate limiting DONE; **remaining: owner review
-      pipeline (`/owner/applications`), English i18n for the form**
+      endpoint + magic-byte scan + rate limiting + bilingual (sw/en) i18n DONE;
+      **remaining: owner review pipeline (`/owner/applications`)**
 - [ ] **Phase 3** Rider + motorcycle registers, manual rider creation,
       assignment history, CSV/XLSX import wizard
 - [ ] **Phase 4** Contract engine: template + PDF, signatures + physical-upload

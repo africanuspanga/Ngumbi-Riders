@@ -1,9 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useForm, type UseFormRegister, type FieldErrors } from 'react-hook-form';
+import {
+  useForm,
+  type UseFormRegister,
+  type FieldErrors,
+  type FieldError,
+} from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   applicationSchema,
   STEP_FIELDS,
@@ -18,21 +24,25 @@ import { TextField, TextAreaField, SelectField } from '@/components/forms/Field'
 import { SignaturePad } from '@/components/forms/SignaturePad';
 import { FileInput } from '@/components/forms/FileInput';
 
-const STEP_LABELS = [
-  'Taarifa binafsi',
-  'Mawasiliano na anuani',
-  'NIDA na leseni',
-  'Uzoefu na dharura',
-  'Mdhamini wa kwanza',
-  'Mdhamini wa pili',
-  'Nyaraka',
-  'Tamko na sahihi',
-  'Kagua na tuma',
-];
+type Translate = ReturnType<typeof useTranslations>;
+// Translate a react-hook-form error via its stable message key, falling back to
+// a generic message for any un-keyed built-in validation.
+type ErrorT = (e?: FieldError) => string | undefined;
+
+const STEP_KEYS = [
+  'personal',
+  'contact',
+  'nida',
+  'experience',
+  'guarantor1',
+  'guarantor2',
+  'documents',
+  'declaration',
+  'review',
+] as const;
 
 const DRAFT_KEY = 'ngr-apply-draft-v1';
 
-// Required document keys: applicant + both guarantors.
 const REQUIRED_DOC_KEYS = [
   ...APPLICANT_DOC_TYPES.map((t) => `applicant.${t}`),
   ...GUARANTOR_DOC_TYPES.map((t) => `guarantorOne.${t}`),
@@ -40,6 +50,7 @@ const REQUIRED_DOC_KEYS = [
 ];
 
 export function ApplicationForm() {
+  const t = useTranslations('apply');
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [files, setFiles] = useState<Record<string, File | null>>({});
@@ -47,6 +58,12 @@ export function ApplicationForm() {
   const [docError, setDocError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const te: ErrorT = (e) => {
+    if (!e) return undefined;
+    const key = `errors.${e.message}`;
+    return t.has(key) ? t(key) : t('errors.generic');
+  };
 
   const {
     register,
@@ -62,8 +79,6 @@ export function ApplicationForm() {
     defaultValues: { gender: undefined },
   });
 
-  // Restore text draft for this device session (spec §8.6). Files are not
-  // persisted and must be re-selected.
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(DRAFT_KEY);
@@ -97,7 +112,7 @@ export function ApplicationForm() {
       if (!valid) return;
     }
     if (step === 6 && missingDocs().length > 0) {
-      setDocError('Tafadhali pakia nyaraka zote zinazohitajika.');
+      setDocError(t('docs.missing'));
       return;
     }
     if (step === 7) {
@@ -106,7 +121,7 @@ export function ApplicationForm() {
       if (!valid) return;
     }
     saveDraft();
-    setStep((s) => Math.min(s + 1, STEP_LABELS.length - 1));
+    setStep((s) => Math.min(s + 1, STEP_KEYS.length - 1));
   }
 
   function back() {
@@ -118,7 +133,7 @@ export function ApplicationForm() {
     setSubmitError(null);
     if (missingDocs().length > 0) {
       setStep(6);
-      setDocError('Tafadhali pakia nyaraka zote zinazohitajika.');
+      setDocError(t('docs.missing'));
       return;
     }
     setSubmitting(true);
@@ -134,20 +149,18 @@ export function ApplicationForm() {
       });
       const result = await res.json();
       if (!res.ok) {
-        if (result?.error === 'rate_limited') {
-          setSubmitError('Umejaribu mara nyingi. Tafadhali subiri kidogo.');
-        } else if (result?.error === 'file_rejected') {
-          setSubmitError('Faili moja au zaidi halikubaliki. Kagua nyaraka zako.');
+        if (result?.error === 'rate_limited') setSubmitError(t('errors.rateLimited'));
+        else if (result?.error === 'file_rejected') {
+          setSubmitError(t('errors.fileRejected'));
           setStep(6);
-        } else {
-          setSubmitError('Imeshindikana kutuma maombi. Jaribu tena.');
-        }
+        } else if (result?.error === 'duplicate') setSubmitError(t('errors.duplicate'));
+        else setSubmitError(t('errors.submitFailed'));
         return;
       }
       sessionStorage.removeItem(DRAFT_KEY);
       router.push(`/apply/success?ref=${encodeURIComponent(result.reference)}`);
     } catch {
-      setSubmitError('Hitilafu ya mtandao. Jaribu tena.');
+      setSubmitError(t('errors.network'));
     } finally {
       setSubmitting(false);
     }
@@ -155,27 +168,20 @@ export function ApplicationForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
-      <Stepper current={step} total={STEP_LABELS.length} label={STEP_LABELS[step]!} />
+      <Stepper current={step} total={STEP_KEYS.length} label={t(`steps.${STEP_KEYS[step]}`)} />
 
       <div className="flex flex-col gap-4">
-        {step === 0 && <PersonalStep register={register} errors={errors} />}
-        {step === 1 && <ContactStep register={register} errors={errors} />}
-        {step === 2 && <NidaStep register={register} errors={errors} />}
-        {step === 3 && <ExperienceStep register={register} errors={errors} />}
-        {step === 4 && <GuarantorStep prefix="guarantorOne" register={register} errors={errors} />}
-        {step === 5 && <GuarantorStep prefix="guarantorTwo" register={register} errors={errors} />}
-        {step === 6 && (
-          <DocumentsStep files={files} setFile={setFile} error={docError} />
-        )}
+        {step === 0 && <PersonalStep t={t} te={te} register={register} errors={errors} />}
+        {step === 1 && <ContactStep t={t} te={te} register={register} errors={errors} />}
+        {step === 2 && <NidaStep t={t} te={te} register={register} errors={errors} />}
+        {step === 3 && <ExperienceStep t={t} te={te} register={register} errors={errors} />}
+        {step === 4 && <GuarantorStep prefix="guarantorOne" t={t} te={te} register={register} errors={errors} />}
+        {step === 5 && <GuarantorStep prefix="guarantorTwo" t={t} te={te} register={register} errors={errors} />}
+        {step === 6 && <DocumentsStep t={t} files={files} setFile={setFile} error={docError} />}
         {step === 7 && (
-          <DeclarationStep
-            register={register}
-            errors={errors}
-            signature={signature}
-            setSignature={setSignature}
-          />
+          <DeclarationStep t={t} te={te} register={register} errors={errors} signature={signature} setSignature={setSignature} />
         )}
-        {step === 8 && <ReviewStep values={getValues()} files={files} />}
+        {step === 8 && <ReviewStep t={t} values={getValues()} files={files} />}
       </div>
 
       {submitError && (
@@ -186,29 +192,17 @@ export function ApplicationForm() {
 
       <div className="flex gap-3">
         {step > 0 && (
-          <button
-            type="button"
-            onClick={back}
-            className="flex-1 rounded-[--radius-card] border border-border bg-white px-4 py-3 font-semibold text-primary-dark"
-          >
-            Rudi
+          <button type="button" onClick={back} className="flex-1 rounded-[--radius-card] border border-border bg-white px-4 py-3 font-semibold text-primary-dark">
+            {t('nav.back')}
           </button>
         )}
-        {step < STEP_LABELS.length - 1 ? (
-          <button
-            type="button"
-            onClick={next}
-            className="flex-1 rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover"
-          >
-            Endelea
+        {step < STEP_KEYS.length - 1 ? (
+          <button type="button" onClick={next} className="flex-1 rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover">
+            {t('nav.continue')}
           </button>
         ) : (
-          <button
-            type="submit"
-            disabled={submitting}
-            className="flex-1 rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
-          >
-            {submitting ? 'Inatuma…' : 'Tuma maombi'}
+          <button type="submit" disabled={submitting} className="flex-1 rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60">
+            {submitting ? t('nav.submitting') : t('nav.submit')}
           </button>
         )}
       </div>
@@ -217,100 +211,92 @@ export function ApplicationForm() {
 }
 
 type StepProps = {
+  t: Translate;
+  te: ErrorT;
   register: UseFormRegister<ApplicationInput>;
   errors: FieldErrors<ApplicationInput>;
 };
 
-function PersonalStep({ register, errors }: StepProps) {
+function PersonalStep({ t, te, register, errors }: StepProps) {
   return (
     <>
-      <TextField label="Jina la kwanza" required error={errors.firstName} {...register('firstName')} />
-      <TextField label="Jina la kati" error={errors.middleName} {...register('middleName')} />
-      <TextField label="Jina la mwisho" required error={errors.lastName} {...register('lastName')} />
-      <TextField label="Tarehe ya kuzaliwa" type="date" required error={errors.dateOfBirth} {...register('dateOfBirth')} />
-      <SelectField label="Jinsia" required error={errors.gender} defaultValue="" {...register('gender')}>
-        <option value="" disabled>Chagua…</option>
-        <option value="male">Mwanaume</option>
-        <option value="female">Mwanamke</option>
+      <TextField label={t('fields.firstName')} required error={te(errors.firstName)} {...register('firstName')} />
+      <TextField label={t('fields.middleName')} error={te(errors.middleName)} {...register('middleName')} />
+      <TextField label={t('fields.lastName')} required error={te(errors.lastName)} {...register('lastName')} />
+      <TextField label={t('fields.dob')} type="date" required error={te(errors.dateOfBirth)} {...register('dateOfBirth')} />
+      <SelectField label={t('fields.gender')} required error={te(errors.gender)} defaultValue="" {...register('gender')}>
+        <option value="" disabled>{t('fields.genderChoose')}</option>
+        <option value="male">{t('fields.genderMale')}</option>
+        <option value="female">{t('fields.genderFemale')}</option>
       </SelectField>
     </>
   );
 }
 
-function ContactStep({ register, errors }: StepProps) {
+function ContactStep({ t, te, register, errors }: StepProps) {
   return (
     <>
-      <TextField label="Namba ya simu" type="tel" inputMode="tel" required hint="Mfano: 0712 345 678" error={errors.primaryPhone} {...register('primaryPhone')} />
-      <TextField label="Namba nyingine ya simu" type="tel" inputMode="tel" error={errors.alternativePhone} {...register('alternativePhone')} />
-      <TextField label="Barua pepe" type="email" error={errors.email} {...register('email')} />
-      <TextField label="Mkoa" required error={errors.region} {...register('region')} />
-      <TextField label="Wilaya" required error={errors.district} {...register('district')} />
-      <TextField label="Kata" required error={errors.ward} {...register('ward')} />
-      <TextField label="Mtaa" required error={errors.street} {...register('street')} />
-      <TextAreaField label="Anuani kamili" required error={errors.fullAddress} {...register('fullAddress')} />
+      <TextField label={t('fields.phone')} type="tel" inputMode="tel" required hint={t('fields.phoneHint')} error={te(errors.primaryPhone)} {...register('primaryPhone')} />
+      <TextField label={t('fields.altPhone')} type="tel" inputMode="tel" error={te(errors.alternativePhone)} {...register('alternativePhone')} />
+      <TextField label={t('fields.email')} type="email" error={te(errors.email)} {...register('email')} />
+      <TextField label={t('fields.region')} required error={te(errors.region)} {...register('region')} />
+      <TextField label={t('fields.district')} required error={te(errors.district)} {...register('district')} />
+      <TextField label={t('fields.ward')} required error={te(errors.ward)} {...register('ward')} />
+      <TextField label={t('fields.street')} required error={te(errors.street)} {...register('street')} />
+      <TextAreaField label={t('fields.fullAddress')} required error={te(errors.fullAddress)} {...register('fullAddress')} />
     </>
   );
 }
 
-function NidaStep({ register, errors }: StepProps) {
+function NidaStep({ t, te, register, errors }: StepProps) {
   return (
     <>
-      <TextField label="Namba ya NIDA" inputMode="numeric" required hint="Tarakimu 20" error={errors.nidaNumber} {...register('nidaNumber')} />
-      <TextField label="Namba ya leseni ya udereva" required error={errors.drivingLicenceNumber} {...register('drivingLicenceNumber')} />
+      <TextField label={t('fields.nida')} inputMode="numeric" required hint={t('fields.nidaHint')} error={te(errors.nidaNumber)} {...register('nidaNumber')} />
+      <TextField label={t('fields.licence')} required error={te(errors.drivingLicenceNumber)} {...register('drivingLicenceNumber')} />
     </>
   );
 }
 
-function ExperienceStep({ register, errors }: StepProps) {
+function ExperienceStep({ t, te, register, errors }: StepProps) {
   return (
     <>
-      <TextAreaField label="Uzoefu wa kuendesha pikipiki" error={errors.previousExperience} {...register('previousExperience')} />
-      <TextField label="Jina la mtu wa dharura" required error={errors.emergencyContactName} {...register('emergencyContactName')} />
-      <TextField label="Simu ya mtu wa dharura" type="tel" inputMode="tel" required error={errors.emergencyContactPhone} {...register('emergencyContactPhone')} />
-      <TextField label="Uhusiano" required error={errors.emergencyContactRelationship} {...register('emergencyContactRelationship')} />
+      <TextAreaField label={t('fields.experience')} error={te(errors.previousExperience)} {...register('previousExperience')} />
+      <TextField label={t('fields.emergencyName')} required error={te(errors.emergencyContactName)} {...register('emergencyContactName')} />
+      <TextField label={t('fields.emergencyPhone')} type="tel" inputMode="tel" required error={te(errors.emergencyContactPhone)} {...register('emergencyContactPhone')} />
+      <TextField label={t('fields.emergencyRelationship')} required error={te(errors.emergencyContactRelationship)} {...register('emergencyContactRelationship')} />
     </>
   );
 }
 
 function GuarantorStep({
   prefix,
+  t,
+  te,
   register,
   errors,
 }: StepProps & { prefix: 'guarantorOne' | 'guarantorTwo' }) {
   const e = errors[prefix];
   return (
     <>
-      <p className="text-sm text-muted">Taarifa za mdhamini. Wadhamini wawili wanahitajika.</p>
-      <TextField label="Jina kamili" required error={e?.fullName} {...register(`${prefix}.fullName`)} />
-      <TextField label="Namba ya simu" type="tel" inputMode="tel" required error={e?.phone} {...register(`${prefix}.phone`)} />
-      <TextField label="Namba ya NIDA" inputMode="numeric" required hint="Tarakimu 20" error={e?.nidaNumber} {...register(`${prefix}.nidaNumber`)} />
-      <TextField label="Anuani ya makazi" required error={e?.residentialAddress} {...register(`${prefix}.residentialAddress`)} />
-      <TextField label="Uhusiano na muombaji" required error={e?.relationship} {...register(`${prefix}.relationship`)} />
-      <TextField label="Kazi" required error={e?.occupation} {...register(`${prefix}.occupation`)} />
-      <TextField label="Mwajiri au biashara" error={e?.employer} {...register(`${prefix}.employer`)} />
+      <p className="text-sm text-muted">{t('fields.guarantorIntro')}</p>
+      <TextField label={t('fields.gFullName')} required error={te(e?.fullName)} {...register(`${prefix}.fullName`)} />
+      <TextField label={t('fields.gPhone')} type="tel" inputMode="tel" required error={te(e?.phone)} {...register(`${prefix}.phone`)} />
+      <TextField label={t('fields.gNida')} inputMode="numeric" required error={te(e?.nidaNumber)} {...register(`${prefix}.nidaNumber`)} />
+      <TextField label={t('fields.gAddress')} required error={te(e?.residentialAddress)} {...register(`${prefix}.residentialAddress`)} />
+      <TextField label={t('fields.gRelationship')} required error={te(e?.relationship)} {...register(`${prefix}.relationship`)} />
+      <TextField label={t('fields.gOccupation')} required error={te(e?.occupation)} {...register(`${prefix}.occupation`)} />
+      <TextField label={t('fields.gEmployer')} error={te(e?.employer)} {...register(`${prefix}.employer`)} />
     </>
   );
 }
 
-const APPLICANT_DOC_LABELS: Record<string, string> = {
-  nida_front: 'NIDA (mbele)',
-  nida_back: 'NIDA (nyuma)',
-  licence: 'Leseni ya udereva',
-  photo: 'Picha ya pasipoti',
-  declaration: 'Tamko lililosainiwa',
-};
-const GUARANTOR_DOC_LABELS: Record<string, string> = {
-  photo: 'Picha ya pasipoti',
-  nida_front: 'NIDA (mbele)',
-  nida_back: 'NIDA (nyuma)',
-  declaration: 'Tamko la mdhamini',
-};
-
 function DocumentsStep({
+  t,
   files,
   setFile,
   error,
 }: {
+  t: Translate;
   files: Record<string, File | null>;
   setFile: (key: string, file: File | null) => void;
   error: string | null;
@@ -318,29 +304,29 @@ function DocumentsStep({
   return (
     <div className="flex flex-col gap-5">
       <section className="flex flex-col gap-3">
-        <h3 className="font-semibold text-primary-dark">Nyaraka za muombaji</h3>
-        {APPLICANT_DOC_TYPES.map((t) => (
+        <h3 className="font-semibold text-primary-dark">{t('docs.applicantHeading')}</h3>
+        {APPLICANT_DOC_TYPES.map((type) => (
           <FileInput
-            key={`applicant.${t}`}
-            label={APPLICANT_DOC_LABELS[t]!}
+            key={`applicant.${type}`}
+            label={t(`docs.applicant.${type}`)}
             required
-            file={files[`applicant.${t}`] ?? null}
-            onSelect={(f) => setFile(`applicant.${t}`, f)}
+            file={files[`applicant.${type}`] ?? null}
+            onSelect={(f) => setFile(`applicant.${type}`, f)}
           />
         ))}
       </section>
       {(['guarantorOne', 'guarantorTwo'] as const).map((g, i) => (
         <section key={g} className="flex flex-col gap-3">
           <h3 className="font-semibold text-primary-dark">
-            Nyaraka za mdhamini {i + 1}
+            {t('docs.guarantorHeading', { n: i + 1 })}
           </h3>
-          {GUARANTOR_DOC_TYPES.map((t) => (
+          {GUARANTOR_DOC_TYPES.map((type) => (
             <FileInput
-              key={`${g}.${t}`}
-              label={GUARANTOR_DOC_LABELS[t]!}
+              key={`${g}.${type}`}
+              label={t(`docs.guarantor.${type}`)}
               required
-              file={files[`${g}.${t}`] ?? null}
-              onSelect={(f) => setFile(`${g}.${t}`, f)}
+              file={files[`${g}.${type}`] ?? null}
+              onSelect={(f) => setFile(`${g}.${type}`, f)}
             />
           ))}
         </section>
@@ -355,6 +341,8 @@ function DocumentsStep({
 }
 
 function DeclarationStep({
+  t,
+  te,
   register,
   errors,
   signature,
@@ -363,24 +351,23 @@ function DeclarationStep({
   return (
     <div className="flex flex-col gap-4">
       <p className="rounded-[--radius-card] bg-surface p-3 text-sm text-primary-dark">
-        Ninathibitisha kuwa taarifa nilizotoa ni za kweli na sahihi. Natambua
-        kuwa taarifa za uongo zinaweza kusababisha maombi yangu kukataliwa.
+        {t('declaration.text')}
       </p>
       <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" className="mt-1 h-5 w-5" {...register('declarationAccepted')} />
-        <span>Nakubali masharti na tamko hapo juu.</span>
+        <span>{t('declaration.checkbox')}</span>
       </label>
       {errors.declarationAccepted && (
         <span role="alert" className="text-xs font-medium text-overdue">
-          {errors.declarationAccepted.message}
+          {te(errors.declarationAccepted)}
         </span>
       )}
       <div className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-foreground">Sahihi *</span>
-        <SignaturePad value={signature} onChange={setSignature} />
+        <span className="text-sm font-medium text-foreground">{t('declaration.signature')} *</span>
+        <SignaturePad value={signature} onChange={setSignature} clearLabel={t('declaration.clear')} />
         {errors.signature && (
           <span role="alert" className="text-xs font-medium text-overdue">
-            {errors.signature.message}
+            {te(errors.signature)}
           </span>
         )}
       </div>
@@ -389,24 +376,23 @@ function DeclarationStep({
 }
 
 function ReviewStep({
+  t,
   values,
   files,
 }: {
+  t: Translate;
   values: ApplicationInput;
   files: Record<string, File | null>;
 }) {
   const uploaded = Object.values(files).filter(Boolean).length;
   return (
     <div className="flex flex-col gap-3 text-sm">
-      <Row label="Jina" value={`${values.firstName ?? ''} ${values.lastName ?? ''}`} />
-      <Row label="Simu" value={values.primaryPhone} />
-      <Row label="Mkoa/Wilaya" value={`${values.region ?? ''} / ${values.district ?? ''}`} />
-      <Row label="Wadhamini" value="2" />
-      <Row label="Nyaraka zilizopakiwa" value={`${uploaded}`} />
-      <p className="mt-2 text-muted">
-        Hakikisha taarifa zote ni sahihi kabla ya kutuma. Baada ya kutuma
-        utapata namba ya kumbukumbu.
-      </p>
+      <Row label={t('review.name')} value={`${values.firstName ?? ''} ${values.lastName ?? ''}`} />
+      <Row label={t('review.phone')} value={values.primaryPhone} />
+      <Row label={t('review.regionDistrict')} value={`${values.region ?? ''} / ${values.district ?? ''}`} />
+      <Row label={t('review.guarantors')} value="2" />
+      <Row label={t('review.uploaded')} value={`${uploaded}`} />
+      <p className="mt-2 text-muted">{t('review.note')}</p>
     </div>
   );
 }

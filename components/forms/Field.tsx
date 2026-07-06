@@ -1,7 +1,9 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import type { FieldError } from 'react-hook-form';
+
+// Presentational field wrappers. `error` is an already-translated string so the
+// wizard controls localization centrally (see ApplicationForm's `te` helper).
 
 export function FieldShell({
   label,
@@ -11,7 +13,7 @@ export function FieldShell({
   hint,
 }: {
   label: string;
-  error?: FieldError;
+  error?: string;
   required?: boolean;
   children: ReactNode;
   hint?: string;
@@ -26,7 +28,7 @@ export function FieldShell({
       {hint && !error && <span className="text-xs text-muted">{hint}</span>}
       {error && (
         <span role="alert" className="text-xs font-medium text-overdue">
-          {error.message}
+          {error}
         </span>
       )}
     </label>
@@ -35,7 +37,7 @@ export function FieldShell({
 
 type BaseProps = {
   label: string;
-  error?: FieldError;
+  error?: string;
   required?: boolean;
   hint?: string;
 };

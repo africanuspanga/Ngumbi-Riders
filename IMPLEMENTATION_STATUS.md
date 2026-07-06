@@ -51,9 +51,9 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 | Submission endpoint `/api/applications` | 🟡 | DB-ready: validates, encrypts, inserts application+guarantors, uploads docs, duplicate flag by phone. **Activates when Supabase creds land.** |
 | Server file magic-byte scan | ✅ | `lib/applications/file-signature` — rejects spoofed MIME/extension; wired into submit; unit tested. |
 | Submission rate limiting | ✅ | Generic durable limiter (`lib/security/rate-limit` + `rate_limit_events`, migration 0012); 5 submits/hr per IP; window math unit tested. |
+| English i18n for the form | ✅ | Full `apply` namespace (sw + en), locale-aware validation messages, `LanguageSwitcher` (cookie-based) on apply/landing/login. Verified rendering in both languages. |
 | Owner review pipeline (`/owner/applications`) | ⬜ | Next Phase 2 task. |
 | Signed upload flow (`/api/uploads/sign`) | ⬜ | Optional; submit currently uploads inline via service role. |
-| English i18n for the form | ⬜ | Form currently Swahili-inline (spec is Swahili-first); English strings are a follow-up. |
 
 **Exit criteria:** public applicant submits a complete application + owner reviews it — form ✅, submission ready (pending DB), owner review ⬜.
 

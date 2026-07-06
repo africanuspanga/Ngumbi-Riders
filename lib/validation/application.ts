@@ -5,19 +5,21 @@ import { isValidPhone } from '@/lib/auth/phone';
  * Shared validation for the public rider application (spec §8.2, §8.4). Used by
  * the multi-step form (react-hook-form + zodResolver) AND re-validated on the
  * server before insert — the client is never trusted.
+ *
+ * Error messages are stable KEYS (not localized strings) so the UI can render
+ * them in the current language via the `apply.errors.*` i18n namespace. The
+ * server does not surface these to users (it returns a generic 'validation').
  */
 
 const phone = z
   .string()
   .trim()
-  .refine(isValidPhone, { message: 'Namba ya simu si sahihi' });
+  .refine(isValidPhone, { message: 'phone' });
 
 const optionalPhone = z
   .string()
   .trim()
-  .refine((v) => v === '' || isValidPhone(v), {
-    message: 'Namba ya simu si sahihi',
-  })
+  .refine((v) => v === '' || isValidPhone(v), { message: 'phone' })
   .optional()
   .or(z.literal(''));
 
@@ -26,22 +28,18 @@ const nida = z
   .string()
   .trim()
   .transform((v) => v.replace(/[\s-]/g, ''))
-  .refine((v) => /^\d{20}$/.test(v), { message: 'Namba ya NIDA ni tarakimu 20' });
+  .refine((v) => /^\d{20}$/.test(v), { message: 'nida' });
 
-const licence = z
-  .string()
-  .trim()
-  .min(5, 'Namba ya leseni si sahihi')
-  .max(30);
+const licence = z.string().trim().min(5, 'licence').max(30, 'licence');
 
-const name = z.string().trim().min(2).max(80);
-const shortText = z.string().trim().min(1).max(120);
-const longText = z.string().trim().max(1000);
+const name = z.string().trim().min(2, 'name').max(80, 'name');
+const shortText = z.string().trim().min(1, 'required').max(120, 'required');
+const longText = z.string().trim().max(1000, 'required');
 
 // Applicant must be at least 18 (motorcycle lease).
 const dateOfBirth = z
   .string()
-  .refine((v) => !Number.isNaN(Date.parse(v)), { message: 'Tarehe si sahihi' })
+  .refine((v) => !Number.isNaN(Date.parse(v)), { message: 'date' })
   .refine(
     (v) => {
       const dob = new Date(v);
@@ -49,7 +47,7 @@ const dateOfBirth = z
       cutoff.setFullYear(cutoff.getFullYear() - 18);
       return dob <= cutoff;
     },
-    { message: 'Lazima uwe na umri wa miaka 18 au zaidi' },
+    { message: 'age' },
   );
 
 export const genderValues = ['male', 'female'] as const;
@@ -71,16 +69,16 @@ export const applicationSchema = z.object({
   middleName: z.string().trim().max(80).optional().or(z.literal('')),
   lastName: name,
   dateOfBirth,
-  gender: z.enum(genderValues),
+  gender: z.enum(genderValues, { message: 'required' }),
   // Step 2 — contact & address
   primaryPhone: phone,
   alternativePhone: optionalPhone,
-  email: z.string().trim().email().optional().or(z.literal('')),
+  email: z.string().trim().email('email').optional().or(z.literal('')),
   region: shortText,
   district: shortText,
   ward: shortText,
   street: shortText,
-  fullAddress: longText.min(1),
+  fullAddress: longText.min(1, 'required'),
   // Step 3 — NIDA & driving
   nidaNumber: nida,
   drivingLicenceNumber: licence,
@@ -93,15 +91,11 @@ export const applicationSchema = z.object({
   guarantorOne: guarantorSchema,
   guarantorTwo: guarantorSchema,
   // Step 8 — declaration & signature
-  declarationAccepted: z.literal(true, {
-    message: 'Lazima ukubali masharti',
-  }),
+  declarationAccepted: z.literal(true, { message: 'declaration' }),
   signature: z
     .string()
-    .min(1, 'Sahihi inahitajika')
-    .refine((v) => v.startsWith('data:image/'), {
-      message: 'Sahihi si sahihi',
-    }),
+    .min(1, 'signature')
+    .refine((v) => v.startsWith('data:image/'), { message: 'signature' }),
 });
 
 export type ApplicationInput = z.infer<typeof applicationSchema>;
