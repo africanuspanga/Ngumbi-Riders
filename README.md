@@ -1,7 +1,7 @@
 # Ng'umbi Riders
 
 Fleet contract & rider-payment management for Ng'umbi Riders (Tanzania).
-Mobile-first PWA. **Source of truth: [`Docs/CLAUDE.md`](Docs/CLAUDE.md).**
+Mobile-first PWA. **Source of truth: [`Docs/NGUMBI_RIDERS_BUILD_SPEC.md`](Docs/NGUMBI_RIDERS_BUILD_SPEC.md).**
 
 Stack: Next.js 16.2 (App Router, React 19) · TypeScript · Tailwind v4 ·
 Supabase (Auth/Postgres/Storage) · `next-intl` (Swahili-first) · Snippe (Phase 5)

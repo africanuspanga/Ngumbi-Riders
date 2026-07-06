@@ -1,7 +1,7 @@
 # CLAUDE.md — Working Handoff & Orientation
 
 > **This file = where we are and what to do next.** Read it first every session.
-> **Product source of truth = [`Docs/CLAUDE.md`](Docs/CLAUDE.md)** (the full build
+> **Product source of truth = [`Docs/NGUMBI_RIDERS_BUILD_SPEC.md`](Docs/NGUMBI_RIDERS_BUILD_SPEC.md)** (the full build
 > spec). This file never overrides the spec; it tracks execution against it.
 >
 > Companion docs: [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md) ·

@@ -1,6 +1,6 @@
 # Implementation Status
 
-Source of truth: `Docs/CLAUDE.md`. This file tracks phase progress. Update it as
+Source of truth: `Docs/NGUMBI_RIDERS_BUILD_SPEC.md`. This file tracks phase progress. Update it as
 each task lands (spec §36.2).
 
 Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later phase
