@@ -43,7 +43,8 @@ the rest are scaffolded destinations for later phases (⬜).
 | `/owner/imports` CSV/XLSX wizard | ✅ | 3 |
 | `/owner/announcements` | ✅ | 8 |
 | `/owner/reports` + `/expenses` | ✅ | 9 |
-| `/owner/settings`, `/audit`, `/system` | ⬜ | 9–10 |
+| `/owner/system` + `/audit` | ✅ | 10 |
+| `/owner/settings` | ⬜ | 10 |
 
 ## API route handlers (`app/api`)
 

@@ -5,8 +5,11 @@
 > spec). This file never overrides the spec; it tracks execution against it.
 >
 > Companion docs: [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md) ·
-> [`DECISIONS.md`](DECISIONS.md) · [`docs/MIGRATION_PLAN.md`](docs/MIGRATION_PLAN.md) ·
-> [`docs/ROUTE_MAP.md`](docs/ROUTE_MAP.md) · [`docs/RLS_MATRIX.md`](docs/RLS_MATRIX.md)
+> [`DECISIONS.md`](DECISIONS.md) (D-001…D-028) · [`docs/MIGRATION_PLAN.md`](docs/MIGRATION_PLAN.md) ·
+> [`docs/ROUTE_MAP.md`](docs/ROUTE_MAP.md) · [`docs/RLS_MATRIX.md`](docs/RLS_MATRIX.md) ·
+> [`docs/LAUNCH_CHECKLIST.md`](docs/LAUNCH_CHECKLIST.md) ·
+> [`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md) ·
+> [`docs/BACKUP_RECOVERY.md`](docs/BACKUP_RECOVERY.md)
 
 ---
 
@@ -23,10 +26,28 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ---
 
-## 2. Current status — Phases 0–9 code-complete (live-DB run pending)
+## 2. Current status — ALL phases (0–10) code-complete; only live-ops remain
 
 Verified locally: `npm run typecheck` ✅ · `npm run lint` ✅ ·
-`npm run test` ✅ (155 unit pass, 10 RLS skip) · `npm run build` ✅ (52 routes).
+`npm run test` ✅ (155 unit pass, 10 RLS skip) · `npm run build` ✅ (55 routes).
+
+**The entire product is built.** Every phase's code is done and the whole app
+compiles, lints, tests and builds. What is NOT done is purely operational and
+needs the live **Supabase + Snippe + Resend + VAPID** credentials: applying
+migrations, running the RLS suite against a real DB, real-data import, wiring the
+Snippe webhook + Vercel Cron, and the launch checklist. Follow
+[`docs/LAUNCH_CHECKLIST.md`](docs/LAUNCH_CHECKLIST.md) when the creds arrive.
+
+**16 migrations** (`0001`–`0016`) are authored and ready for `supabase db push`.
+Integrations degrade gracefully (return `not_configured`) until their keys exist,
+so the app runs end-to-end today with placeholder env.
+
+**Phase 10 (buildable parts done):** money tables **write-locked** (migration
+0016 revokes direct writes; money mutates only via controlled functions +
+service role), **data-quality** cron, `/owner/system` health + `/owner/audit`
+pages, **CSP** + security headers on every response, and the ops docs
+(`SECURITY_REVIEW`, `LAUNCH_CHECKLIST`, `BACKUP_RECOVERY`). Remaining Phase 10 is
+credential-gated ops.
 
 **Phase 9 (code-complete):** report aggregation math (`lib/reports/compute` —
 collections, arrears, performance, contract progress, cash-operating-margin; 11
@@ -105,15 +126,23 @@ the auth user + one-time temp PIN, copies encrypted PII).
 3. Snippe/Resend creds — only needed at Phases 5/8.
 
 ### ▶ Immediate next actions when credentials arrive
+All feature code is built — the next session's job is to GO LIVE, not to build.
+Follow `docs/LAUNCH_CHECKLIST.md`. The critical path:
 ```bash
-cp .env.example .env.local          # fill real values
+cp .env.example .env.local          # fill real values (all keys)
 supabase link --project-ref <ref>
-supabase db push                    # apply supabase/migrations/*
+supabase db push                    # apply supabase/migrations/0001..0016
 supabase gen types typescript > lib/supabase/types.gen.ts   # then re-add <Database> generic (see D-010)
 npm run seed                        # owner + demo riders (Admin API)
-RLS_TEST_ENABLED=1 npm run test:rls # PROVE rider isolation -> closes Phase 1
+RLS_TEST_ENABLED=1 npm run test:rls # PROVE rider isolation -> closes Phase 1 exit
 ```
-Then update `IMPLEMENTATION_STATUS.md` (mark RLS proof ✅) and start **Phase 2**.
+Then: point the Snippe webhook at `/api/webhooks/snippe`, set Vercel Cron (from
+`vercel.json`) + `CRON_SECRET`, verify Resend DNS, import real riders/motorcycles
+via `/owner/imports`, reconcile sample totals, and run the pilot. If a feature
+session is wanted instead, the highest-value **follow-ups** are: contract
+extend/renegotiate + `regenerate_future_obligations` + addendum PDF (§10.4);
+receipt PDF + payment-reversal handling (§13, §12.3); remaining report views +
+PDF export (§19.1); nonce-based CSP; blind-index NIDA dedupe (D-014).
 
 ---
 
@@ -146,10 +175,13 @@ Then update `IMPLEMENTATION_STATUS.md` (mark RLS proof ✅) and start **Phase 2*
 - [x] **Phase 9** Report math (collections/arrears/performance/progress/margin),
       expense ledger, report centre, CSV/XLSX exports — *code-complete; remaining
       report views + PDF export are follow-ups*
-- [ ] **Phase 10** Hardening, security/RLS review, real-data staging, launch
+- [x] **Phase 10** Hardening: money-table write-locks (0016), data-quality cron,
+      `/owner/system` + `/owner/audit`, CSP + headers, security/launch/backup docs
+      — *buildable parts done; live RLS proof + real-data staging + pilot are
+      credential-gated ops (see LAUNCH_CHECKLIST)*
 
-Do NOT start a later phase's feature screens before the prior phase's DB
-constraints/tests pass. Keep financial state transitional & idempotent.
+All ten phases are code-complete. Keep financial state transactional & idempotent;
+never weaken RLS; keep secrets server-only; add tests with each business rule.
 
 ---
 

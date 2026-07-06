@@ -345,7 +345,10 @@ export async function contractLifecycle(
 
   if (cfg.cancelFuture) {
     // Cancel future UNPAID obligations; paid history is preserved (spec §3.4).
-    await supabase
+    // Written via the service role: direct writes to money tables are revoked
+    // from the authenticated role (migration 0016).
+    const admin = createAdminClient();
+    await admin
       .from('payment_obligations')
       .update({ status: 'cancelled' })
       .eq('contract_id', contractId)

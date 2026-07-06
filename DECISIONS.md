@@ -5,6 +5,19 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-028 · Hardening: money tables are write-locked; CSP added
+Migration 0016 revokes direct INSERT/UPDATE/DELETE on the financial tables (and
+audit/login/signed-doc tables) from anon/authenticated, so money mutates only
+through the controlled SECURITY DEFINER functions + the service role (§22.3).
+This required routing contract-terminate's obligation-cancel through the admin
+client. A Content-Security-Policy (plus HSTS/frame-deny/nosniff) is now set on
+every response; it uses `unsafe-inline`/`unsafe-eval` for Next's hydration
+bootstrap — nonce-based CSP is a tracked follow-up (see SECURITY_REVIEW.md).
+`FORCE ROW LEVEL SECURITY` was reviewed and deferred (definer/service roles
+bypass RLS regardless; the write-revoke is the higher-value control). Data-quality
+checks run as a daily cron alerting the owner; `/owner/system` + `/owner/audit`
+surface health and the audit trail.
+
 ## D-027 · Reports: pure aggregation + thin export layer
 Every report number is produced by a pure function in `lib/reports/compute`
 (collections, arrears, performance, contract progress, cash-operating-margin),

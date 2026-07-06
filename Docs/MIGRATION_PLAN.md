@@ -24,6 +24,7 @@ reset` (local, needs Docker).
 | `0013_contract_functions.sql` | `activate_contract_and_generate_obligations` — SECURITY DEFINER, owner-guarded; commits the TS-computed obligation calendar and flips the contract to active in one transaction (§11, §22.3). |
 | `0015_exemption_functions.sql` | `apply_exemption_waiver` / `apply_postponement` — SECURITY DEFINER, owner-guarded; waive or postpone an obligation while preserving the original due date in history (§16.2, §22.3). |
 | `0014_payment_functions.sql` | `record_completed_payment` — SECURITY DEFINER, service-role only; allocates whole obligations, enforces allocations = amount, writes the receipt, releases reservations. Idempotent (webhook-replay safe). Used by the Snippe webhook and cash payments (§12, §22.2). |
+| `0016_harden_financial_writes.sql` | Revokes direct INSERT/UPDATE/DELETE on money + audit/login/signed-doc tables from anon/authenticated (§22.3, §25.2). |
 | `seed.sql` | Non-auth reference data (settings defaults, template v1, demo motorcycles). Auth users via `scripts/seed.ts`. |
 
 ### Constraints already enforced (spec §22.2)

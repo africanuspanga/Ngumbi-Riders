@@ -13,7 +13,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 |------|--------|-------|
 | Next.js 16.2 TypeScript App Router project | ✅ | `next@16.2.0`, React 19.2, App Router. `npm run build` passes. |
 | Tailwind CSS | ✅ | Tailwind v4 via `@tailwindcss/postcss`; design tokens in `app/globals.css` (`@theme`). |
-| Supabase local dev + migrations | 🟡 | `supabase/config.toml` + 11 migrations authored. `supabase start` needs Docker (absent here); apply via `supabase db push` once a project is linked. |
+| Supabase local dev + migrations | 🟡 | `supabase/config.toml` + 16 migrations authored. `supabase start` needs Docker (absent here); apply via `supabase db push` once a project is linked. |
 | Linting / formatting / tests / CI | ✅ | ESLint 9 flat config (native Next 16 config), Prettier, Vitest, GitHub Actions CI. |
 | Design tokens, responsive shell, i18n | ✅ | Green Bolt-inspired palette; `next-intl` Swahili-default (+English); mobile-first shells. |
 | Environment validation | ✅ | `lib/env.ts` — zod-validated public vs server split, fail-loud on missing secrets. |
@@ -154,6 +154,20 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 
 **Exit criteria:** owner can reconcile operations and download reports — **core reports + CSV/XLSX export code-complete**; remaining report views + PDF are follow-ups; live run pending Supabase creds.
 
+## Phase 10 — Hardening and launch (buildable parts done; ops pending creds)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Revoke direct money-table writes | ✅ | Migration 0016 revokes INSERT/UPDATE/DELETE on payments/obligations/allocations/events/reservations/receipts + contract_documents/audit/login from anon/authenticated (§22.3). |
+| Data-quality checks job | ✅ | `/api/cron/data-quality` — allocation mismatches, orphaned assignments, settled-without-allocation; alerts owner; in `vercel.json`. |
+| Owner system health page | ✅ | `/owner/system` — integration status, last webhook/reconciliation/summary, pending/failed jobs, recent job runs, storage-backup reminder. |
+| Owner audit log page | ✅ | `/owner/audit` — money/contract/identity/permission actions. |
+| Security headers + CSP | ✅ | CSP + HSTS + frame-deny etc on every response; verified at runtime. |
+| Security review / launch / backup docs | ✅ | `docs/SECURITY_REVIEW.md`, `docs/LAUNCH_CHECKLIST.md`, `docs/BACKUP_RECOVERY.md`. |
+| Live RLS proof, real-data staging, pilot, prod config | ⬜ **[creds]** | Operational — needs live Supabase/Snippe/Resend/VAPID. See `LAUNCH_CHECKLIST.md`. |
+
+**Exit criteria:** production flows verified + launch checklist signed — **buildable hardening done**; live verification pending credentials.
+
 ---
 
 ## Verification snapshot (local)
@@ -162,7 +176,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 npm run typecheck   # ✅ tsc --noEmit clean
 npm run lint        # ✅ eslint clean
 npm run test        # ✅ 155 passed, 10 RLS skipped (no DB)
-npm run build       # ✅ 52 routes compiled, proxy active
+npm run build       # ✅ 55 routes compiled, proxy active
 ```
 
 ## Blocked / awaiting input

@@ -6,7 +6,26 @@ const withNextIntl = createNextIntlPlugin('./lib/i18n/request.ts');
 // Security response headers applied to every route. Snippe/Resend/Supabase
 // secrets never reach the browser, so the CSP intentionally forbids inline
 // script and restricts connect-src to same-origin + Supabase.
+// Content-Security-Policy. script/style allow inline for Next's hydration
+// bootstrap (nonce-based CSP is a tracked hardening follow-up). connect-src is
+// limited to same-origin + Supabase (https + realtime wss) + Snippe.
+const csp = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self'",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.snippe.sh",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+].join('; ');
+
 const securityHeaders = [
+  { key: 'Content-Security-Policy', value: csp },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
