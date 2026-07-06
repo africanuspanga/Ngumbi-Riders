@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      # Public placeholders so lib/env parses at build time. No real secrets in
+      # CI; RLS integration tests stay skipped (RLS_TEST_ENABLED unset).
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder
+      AUTH_PIN_PEPPER: ci-placeholder-pepper-please-change-32chars
+      PII_ENCRYPTION_KEY: dGVzdC1vbmx5LTMyLWJ5dGUta2V5LWJhc2U2NGVuYw==
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test
+      - run: npm run build

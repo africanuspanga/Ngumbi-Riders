@@ -1,0 +1,41 @@
+{
+  "common": {
+    "appName": "Ng'umbi Riders",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "back": "Back",
+    "continue": "Continue",
+    "signOut": "Sign out",
+    "language": "Language",
+    "lastUpdated": "Last updated",
+    "offline": "Offline"
+  },
+  "landing": {
+    "tagline": "Payment and contract management for motorcycle riders.",
+    "apply": "Apply to become a rider",
+    "login": "Sign in"
+  },
+  "login": {
+    "title": "Sign in",
+    "riderTab": "Rider",
+    "ownerTab": "Owner",
+    "phone": "Phone number",
+    "pin": "Four-digit PIN",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "invalidCredentials": "Phone number or PIN is incorrect.",
+    "locked": "Account temporarily locked. Please try again later.",
+    "tooManyAttempts": "Too many attempts. Wait 30 minutes."
+  },
+  "pin": {
+    "changeTitle": "Change PIN",
+    "current": "Current PIN",
+    "new": "New PIN",
+    "confirm": "Confirm new PIN",
+    "weak": "That PIN is too easy to guess. Choose another.",
+    "mismatch": "New PINs do not match.",
+    "mustChange": "Please change your temporary PIN before continuing."
+  }
+}

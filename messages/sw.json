@@ -1,0 +1,41 @@
+{
+  "common": {
+    "appName": "Ng'umbi Riders",
+    "loading": "Inapakia...",
+    "save": "Hifadhi",
+    "cancel": "Ghairi",
+    "back": "Rudi",
+    "continue": "Endelea",
+    "signOut": "Toka",
+    "language": "Lugha",
+    "lastUpdated": "Imesasishwa mara ya mwisho",
+    "offline": "Hakuna mtandao"
+  },
+  "landing": {
+    "tagline": "Mfumo wa malipo na mikataba kwa waendesha pikipiki.",
+    "apply": "Omba kuwa mwendeshaji",
+    "login": "Ingia"
+  },
+  "login": {
+    "title": "Ingia",
+    "riderTab": "Mwendeshaji",
+    "ownerTab": "Mmiliki",
+    "phone": "Namba ya simu",
+    "pin": "PIN ya tarakimu nne",
+    "email": "Barua pepe",
+    "password": "Nywila",
+    "submit": "Ingia",
+    "invalidCredentials": "Namba ya simu au PIN si sahihi.",
+    "locked": "Akaunti imefungwa kwa muda. Jaribu tena baadaye.",
+    "tooManyAttempts": "Umejaribu mara nyingi. Subiri dakika 30."
+  },
+  "pin": {
+    "changeTitle": "Badilisha PIN",
+    "current": "PIN ya sasa",
+    "new": "PIN mpya",
+    "confirm": "Thibitisha PIN mpya",
+    "weak": "PIN hii ni rahisi mno. Chagua nyingine.",
+    "mismatch": "PIN mpya hazilingani.",
+    "mustChange": "Tafadhali badilisha PIN yako ya muda kabla ya kuendelea."
+  }
+}
