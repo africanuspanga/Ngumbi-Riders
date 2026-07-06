@@ -37,6 +37,8 @@ export type MotorcycleDetail = MotorcycleListItem & {
   assignments: AssignmentHistoryRow[];
   expenses: ExpenseRow[];
   totalExpenses: number;
+  collected: number;
+  cashOperatingMargin: number;
 };
 
 export async function listMotorcycles(
@@ -108,10 +110,20 @@ export async function getMotorcycle(
   const expenseRows = (expenses ?? []) as unknown as ExpenseRow[];
   const totalExpenses = expenseRows.reduce((s, e) => s + e.amount, 0);
 
+  // Collected revenue for this motorcycle = settled obligation value (§3.6).
+  const { data: settledObs } = await supabase
+    .from('payment_obligations')
+    .select('amount_due')
+    .eq('motorcycle_id', id)
+    .in('status', ['paid', 'paid_in_advance']);
+  const collected = ((settledObs ?? []) as { amount_due: number }[]).reduce((s, o) => s + o.amount_due, 0);
+
   return {
     ...(m as unknown as MotorcycleListItem),
     assignments: assignmentRows,
     expenses: expenseRows,
     totalExpenses,
+    collected,
+    cashOperatingMargin: collected - totalExpenses,
   };
 }

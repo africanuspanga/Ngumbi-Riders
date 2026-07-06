@@ -23,10 +23,17 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ---
 
-## 2. Current status — Phases 0–8 code-complete (live-DB run pending)
+## 2. Current status — Phases 0–9 code-complete (live-DB run pending)
 
 Verified locally: `npm run typecheck` ✅ · `npm run lint` ✅ ·
-`npm run test` ✅ (144 unit pass, 10 RLS skip) · `npm run build` ✅ (49 routes).
+`npm run test` ✅ (155 unit pass, 10 RLS skip) · `npm run build` ✅ (52 routes).
+
+**Phase 9 (code-complete):** report aggregation math (`lib/reports/compute` —
+collections, arrears, performance, contract progress, cash-operating-margin; 11
+tests), motorcycle **expense ledger** (`/owner/expenses`) + margin on the
+motorcycle detail, **report centre** (`/owner/reports`, date range) with
+**CSV/XLSX exports** (`/api/reports/[report]/export`). Remaining report views +
+PDF export are follow-ups.
 
 **Phase 8 (code-complete):** obligation status processor (pure, tested) + 6
 CRON_SECRET-guarded cron jobs (`vercel.json`) writing `system_job_runs`; in-app
@@ -136,7 +143,9 @@ Then update `IMPLEMENTATION_STATUS.md` (mark RLS proof ✅) and start **Phase 2*
 - [x] **Phase 8** In-app notifications, PWA (SW/push), Resend daily summary,
       SMS/WhatsApp outbox (flagged off), 6 cron jobs — *code-complete; live cron
       + push/email pending DB + keys*
-- [ ] **Phase 9** All reports + expense ledger + PDF/XLSX/CSV/print exports
+- [x] **Phase 9** Report math (collections/arrears/performance/progress/margin),
+      expense ledger, report centre, CSV/XLSX exports — *code-complete; remaining
+      report views + PDF export are follow-ups*
 - [ ] **Phase 10** Hardening, security/RLS review, real-data staging, launch
 
 Do NOT start a later phase's feature screens before the prior phase's DB

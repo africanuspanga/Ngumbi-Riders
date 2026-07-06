@@ -5,6 +5,17 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-027 · Reports: pure aggregation + thin export layer
+Every report number is produced by a pure function in `lib/reports/compute`
+(collections, arrears, performance, contract progress, cash-operating-margin),
+unit-tested to the §19.2 definitions, and fed by server queries. Exports are a
+thin serialization layer: CSV (`lib/reports/csv`, RFC-4180 escaping) and XLSX
+(exceljs) share the same table shape, so adding a report or format is small. The
+report centre page is the print-friendly view. Cash operating margin is labelled
+"collected revenue − recorded expenses" (not full accounting profit) per §3.6.
+Remaining §19.1 report views (rider/motorcycle statements, reconciliation) and
+PDF export reuse these functions — tracked follow-ups.
+
 ## D-026 · Jobs are cron endpoints; integrations no-op until configured
 Scheduled work (spec §27) runs as CRON_SECRET-guarded route handlers scheduled by
 `vercel.json` (Vercel Cron sends `Authorization: Bearer <CRON_SECRET>`), each

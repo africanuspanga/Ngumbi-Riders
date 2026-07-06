@@ -141,6 +141,19 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 
 **Also fixed:** owner-dashboard KPI query mapped snake_case rows to the camelCase KPI shape (would have zeroed KPIs at runtime); now correct.
 
+## Phase 9 — Reports, expenses and exports (code-complete; DB pending)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| **Report aggregation math** | ✅ | `lib/reports/compute` — collections (daily/weekly/monthly via range), arrears (per-rider + aging), payment performance, contract progress, cash-operating-margin. 11 unit tests. |
+| Motorcycle expense ledger | ✅ | `/owner/expenses` add/list (date, category, amount, note, §3.6); feeds margin. |
+| Cash operating margin | ✅ | Motorcycle detail shows collected − expenses = margin (labelled not full profit). |
+| Report centre | ✅ | `/owner/reports` — date range, collections summary, arrears table, per-report export links. Print-friendly (the page). |
+| CSV / XLSX exports | ✅ | `/api/reports/[report]/export?format=csv\|xlsx` (owner-only) for collections / arrears / expenses; `lib/reports/csv` unit tested. |
+| Rider/motorcycle statements, performance, reconciliation, PDF export | 🟡 | Aggregation functions exist and are tested; dedicated report pages + PDF export are follow-ups (§19.1 remaining reports). |
+
+**Exit criteria:** owner can reconcile operations and download reports — **core reports + CSV/XLSX export code-complete**; remaining report views + PDF are follow-ups; live run pending Supabase creds.
+
 ---
 
 ## Verification snapshot (local)
@@ -148,8 +161,8 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 ```
 npm run typecheck   # ✅ tsc --noEmit clean
 npm run lint        # ✅ eslint clean
-npm run test        # ✅ 144 passed, 10 RLS skipped (no DB)
-npm run build       # ✅ 49 routes compiled, proxy active
+npm run test        # ✅ 155 passed, 10 RLS skipped (no DB)
+npm run build       # ✅ 52 routes compiled, proxy active
 ```
 
 ## Blocked / awaiting input

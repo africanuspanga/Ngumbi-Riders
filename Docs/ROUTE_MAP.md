@@ -42,7 +42,7 @@ the rest are scaffolded destinations for later phases (⬜).
 | `/owner/incidents` + `/exemptions` | ✅ | 7 |
 | `/owner/imports` CSV/XLSX wizard | ✅ | 3 |
 | `/owner/announcements` | ✅ | 8 |
-| `/owner/reports`, `/expenses` | ⬜ | 9 |
+| `/owner/reports` + `/expenses` | ✅ | 9 |
 | `/owner/settings`, `/audit`, `/system` | ⬜ | 9–10 |
 
 ## API route handlers (`app/api`)
@@ -58,7 +58,7 @@ the rest are scaffolded destinations for later phases (⬜).
 | `/api/uploads/sign` | ⬜ | Phase 2 (optional; submit currently uploads inline) |
 | `/api/payments/snippe/initiate` + `/api/payments/[id]/status` + `/api/webhooks/snippe` | ✅ | Phase 5 |
 | `/api/push/subscribe` + `/api/cron/*` (6 jobs) | ✅ | Phase 8 |
-| `/api/reports/[report]/export` | ⬜ | Phase 9 |
+| `/api/reports/[report]/export` (csv/xlsx) | ✅ | Phase 9 |
 
 ## Feature-based folder structure (spec §29)
 

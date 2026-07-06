@@ -74,12 +74,25 @@ export default async function MotorcycleDetailPage({
         )}
       </Section>
 
-      <Section title="Expenses">
-        <p className="text-sm text-muted">
-          Recorded expenses: <strong>{formatTZS(m.totalExpenses)}</strong>
-        </p>
+      <Section title="Financials">
+        <div className="grid grid-cols-3 gap-3 text-sm">
+          <div>
+            <p className="text-xs text-muted">Collected</p>
+            <p className="font-semibold text-[color:var(--color-paid)]">{formatTZS(m.collected)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted">Expenses</p>
+            <p className="font-semibold">{formatTZS(m.totalExpenses)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted">Cash operating margin</p>
+            <p className={`font-semibold ${m.cashOperatingMargin >= 0 ? 'text-[color:var(--color-paid)]' : 'text-overdue'}`}>
+              {formatTZS(m.cashOperatingMargin)}
+            </p>
+          </div>
+        </div>
         <p className="text-xs text-muted">
-          Collections and cash operating margin appear once payments land (Phase 5).
+          Margin = collected contract revenue − recorded expenses (not full accounting profit).
         </p>
       </Section>
     </div>
