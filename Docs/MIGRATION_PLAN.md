@@ -35,8 +35,10 @@ These are intentionally deferred; the tables exist so they slot in cleanly.
 
 - **Phase 2** `00xx_application_flow` — application reference sequence, resume-token
   handling, duplicate-detection helper functions.
-- **Phase 3** `00xx_import_functions` — batch validation/commit/rollback functions;
-  rider-number sequence generator.
+- **Phase 3** — DONE in application code (no new migration needed; all tables
+  exist from Phase 1). Follow-ups still worth a future migration:
+  `private.transfer_motorcycle` (atomic assignment transfer), a rider-number
+  sequence to replace count-based numbering, and batch rollback helpers.
 - **Phase 4** `00xx_contract_functions` — `private.activate_contract_and_generate_obligations`,
   `private.regenerate_future_obligations`, signed-document immutability trigger,
   obligation generator (daily + selected-weekday, leap-year safe, UTC from EAT).

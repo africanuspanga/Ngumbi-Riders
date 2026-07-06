@@ -57,6 +57,18 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 
 **Exit criteria:** public applicant submits a complete application + owner reviews it — **code-complete on both sides**; live run pending Supabase creds.
 
+## Phase 3 — Riders, motorcycles and imports (code-complete; DB pending)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Motorcycle register | ✅ | `/owner/motorcycles` list, `/new` create (normalized registration), `/[id]` detail with assignment history + expense total. |
+| Rider register | ✅ | `/owner/riders` list (status + risk), `/[id]` 360 profile with compliance warnings, reveal NIDA/licence, assignment history. |
+| Manual rider creation | ✅ | `/owner/riders/new` — creates auth user + temp PIN, optional NIDA/licence (encrypted), optional immediate motorcycle assignment (§9.2). |
+| Assignment history + transfer | ✅ | `lib/assignments/actions` — assign / release / exceptional transfer (reason required); DB partial-unique indexes enforce one-active invariants. |
+| CSV/XLSX import wizard | 🟡 | `/owner/imports` — type select, template download, upload (CSV via papaparse / XLSX via exceljs), **dry-run** validation + in-batch & DB duplicate detection, batch + file persistence, **commit** with per-rider temp-PIN report. Riders + motorcycles types. **Activates when creds land.** |
+
+**Exit criteria:** existing riders and motorcycles can be loaded safely — **code-complete**; live import run pending Supabase creds. Remaining import types (guarantors, contracts, assignments, historical obligations/payments, expenses) deferred to their phases.
+
 ---
 
 ## Verification snapshot (local)
@@ -64,8 +76,8 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 ```
 npm run typecheck   # ✅ tsc --noEmit clean
 npm run lint        # ✅ eslint clean
-npm run test        # ✅ 66 passed, 10 RLS skipped (no DB)
-npm run build       # ✅ 18 routes compiled, proxy active
+npm run test        # ✅ 81 passed, 10 RLS skipped (no DB)
+npm run build       # ✅ 23 routes compiled, proxy active
 ```
 
 ## Blocked / awaiting input

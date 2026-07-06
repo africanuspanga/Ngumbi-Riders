@@ -32,12 +32,13 @@ the rest are scaffolded destinations for later phases (⬜).
 | `/owner` dashboard | ✅ (placeholder) | 1 → 6 |
 | `/owner/applications` pipeline list | ✅ | 2 |
 | `/owner/applications/[id]` review + convert | ✅ | 2 |
-| `/owner/riders[/new][/id]` | ⬜ | 3 |
-| `/owner/motorcycles[/id]` | ⬜ | 3 |
+| `/owner/riders` + `/new` + `/[id]` | ✅ | 3 |
+| `/owner/motorcycles` + `/new` + `/[id]` | ✅ | 3 |
 | `/owner/contracts[/new][/id]` | ⬜ | 4 |
 | `/owner/payments[/cash]`, `/reconciliation` | ⬜ | 5 |
 | `/owner/incidents`, `/exemptions` | ⬜ | 7 |
-| `/owner/announcements`, `/reports`, `/expenses`, `/imports` | ⬜ | 8–9 |
+| `/owner/imports` CSV/XLSX wizard | ✅ | 3 |
+| `/owner/announcements`, `/reports`, `/expenses` | ⬜ | 8–9 |
 | `/owner/settings`, `/audit`, `/system` | ⬜ | 9–10 |
 
 ## API route handlers (`app/api`)

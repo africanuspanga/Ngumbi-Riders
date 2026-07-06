@@ -17,20 +17,27 @@ export default async function OwnerHome() {
       </header>
 
       <nav className="grid gap-3 sm:grid-cols-2">
-        <Link
-          href="/owner/applications"
-          className="rounded-[--radius-card] border border-border bg-white p-4 hover:bg-surface"
-        >
-          <span className="font-semibold text-primary-dark">Applications</span>
-          <p className="text-sm text-muted">
-            Review applicants, verify documents, convert to riders.
-          </p>
-        </Link>
+        <NavCard href="/owner/applications" title="Applications" desc="Review applicants, verify documents, convert to riders." />
+        <NavCard href="/owner/riders" title="Riders" desc="Rider directory, profiles and manual creation." />
+        <NavCard href="/owner/motorcycles" title="Motorcycles" desc="Fleet register and assignment status." />
+        <NavCard href="/owner/imports" title="Imports" desc="Load existing riders and motorcycles from CSV/Excel." />
       </nav>
 
       <p className="text-sm text-muted">
         Owner dashboard KPIs and reports arrive in Phase 6.
       </p>
     </div>
+  );
+}
+
+function NavCard({ href, title, desc }: { href: string; title: string; desc: string }) {
+  return (
+    <Link
+      href={href}
+      className="rounded-[--radius-card] border border-border bg-white p-4 hover:bg-surface"
+    >
+      <span className="font-semibold text-primary-dark">{title}</span>
+      <p className="text-sm text-muted">{desc}</p>
+    </Link>
   );
 }

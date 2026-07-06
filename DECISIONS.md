@@ -5,6 +5,21 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-020 · Phase 3: assignment writes, import framework, bulk temp PINs
+Assignment invariants (one active per rider/motorcycle) are enforced by DB
+partial-unique indexes; the assign/release/transfer actions do ordered close→open
+writes so those indexes are never violated (a SECURITY DEFINER
+`private.transfer_motorcycle` for full atomicity is a tracked follow-up, §22.3).
+The import wizard is a small registry (`lib/imports/definitions`): each type owns
+template columns, a normalizing zod row schema, and a duplicate field. Validation
++ in-batch dedupe are pure/tested; DB dedupe + persistence live in the actions.
+Dry-run persists an `import_batches` row + the original file + `import_rows`
+without touching live tables; commit re-validates from stored raw and inserts.
+Bulk-imported and manually-created riders each get a per-row **temporary PIN**
+(mustChangePin); the owner gets a one-time downloadable PIN list. Phase 3 needed
+no new migrations — all tables already exist from Phase 1. Owner UI is English;
+rider screens stay Swahili-first.
+
 ## D-019 · Owner review pipeline: status machine, deliberate reveal, convert
 Application review transitions are governed by a pure, unit-tested state machine
 (`lib/applications/status`) so illegal jumps (e.g. submitted→approved) are

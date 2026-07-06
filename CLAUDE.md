@@ -23,10 +23,17 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ---
 
-## 2. Current status — Phases 0 & 1 done; Phase 2 code-complete (DB pending)
+## 2. Current status — Phases 0–3 code-complete (live-DB run pending)
 
 Verified locally: `npm run typecheck` ✅ · `npm run lint` ✅ ·
-`npm run test` ✅ (66 unit pass, 10 RLS skip) · `npm run build` ✅ (18 routes).
+`npm run test` ✅ (81 unit pass, 10 RLS skip) · `npm run build` ✅ (23 routes).
+
+**Phase 3 (code-complete; activates when creds land):** motorcycle register
+(`/owner/motorcycles` list/new/detail), rider register + **manual creation**
+(`/owner/riders`), assignment history + **exceptional transfer**
+(`lib/assignments`), and the **CSV/XLSX import wizard** (`/owner/imports`:
+template → upload → dry-run validate + dedupe → commit + temp-PIN report) for
+riders and motorcycles (papaparse + exceljs).
 
 **Phase 2 (all code-complete; activates when Supabase creds land):** public
 multi-step application form (`/apply`, 9 steps, RHF + zod, session draft,
@@ -77,8 +84,9 @@ Then update `IMPLEMENTATION_STATUS.md` (mark RLS proof ✅) and start **Phase 2*
 - [x] **Phase 2** Application form + validation + PII encryption + submit
       endpoint + magic-byte scan + rate limiting + bilingual i18n + **owner
       review pipeline & convert-to-rider** — *code-complete; live run pending DB*
-- [ ] **Phase 3** Rider + motorcycle registers, manual rider creation,
-      assignment history, CSV/XLSX import wizard
+- [x] **Phase 3** Rider + motorcycle registers, manual rider creation,
+      assignment history + transfer, CSV/XLSX import wizard (riders +
+      motorcycles) — *code-complete; live run pending DB*
 - [ ] **Phase 4** Contract engine: template + PDF, signatures + physical-upload
       fallback, **obligation generation** (daily/weekday, leap-year safe, UTC
       from EAT), lifecycle events/versions
