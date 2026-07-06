@@ -5,6 +5,16 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-024 · Dashboards: KPI math is pure and unit-tested to the spec definitions
+All dashboard numbers are computed by pure functions (`lib/dashboard/kpis`,
+`lib/dashboard/rider`) so §14.1's exact definitions are pinned by tests — in
+particular "collected today" (completed payment transactions received today) is
+kept distinct from "settled for today" (today's obligations already paid), which
+the spec explicitly forbids merging. Rider payment state (paid/due/overdue) is
+derived only from obligation status, never optimistic. Owner KPI queries bound
+the obligation scan to `due_date <= today`; a materialized rollup can replace it
+if the dataset ever grows (not a concern at <100 riders).
+
 ## D-023 · Payments: webhook is truth, settlement is atomic + idempotent
 The Snippe webhook (`/api/webhooks/snippe`) is the ONLY thing that completes a
 payment — browser callbacks never do (§12.1). It verifies HMAC-SHA256 over the

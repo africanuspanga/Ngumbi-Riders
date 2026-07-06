@@ -18,10 +18,11 @@ the rest are scaffolded destinations for later phases (⬜).
 
 | Route | Status | Phase |
 |-------|--------|-------|
-| `/rider` dashboard | ✅ (placeholder) | 1 → 6 |
+| `/rider` dashboard | ✅ | 6 |
 | `/rider/settings/pin` change PIN | ✅ | 1 |
 | `/rider/pay` + `/payments` + `/payments/[id]` | ✅ | 5 |
-| `/rider/calendar`, `/contract`, `/contracts/[id]`, `/motorcycle`, `/documents` | ⬜ | 4–6 |
+| `/rider/calendar` | ✅ | 6 |
+| `/rider/contract`, `/contracts/[id]`, `/motorcycle`, `/documents` | ⬜ | 6 |
 | `/rider/incidents`, `/incidents/new`, `/exemptions` | ⬜ | 7 |
 | `/rider/notifications`, `/settings` | ⬜ | 8 |
 
@@ -29,7 +30,7 @@ the rest are scaffolded destinations for later phases (⬜).
 
 | Route | Status | Phase |
 |-------|--------|-------|
-| `/owner` dashboard | ✅ (placeholder) | 1 → 6 |
+| `/owner` KPI dashboard | ✅ | 6 |
 | `/owner/applications` pipeline list | ✅ | 2 |
 | `/owner/applications/[id]` review + convert | ✅ | 2 |
 | `/owner/riders` + `/new` + `/[id]` | ✅ | 3 |

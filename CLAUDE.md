@@ -23,10 +23,17 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ---
 
-## 2. Current status — Phases 0–5 code-complete (live-DB run pending)
+## 2. Current status — Phases 0–6 code-complete (live-DB run pending)
 
 Verified locally: `npm run typecheck` ✅ · `npm run lint` ✅ ·
-`npm run test` ✅ (116 unit pass, 10 RLS skip) · `npm run build` ✅ (31 routes).
+`npm run test` ✅ (131 unit pass, 10 RLS skip) · `npm run build` ✅ (32 routes).
+
+**Phase 6 (code-complete):** owner **KPI dashboard** (`/owner` — expected/settled/
+collected/outstanding, collection rate, arrears aging, who-hasn't-paid, ending
+contracts, high-risk, warnings) and rider dashboard (`/rider` — state, Lipa Sasa,
+progress, motorcycle, recent payments) + colour-coded payment **calendar**
+(`/rider/calendar`). KPI + rider-state math is pure and unit-tested
+(`lib/dashboard/*`).
 
 **Phase 5 (code-complete; activates when creds + Snippe keys land):** whole-
 obligation selection with **oldest-first allocation** and partial-payment
@@ -109,7 +116,8 @@ Then update `IMPLEMENTATION_STATUS.md` (mark RLS proof ✅) and start **Phase 2*
       integration, signed webhook + idempotency, atomic allocations, receipts,
       reconciliation, owner cash payments — *code-complete; live run pending DB +
       Snippe keys. Follow-ups: receipt PDF, reversal handling, recon cron*
-- [ ] **Phase 6** Owner KPI dashboard + rider dashboard/calendar/progress/receipts
+- [x] **Phase 6** Owner KPI dashboard + rider dashboard/calendar/progress — *code
+      complete; live data pending DB*
 - [ ] **Phase 7** Incidents, exemption waiver/postponement, explainable risk
 - [ ] **Phase 8** In-app notifications, PWA (SW/install/push), Resend daily
       summary + receipts, SMS/WhatsApp adapter interfaces (flagged off)

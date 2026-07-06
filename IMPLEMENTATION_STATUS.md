@@ -101,6 +101,18 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 
 **Exit criteria:** a rider payment settles the correct obligations exactly once — **code-complete** (idempotent webhook + atomic settlement + reservation uniqueness); live run pending Supabase creds + Snippe keys.
 
+## Phase 6 — Dashboards and rider experience (code-complete; DB pending)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| **Owner KPI calculations** | ✅ | `lib/dashboard/kpis` — expected/settled/collected/outstanding today, collection rate, total arrears, paid-vs-unpaid riders, arrears aging buckets. 9 unit tests pinning the §14.1 definitions (collected ≠ settled). |
+| Owner dashboard | ✅ | `/owner` — KPI cards, who-hasn't-paid, arrears aging, contracts ending in 30d, high-risk riders, integration warnings, active counts, nav. |
+| **Rider dashboard derivation** | ✅ | `lib/dashboard/rider` — current state (paid/due/overdue), amount required now, arrears, next due, contract progress. 6 unit tests. |
+| Rider dashboard | ✅ | `/rider` — state banner, **Lipa Sasa**, progress bar, motorcycle, recent payments, calendar link. |
+| Payment calendar | ✅ | `/rider/calendar` — colour-coded (green paid / red overdue / amber today / blue advance / grey exempt) with legend (§15.1). |
+
+**Exit criteria:** both users can understand current payment status without manual calculation — **code-complete**; live data pending Supabase creds.
+
 ---
 
 ## Verification snapshot (local)
@@ -108,8 +120,8 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 ```
 npm run typecheck   # ✅ tsc --noEmit clean
 npm run lint        # ✅ eslint clean
-npm run test        # ✅ 116 passed, 10 RLS skipped (no DB)
-npm run build       # ✅ 31 routes compiled, proxy active
+npm run test        # ✅ 131 passed, 10 RLS skipped (no DB)
+npm run build       # ✅ 32 routes compiled, proxy active
 ```
 
 ## Blocked / awaiting input
