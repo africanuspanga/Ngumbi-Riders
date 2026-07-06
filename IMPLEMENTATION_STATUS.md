@@ -49,8 +49,10 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 | Application reference | ✅ | `NGR-APP-YYYY-000123` generator, unit tested. |
 | `/apply/success` confirmation | ✅ | Shows reference. |
 | Submission endpoint `/api/applications` | 🟡 | DB-ready: validates, encrypts, inserts application+guarantors, uploads docs, duplicate flag by phone. **Activates when Supabase creds land.** |
+| Server file magic-byte scan | ✅ | `lib/applications/file-signature` — rejects spoofed MIME/extension; wired into submit; unit tested. |
+| Submission rate limiting | ✅ | Generic durable limiter (`lib/security/rate-limit` + `rate_limit_events`, migration 0012); 5 submits/hr per IP; window math unit tested. |
 | Owner review pipeline (`/owner/applications`) | ⬜ | Next Phase 2 task. |
-| Signed upload flow / server file-signature scan | 🟡 | Files uploaded via service role in the submit route; deeper magic-byte scan + submission rate-limit are follow-ups. |
+| Signed upload flow (`/api/uploads/sign`) | ⬜ | Optional; submit currently uploads inline via service role. |
 | English i18n for the form | ⬜ | Form currently Swahili-inline (spec is Swahili-first); English strings are a follow-up. |
 
 **Exit criteria:** public applicant submits a complete application + owner reviews it — form ✅, submission ready (pending DB), owner review ⬜.
@@ -62,7 +64,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 ```
 npm run typecheck   # ✅ tsc --noEmit clean
 npm run lint        # ✅ eslint clean
-npm run test        # ✅ 50 passed, 10 RLS skipped (no DB)
+npm run test        # ✅ 61 passed, 10 RLS skipped (no DB)
 npm run build       # ✅ 17 routes compiled, proxy active
 ```
 

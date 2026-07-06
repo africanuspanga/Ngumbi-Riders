@@ -134,11 +134,14 @@ export function ApplicationForm() {
       });
       const result = await res.json();
       if (!res.ok) {
-        setSubmitError(
-          result?.error === 'duplicate'
-            ? 'Maombi yenye taarifa hizi tayari yapo.'
-            : 'Imeshindikana kutuma maombi. Jaribu tena.',
-        );
+        if (result?.error === 'rate_limited') {
+          setSubmitError('Umejaribu mara nyingi. Tafadhali subiri kidogo.');
+        } else if (result?.error === 'file_rejected') {
+          setSubmitError('Faili moja au zaidi halikubaliki. Kagua nyaraka zako.');
+          setStep(6);
+        } else {
+          setSubmitError('Imeshindikana kutuma maombi. Jaribu tena.');
+        }
         return;
       }
       sessionStorage.removeItem(DRAFT_KEY);

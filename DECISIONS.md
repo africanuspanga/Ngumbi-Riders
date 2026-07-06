@@ -5,6 +5,15 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-017 · Submission hardening: magic-byte scan + generic durable rate limiter
+Uploaded files are re-checked server-side against their real leading bytes
+(`lib/applications/file-signature`) so a spoofed MIME type/extension cannot get a
+file stored (§8.6, §24). Public submission is throttled by a generic durable
+limiter (`lib/security/rate-limit` + `rate_limit_events`, migration 0012) with
+named policies (5 application submits/hour per IP); the window math is pure and
+unit tested. The limiter fails open on DB read errors so a transient issue never
+blocks a legitimate applicant.
+
 ## D-016 · Application submission endpoint is DB-ready, not yet live
 `/api/applications` fully validates, encrypts PII, inserts the application +
 guarantors, and uploads documents via the service-role client — but it only runs

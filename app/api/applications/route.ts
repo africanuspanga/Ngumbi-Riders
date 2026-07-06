@@ -5,6 +5,9 @@ import { encryptPII } from '@/lib/security/crypto';
 import { normalizePhone } from '@/lib/auth/phone';
 import { formatApplicationReference } from '@/lib/applications/reference';
 import { validateFile, ACCEPTED_EXTENSIONS } from '@/lib/applications/documents';
+import { fileSignatureMatches } from '@/lib/applications/file-signature';
+import { enforceRateLimit } from '@/lib/security/rate-limit';
+import { getClientIp } from '@/lib/security/request';
 
 /*
  * Public rider application submission (spec §8, §23.3). Anonymous users have no
@@ -26,6 +29,16 @@ function extOf(name: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  // Throttle public submissions per IP (spec §25.2).
+  const ip = getClientIp(request.headers);
+  const limit = await enforceRateLimit('application_submit', ip);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'rate_limited', retryAfterSeconds: limit.retryAfterSeconds },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
+    );
+  }
+
   let form: FormData;
   try {
     form = await request.formData();
@@ -60,6 +73,15 @@ export async function POST(request: NextRequest) {
     if (!check.ok) {
       return NextResponse.json(
         { error: 'file_rejected', reason: check.reason },
+        { status: 422 },
+      );
+    }
+    // Confirm the real leading bytes match the claimed type — a lying MIME
+    // type / extension is not enough to get a file stored (spec §8.6, §24).
+    const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+    if (!fileSignatureMatches(head, file.type)) {
+      return NextResponse.json(
+        { error: 'file_rejected', reason: 'signature' },
         { status: 422 },
       );
     }
