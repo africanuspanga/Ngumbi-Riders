@@ -23,18 +23,20 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ---
 
-## 2. Current status — Phases 0 & 1 done; Phase 2 UI in progress
+## 2. Current status — Phases 0 & 1 done; Phase 2 code-complete (DB pending)
 
 Verified locally: `npm run typecheck` ✅ · `npm run lint` ✅ ·
-`npm run test` ✅ (61 unit pass, 10 RLS skip) · `npm run build` ✅ (17 routes).
+`npm run test` ✅ (66 unit pass, 10 RLS skip) · `npm run build` ✅ (18 routes).
 
-**Phase 2 so far:** public multi-step application form (`/apply`, 9 steps, RHF +
-zod, session draft, signature pad, 13 document uploads), AES-256-GCM PII
-encryption, application reference generator, `/apply/success`, DB-ready
-submission endpoint (`/api/applications`) with **server magic-byte file scan**
-and **durable per-IP submission rate limiting** (migration 0012). **Bilingual
-(sw/en)** form with locale-aware validation + a cookie `LanguageSwitcher`.
-**Remaining Phase 2:** owner review pipeline (`/owner/applications`).
+**Phase 2 (all code-complete; activates when Supabase creds land):** public
+multi-step application form (`/apply`, 9 steps, RHF + zod, session draft,
+signature pad, 13 doc uploads), AES-256-GCM PII encryption, `/apply/success`,
+submission endpoint (`/api/applications`) with **magic-byte file scan** +
+**durable per-IP rate limiting** (migration 0012), **bilingual (sw/en)** with a
+cookie `LanguageSwitcher`, and the **owner review pipeline**
+(`/owner/applications` + `[id]`): status state machine, deliberate NIDA/licence
+reveal, signed doc URLs, duplicate warnings, and **convert-to-rider** (creates
+the auth user + one-time temp PIN, copies encrypted PII).
 
 **Done**
 - Foundations: Next 16.2 App Router, Tailwind v4 tokens, i18n (sw/en), env
@@ -72,9 +74,9 @@ Then update `IMPLEMENTATION_STATUS.md` (mark RLS proof ✅) and start **Phase 2*
 
 - [x] **Phase 0** Foundations
 - [x] **Phase 1** Database, auth, RLS *(code done; live-DB RLS proof pending)*
-- [~] **Phase 2** Application form + validation + PII encryption + submit
-      endpoint + magic-byte scan + rate limiting + bilingual (sw/en) i18n DONE;
-      **remaining: owner review pipeline (`/owner/applications`)**
+- [x] **Phase 2** Application form + validation + PII encryption + submit
+      endpoint + magic-byte scan + rate limiting + bilingual i18n + **owner
+      review pipeline & convert-to-rider** — *code-complete; live run pending DB*
 - [ ] **Phase 3** Rider + motorcycle registers, manual rider creation,
       assignment history, CSV/XLSX import wizard
 - [ ] **Phase 4** Contract engine: template + PDF, signatures + physical-upload

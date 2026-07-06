@@ -52,10 +52,10 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 | Server file magic-byte scan | ✅ | `lib/applications/file-signature` — rejects spoofed MIME/extension; wired into submit; unit tested. |
 | Submission rate limiting | ✅ | Generic durable limiter (`lib/security/rate-limit` + `rate_limit_events`, migration 0012); 5 submits/hr per IP; window math unit tested. |
 | English i18n for the form | ✅ | Full `apply` namespace (sw + en), locale-aware validation messages, `LanguageSwitcher` (cookie-based) on apply/landing/login. Verified rendering in both languages. |
-| Owner review pipeline (`/owner/applications`) | ⬜ | Next Phase 2 task. |
+| Owner review pipeline (`/owner/applications` + `[id]`) | 🟡 | Built: status-filter list, applicant/guarantor detail, status state machine, deliberate NIDA/licence reveal (decrypt), signed doc URLs, duplicate warnings, **convert-to-rider** (creates auth user + temp PIN, copies PII). **Activates when Supabase creds land.** |
 | Signed upload flow (`/api/uploads/sign`) | ⬜ | Optional; submit currently uploads inline via service role. |
 
-**Exit criteria:** public applicant submits a complete application + owner reviews it — form ✅, submission ready (pending DB), owner review ⬜.
+**Exit criteria:** public applicant submits a complete application + owner reviews it — **code-complete on both sides**; live run pending Supabase creds.
 
 ---
 
@@ -64,8 +64,8 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏭️ deferred to later 
 ```
 npm run typecheck   # ✅ tsc --noEmit clean
 npm run lint        # ✅ eslint clean
-npm run test        # ✅ 61 passed, 10 RLS skipped (no DB)
-npm run build       # ✅ 17 routes compiled, proxy active
+npm run test        # ✅ 66 passed, 10 RLS skipped (no DB)
+npm run build       # ✅ 18 routes compiled, proxy active
 ```
 
 ## Blocked / awaiting input

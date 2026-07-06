@@ -30,7 +30,8 @@ the rest are scaffolded destinations for later phases (⬜).
 | Route | Status | Phase |
 |-------|--------|-------|
 | `/owner` dashboard | ✅ (placeholder) | 1 → 6 |
-| `/owner/applications[/id]` | ⬜ | 2 |
+| `/owner/applications` pipeline list | ✅ | 2 |
+| `/owner/applications/[id]` review + convert | ✅ | 2 |
 | `/owner/riders[/new][/id]` | ⬜ | 3 |
 | `/owner/motorcycles[/id]` | ⬜ | 3 |
 | `/owner/contracts[/new][/id]` | ⬜ | 4 |

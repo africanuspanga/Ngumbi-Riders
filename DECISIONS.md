@@ -5,6 +5,19 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-019 · Owner review pipeline: status machine, deliberate reveal, convert
+Application review transitions are governed by a pure, unit-tested state machine
+(`lib/applications/status`) so illegal jumps (e.g. submitted→approved) are
+impossible. NIDA/licence stay ciphertext in list/detail and are only decrypted by
+an explicit **Reveal** action that is audited (`application.secrets_revealed`,
+§25.1). Documents open via 60-second signed URLs (§24). **Convert-to-rider**
+(§8.6) creates the auth user with a server-generated one-time temp PIN
+(mustChangePin), copies address + encrypted PII to `rider_private_data`, links
+`converted_rider_id`, and audits — the temp PIN is shown to the owner exactly
+once. Rider number `NGR-R-0001` is allocated by count (race-tolerant; unique
+constraint guards). Owner UI is English (owner is a single known user); rider
+screens remain Swahili-first.
+
 ## D-018 · Bilingual form: validation messages are i18n keys, not strings
 The application form is fully translated (`apply` namespace, sw + en). To keep
 validation localized too, the shared zod schema now emits stable message KEYS
