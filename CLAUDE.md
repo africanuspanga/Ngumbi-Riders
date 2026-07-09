@@ -46,11 +46,10 @@ Verified locally: `npm run typecheck` ✅ · `npm run lint` ✅ ·
   email login verified live.
 - **Generated DB types wired in** (D-010 resolved): `lib/supabase/types.gen.ts`
   + `<Database>` generic on all three client factories.
-- ⚠ **BLOCKED — rider login / RLS suite**: hosted auth has
-  `external_phone_enabled=false`; rider `signInWithPassword({phone})` fails
-  with "Phone logins are disabled". Fix: dashboard → Auth → Providers →
-  enable **Phone** (no SMS provider needed, D-008) and disable public
-  signups; then `RLS_TEST_ENABLED=1 npm run test:rls`.
+- **Hosted auth configured** (user-approved): phone provider enabled (no SMS
+  provider, D-008), public signups disabled. **RLS isolation suite PASSES
+  live (10/10)** — Phase 1's exit criterion is CLOSED. Rider phone+PIN login
+  is verified working end-to-end.
 - ⚠ **Snippe key lacks `collection:read` scope** (balance check returned 403
   AUTHZ_002). Regenerate the key with `collection:read` + `collection:create`.
   Webhook secret still needed (dashboard → Settings → Webhook Secret).
@@ -136,27 +135,22 @@ the auth user + one-time temp PIN, copies encrypted PII).
 - Tests: unit (phone/PIN/lockout/money) + RLS isolation suite (opt-in).
 
 **Blocked on input (not code):**
-1. **Hosted auth config**: enable the **Phone** provider + disable public
-   signups on project `rdofxxxdrqnhtewwzous` (dashboard → Auth → Providers;
-   or Management API `PATCH /v1/projects/{ref}/config/auth`
-   `{"external_phone_enabled":true,"disable_signup":true}`). Without it rider
-   login fails and the RLS suite cannot run.
-2. **Snippe**: key in `.env.local` lacks `collection:read` (regenerate with
-   read+create scopes) and `SNIPPE_WEBHOOK_SECRET` is unset.
-3. **Resend** key + domain DNS; Vercel deployment (sets webhook/cron URLs).
-4. **No Docker here** → local `supabase start` can't boot on this machine;
+1. **Snippe**: key in `.env.local` lacks `collection:read` (regenerate with
+   read+create scopes in the Snippe dashboard) and `SNIPPE_WEBHOOK_SECRET` is
+   unset (dashboard → Settings → Webhook Secret).
+2. **Resend** key + domain DNS; Vercel deployment (sets webhook/cron URLs).
+3. **No Docker here** → local `supabase start` can't boot on this machine;
    the DB password is also unknown locally, so DB work goes through the
    Management API SQL endpoint (`POST /v1/projects/{ref}/database/query`)
-   instead of `db push`.
+   instead of `db push` (see D-029).
 
 ### ▶ Immediate next actions
-Migrations, env, seed and types are DONE (see §2). Remaining critical path:
+Migrations, env, seed, types, auth config and the live RLS proof are DONE
+(see §2). Remaining critical path:
 ```bash
-# 1. after enabling phone auth (see Blocked #1):
-RLS_TEST_ENABLED=1 npm run test:rls # PROVE rider isolation -> closes Phase 1 exit
-# 2. deploy to Vercel (env vars from .env.local) -> gives HTTPS URL
-# 3. point Snippe webhook at <url>/api/webhooks/snippe; set SNIPPE_WEBHOOK_SECRET
-# 4. Vercel Cron picks up vercel.json; set CRON_SECRET in Vercel env
+# 1. deploy to Vercel (env vars from .env.local) -> gives HTTPS URL
+# 2. point Snippe webhook at <url>/api/webhooks/snippe; set SNIPPE_WEBHOOK_SECRET
+# 3. Vercel Cron picks up vercel.json; set CRON_SECRET in Vercel env
 ```
 Then: verify Resend DNS, import real riders/motorcycles via `/owner/imports`,
 reconcile sample totals, change the owner temp password, and run the pilot. If a feature
@@ -170,7 +164,8 @@ PDF export (§19.1); nonce-based CSP; blind-index NIDA dedupe (D-014).
 ## 3. Phase roadmap (spec §34) — checklist
 
 - [x] **Phase 0** Foundations
-- [x] **Phase 1** Database, auth, RLS *(code done; live-DB RLS proof pending)*
+- [x] **Phase 1** Database, auth, RLS *(DONE — live-DB RLS suite passed 10/10
+      on 2026-07-09; exit criterion closed)*
 - [x] **Phase 2** Application form + validation + PII encryption + submit
       endpoint + magic-byte scan + rate limiting + bilingual i18n + **owner
       review pipeline & convert-to-rider** — *code-complete; live run pending DB*
