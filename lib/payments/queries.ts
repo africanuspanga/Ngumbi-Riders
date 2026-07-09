@@ -3,6 +3,7 @@ import 'server-only';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { presetOptions, outstanding, type SelectableObligation, type PaymentOption } from './selection';
 import { localDateString } from '@/lib/dates/tz';
+import type { PaymentStatus } from '@/lib/supabase/types';
 
 /* Rider-facing pay view (reads own data under RLS). */
 export type RiderPayView = {
@@ -155,6 +156,20 @@ export async function getReceiptView(paymentId: string): Promise<ReceiptView | n
 }
 
 /* Owner reads. */
+const PAYMENT_STATUSES = [
+  'created',
+  'pending',
+  'completed',
+  'failed',
+  'expired',
+  'cancelled',
+  'reversed',
+] as const;
+
+function asPaymentStatus(value: string): PaymentStatus | null {
+  return (PAYMENT_STATUSES as readonly string[]).includes(value) ? (value as PaymentStatus) : null;
+}
+
 export async function listAllPayments(status?: string): Promise<PaymentListItem[]> {
   const supabase = await createServerSupabase();
   let q = supabase
@@ -162,7 +177,8 @@ export async function listAllPayments(status?: string): Promise<PaymentListItem[
     .select('id, amount, method, status, created_at, completed_at, riders(first_name, last_name)')
     .order('created_at', { ascending: false })
     .limit(300);
-  if (status) q = q.eq('status', status);
+  const validStatus = status ? asPaymentStatus(status) : null;
+  if (validStatus) q = q.eq('status', validStatus);
   const { data } = await q;
   type Raw = PaymentListItem & { riders: { first_name: string; last_name: string } | null };
   return ((data ?? []) as unknown as Raw[]).map((p) => ({

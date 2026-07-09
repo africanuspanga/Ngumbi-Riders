@@ -26,21 +26,38 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ---
 
-## 2. Current status — ALL phases (0–10) code-complete; only live-ops remain
+## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
 
 Verified locally: `npm run typecheck` ✅ · `npm run lint` ✅ ·
 `npm run test` ✅ (155 unit pass, 10 RLS skip) · `npm run build` ✅ (55 routes).
 
-**The entire product is built.** Every phase's code is done and the whole app
-compiles, lints, tests and builds. What is NOT done is purely operational and
-needs the live **Supabase + Snippe + Resend + VAPID** credentials: applying
-migrations, running the RLS suite against a real DB, real-data import, wiring the
-Snippe webhook + Vercel Cron, and the launch checklist. Follow
-[`docs/LAUNCH_CHECKLIST.md`](docs/LAUNCH_CHECKLIST.md) when the creds arrive.
+**GO-LIVE PROGRESS (2026-07-09).** Hosted Supabase project **Ng'umbi Riders**
+(ref `rdofxxxdrqnhtewwzous`, Frankfurt, org Driftmark Africa) is provisioned:
+- **All 16 migrations applied** via the Management API SQL endpoint (no DB
+  password available locally — password reset was not authorized; the CLI's
+  `supabase_migrations.schema_migrations` table is populated so `db push`
+  stays consistent). Live DB verified: 39 public tables, RLS enabled on all,
+  62 policies, 7 private storage buckets.
+- **`.env.local` is fully populated** (Supabase URL/keys, fresh
+  AUTH_PIN_PEPPER / PII_ENCRYPTION_KEY / CRON_SECRET / VAPID keypair, Snippe
+  API key). `DATABASE_URL` is unset — not needed by seed or RLS tests.
+- **Seeded**: owner `owner@ngumbi.co.tz` (temp password = the seed default in
+  `scripts/seed.ts` — MUST be changed before pilot) + 3 demo riders. Owner
+  email login verified live.
+- **Generated DB types wired in** (D-010 resolved): `lib/supabase/types.gen.ts`
+  + `<Database>` generic on all three client factories.
+- ⚠ **BLOCKED — rider login / RLS suite**: hosted auth has
+  `external_phone_enabled=false`; rider `signInWithPassword({phone})` fails
+  with "Phone logins are disabled". Fix: dashboard → Auth → Providers →
+  enable **Phone** (no SMS provider needed, D-008) and disable public
+  signups; then `RLS_TEST_ENABLED=1 npm run test:rls`.
+- ⚠ **Snippe key lacks `collection:read` scope** (balance check returned 403
+  AUTHZ_002). Regenerate the key with `collection:read` + `collection:create`.
+  Webhook secret still needed (dashboard → Settings → Webhook Secret).
+- Still pending: Resend key + DNS, Vercel deploy (cron + webhook URL), real
+  rider/motorcycle import, pilot.
 
-**16 migrations** (`0001`–`0016`) are authored and ready for `supabase db push`.
-Integrations degrade gracefully (return `not_configured`) until their keys exist,
-so the app runs end-to-end today with placeholder env.
+Integrations degrade gracefully (return `not_configured`) until their keys exist.
 
 **Phase 10 (buildable parts done):** money tables **write-locked** (migration
 0016 revokes direct writes; money mutates only via controlled functions +
@@ -119,26 +136,30 @@ the auth user + one-time temp PIN, copies encrypted PII).
 - Tests: unit (phone/PIN/lockout/money) + RLS isolation suite (opt-in).
 
 **Blocked on input (not code):**
-1. **Supabase credentials + `DATABASE_URL`** — to apply migrations, seed
-   accounts, and *run* the RLS suite that proves Phase 1's exit criterion.
-2. **No Docker here** → local `supabase start` can't boot on this machine;
-   migrations apply against a linked hosted project instead.
-3. Snippe/Resend creds — only needed at Phases 5/8.
+1. **Hosted auth config**: enable the **Phone** provider + disable public
+   signups on project `rdofxxxdrqnhtewwzous` (dashboard → Auth → Providers;
+   or Management API `PATCH /v1/projects/{ref}/config/auth`
+   `{"external_phone_enabled":true,"disable_signup":true}`). Without it rider
+   login fails and the RLS suite cannot run.
+2. **Snippe**: key in `.env.local` lacks `collection:read` (regenerate with
+   read+create scopes) and `SNIPPE_WEBHOOK_SECRET` is unset.
+3. **Resend** key + domain DNS; Vercel deployment (sets webhook/cron URLs).
+4. **No Docker here** → local `supabase start` can't boot on this machine;
+   the DB password is also unknown locally, so DB work goes through the
+   Management API SQL endpoint (`POST /v1/projects/{ref}/database/query`)
+   instead of `db push`.
 
-### ▶ Immediate next actions when credentials arrive
-All feature code is built — the next session's job is to GO LIVE, not to build.
-Follow `docs/LAUNCH_CHECKLIST.md`. The critical path:
+### ▶ Immediate next actions
+Migrations, env, seed and types are DONE (see §2). Remaining critical path:
 ```bash
-cp .env.example .env.local          # fill real values (all keys)
-supabase link --project-ref <ref>
-supabase db push                    # apply supabase/migrations/0001..0016
-supabase gen types typescript > lib/supabase/types.gen.ts   # then re-add <Database> generic (see D-010)
-npm run seed                        # owner + demo riders (Admin API)
+# 1. after enabling phone auth (see Blocked #1):
 RLS_TEST_ENABLED=1 npm run test:rls # PROVE rider isolation -> closes Phase 1 exit
+# 2. deploy to Vercel (env vars from .env.local) -> gives HTTPS URL
+# 3. point Snippe webhook at <url>/api/webhooks/snippe; set SNIPPE_WEBHOOK_SECRET
+# 4. Vercel Cron picks up vercel.json; set CRON_SECRET in Vercel env
 ```
-Then: point the Snippe webhook at `/api/webhooks/snippe`, set Vercel Cron (from
-`vercel.json`) + `CRON_SECRET`, verify Resend DNS, import real riders/motorcycles
-via `/owner/imports`, reconcile sample totals, and run the pilot. If a feature
+Then: verify Resend DNS, import real riders/motorcycles via `/owner/imports`,
+reconcile sample totals, change the owner temp password, and run the pilot. If a feature
 session is wanted instead, the highest-value **follow-ups** are: contract
 extend/renegotiate + `regenerate_future_obligations` + addendum PDF (§10.4);
 receipt PDF + payment-reversal handling (§13, §12.3); remaining report views +

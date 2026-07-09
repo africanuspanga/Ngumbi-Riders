@@ -2,6 +2,7 @@ import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/resend/client';
+import type { Json } from '@/lib/supabase/types';
 
 /*
  * Delivery outbox (spec §3.7, §17). Email is delivered via Resend. SMS and
@@ -29,7 +30,7 @@ export async function enqueueMessage(input: {
     channel: input.channel,
     recipient: input.recipient,
     subject: input.subject ?? null,
-    payload: input.payload,
+    payload: input.payload as Json,
     status: 'pending',
   });
 }

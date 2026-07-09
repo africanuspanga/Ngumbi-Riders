@@ -5,6 +5,16 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-029 · Go-live DB ops run through the Management API, not `db push`
+The hosted project's Postgres password is unknown locally (a reset was not
+authorized during the 2026-07-09 go-live session), so migrations were applied
+via the Management API SQL endpoint (`POST /v1/projects/{ref}/database/query`,
+authenticated with the `sbp_` access token, `check_function_bodies = off` like
+the CLI). Applied versions were recorded in
+`supabase_migrations.schema_migrations`, so a future `supabase db push` (once a
+DB password exists) sees 0001–0016 as already applied. `DATABASE_URL` stays
+unset in `.env.local`; nothing in seed/tests needs it.
+
 ## D-028 · Hardening: money tables are write-locked; CSP added
 Migration 0016 revokes direct INSERT/UPDATE/DELETE on the financial tables (and
 audit/login/signed-doc tables) from anon/authenticated, so money mutates only
@@ -188,13 +198,17 @@ an empty stub, and `npm run seed` runs with `--conditions=react-server`. The
 production guarantee is unchanged; only test/script execution is unblocked.
 
 ## D-010 · Supabase typing is a structural placeholder for now
-`lib/supabase/types.ts` exports precise **enum unions** (used across the app) but
-a generic structural `Database` type. The typed-client generic was removed from
-the client factories because the placeholder made supabase-js infer `never` for
-inserts. Once a database exists, run
-`supabase gen types typescript > lib/supabase/types.gen.ts` and reintroduce the
-generic. Business-rule safety does not depend on these types — it is enforced by
-DB constraints, RLS and server validation.
+**RESOLVED 2026-07-09 (go-live):** `lib/supabase/types.gen.ts` is now generated
+from the live database (`supabase gen types typescript --linked`) and re-exported
+as `Database`/`Json` from `lib/supabase/types.ts`; the `<Database>` generic is
+back on all three client factories. Regenerate after every migration. The
+hand-maintained enum unions remain the app-layer source of truth.
+
+Original decision: `lib/supabase/types.ts` exported precise **enum unions** but
+a generic structural `Database` type, because the placeholder made supabase-js
+infer `never` for inserts when used as the client generic. Business-rule safety
+does not depend on these types — it is enforced by DB constraints, RLS and
+server validation.
 
 ## D-009 · Owner-only notes moved off the `riders` table
 RLS is row-level, not column-level, and a rider may read their own `riders` row.

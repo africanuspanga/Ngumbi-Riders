@@ -188,6 +188,7 @@ export async function POST(request: NextRequest) {
   for (const [key, file] of docEntries) {
     const docKey = key.slice('doc:'.length); // e.g. applicant.nida_front
     const [scope, docType] = docKey.split('.');
+    if (!scope || !docType) continue;
     const buffer = Buffer.from(await file.arrayBuffer());
     const ext = extOf(file.name);
 

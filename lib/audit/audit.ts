@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import type { Json } from '@/lib/supabase/types';
 
 /*
  * Append-only audit trail (spec §25.2, §36). Every owner action that touches
@@ -32,7 +33,7 @@ export async function writeAudit(params: {
     action: params.action,
     entity_type: params.entityType ?? null,
     entity_id: params.entityId ?? null,
-    metadata: params.metadata ?? {},
+    metadata: (params.metadata ?? {}) as Json,
     ip: params.ip ?? null,
   });
 }

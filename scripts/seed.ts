@@ -9,8 +9,7 @@
  * The react-server condition neutralises the `server-only` guard so the
  * privileged modules can execute under plain Node.
  */
-import { config } from 'dotenv';
-config({ path: '.env.local' });
+import './load-env';
 
 import { createRiderUser, createOwnerUser } from '@/lib/auth/provision';
 
