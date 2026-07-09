@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { LoginForm } from './LoginForm';
-import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { LoginShell } from './LoginShell';
 
 export const metadata: Metadata = { title: 'Ingia' };
 
@@ -14,14 +15,19 @@ export default async function LoginPage({
   const t = await getTranslations('login');
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-6 py-12">
-      <div className="absolute right-4 top-4">
-        <LanguageSwitcher />
-      </div>
-      <h1 className="text-center text-2xl font-bold text-primary-dark">
-        {t('title')}
-      </h1>
-      <LoginForm next={next} />
-    </main>
+    <LoginShell
+      heading={t('heading')}
+      footer={
+        <Link
+          href="/login/owner"
+          className="underline-offset-2 hover:text-foreground hover:underline"
+        >
+          {t('ownerLink')}
+        </Link>
+      }
+    >
+      <LoginForm mode="rider" next={next} />
+      <p className="mt-4 text-sm text-muted">{t('forgotPin')}</p>
+    </LoginShell>
   );
 }

@@ -46,7 +46,8 @@ export async function updateSession(request: NextRequest) {
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
-    url.pathname = '/login';
+    // Owners have their own sign-in page; riders use the default one.
+    url.pathname = path.startsWith('/owner') ? '/login/owner' : '/login';
     url.searchParams.set('next', path);
     return NextResponse.redirect(url);
   }

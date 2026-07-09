@@ -18,6 +18,9 @@
   },
   "login": {
     "title": "Sign in",
+    "heading": "Login to your account",
+    "ownerTitle": "Sign in — Owner",
+    "ownerHeading": "Owner sign in",
     "riderTab": "Rider",
     "ownerTab": "Owner",
     "phone": "Phone number",
@@ -25,6 +28,10 @@
     "email": "Email",
     "password": "Password",
     "submit": "Sign in",
+    "pending": "Signing in…",
+    "forgotPin": "Forgot your PIN? Contact the owner.",
+    "ownerLink": "Are you the owner? Sign in here",
+    "riderLink": "Rider sign in",
     "invalidCredentials": "Phone number or PIN is incorrect.",
     "locked": "Account temporarily locked. Please try again later.",
     "tooManyAttempts": "Too many attempts. Wait 30 minutes."

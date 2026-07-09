@@ -18,6 +18,9 @@
   },
   "login": {
     "title": "Ingia",
+    "heading": "Ingia kwenye akaunti yako",
+    "ownerTitle": "Ingia — Mmiliki",
+    "ownerHeading": "Ingia kama mmiliki",
     "riderTab": "Mwendeshaji",
     "ownerTab": "Mmiliki",
     "phone": "Namba ya simu",
@@ -25,6 +28,10 @@
     "email": "Barua pepe",
     "password": "Nywila",
     "submit": "Ingia",
+    "pending": "Inaingia…",
+    "forgotPin": "Umesahau PIN yako? Wasiliana na mmiliki.",
+    "ownerLink": "Wewe ni mmiliki? Ingia hapa",
+    "riderLink": "Ingia kama mwendeshaji",
     "invalidCredentials": "Namba ya simu au PIN si sahihi.",
     "locked": "Akaunti imefungwa kwa muda. Jaribu tena baadaye.",
     "tooManyAttempts": "Umejaribu mara nyingi. Subiri dakika 30."
