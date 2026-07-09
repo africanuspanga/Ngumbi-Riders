@@ -74,3 +74,20 @@ describe('calendar colours (spec §15.1)', () => {
     expect(cal[0]!.color).toBe('green');
   });
 });
+
+describe('postponed obligations (replaced by a new scheduled row)', () => {
+  it('does not double-count a postponed obligation in totals or progress', () => {
+    // A postponement keeps the original row as 'postponed' AND inserts a
+    // replacement 'scheduled' row — only the replacement may count.
+    const obs = [
+      ob('2026-07-04', 'paid'),
+      ob('2026-07-05', 'postponed'),
+      ob('2026-07-12', 'scheduled'), // replacement for 07-05
+      ob('2026-07-06', 'due'),
+    ];
+    const d = computeRiderDashboard(obs, TODAY);
+    expect(d.totalObligations).toBe(3);
+    expect(d.remainingValue).toBe(10000); // replacement + today, NOT the postponed original
+    expect(d.paidCount).toBe(1);
+  });
+});

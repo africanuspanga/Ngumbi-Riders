@@ -16,13 +16,8 @@ export async function GET(request: Request) {
     const now = new Date().toISOString();
     const staleCutoff = new Date(Date.now() - 60 * 60_000).toISOString();
 
-    const { data: released } = await admin
-      .from('payment_reservations')
-      .update({ is_active: false })
-      .lt('expires_at', now)
-      .eq('is_active', true)
-      .select('id');
-
+    // First fail stale 'created' payments that never reached the provider, so
+    // their reservations become releasable below.
     const { data: failed } = await admin
       .from('payments')
       .update({ status: 'failed' })
@@ -30,7 +25,31 @@ export async function GET(request: Request) {
       .lt('created_at', staleCutoff)
       .select('id');
 
-    return { reservationsReleased: (released ?? []).length, paymentsFailed: (failed ?? []).length };
+    // Release expired reservations ONLY for payments in a terminal state. A
+    // still-pending payment keeps its reservations: they are the record of
+    // which obligations it covers, and freeing them early would let another
+    // payment settle the same obligations while the first can still complete.
+    const { data: expired } = await admin
+      .from('payment_reservations')
+      .select('id, payments!inner(status)')
+      .eq('is_active', true)
+      .lt('expires_at', now)
+      .limit(1000);
+    const terminal = new Set(['failed', 'expired', 'cancelled', 'completed', 'reversed']);
+    const releasable = ((expired ?? []) as unknown as { id: string; payments: { status: string } }[])
+      .filter((r) => terminal.has(r.payments.status))
+      .map((r) => r.id);
+    let released = 0;
+    if (releasable.length) {
+      const { data: rel } = await admin
+        .from('payment_reservations')
+        .update({ is_active: false })
+        .in('id', releasable)
+        .select('id');
+      released = (rel ?? []).length;
+    }
+
+    return { reservationsReleased: released, paymentsFailed: (failed ?? []).length };
   });
 
   return NextResponse.json(result);

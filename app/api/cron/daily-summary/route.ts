@@ -58,11 +58,16 @@ export async function GET(request: Request) {
       appUrl: clientEnv.NEXT_PUBLIC_APP_URL,
     };
 
-    // Idempotency: insert-or-skip on the date.
+    // Idempotency: insert-or-skip on the date. Any non-duplicate insert error
+    // must abort — sending the email without a summary row means every retry
+    // in that state would re-send it.
     const { error: insErr } = await admin
       .from('daily_summaries')
       .insert({ summary_date: today, metrics, idempotency_key: `daily:${today}` });
-    if (insErr && /duplicate key/i.test(insErr.message)) {
+    if (insErr) {
+      if (!/duplicate key/i.test(insErr.message)) {
+        throw new Error(`summary_insert_failed: ${insErr.message}`);
+      }
       const { data: existing } = await admin.from('daily_summaries').select('email_sent_at').eq('summary_date', today).maybeSingle();
       if ((existing as { email_sent_at: string | null } | null)?.email_sent_at) {
         return { emailed: 0, skipped: 1 };

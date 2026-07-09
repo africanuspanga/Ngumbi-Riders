@@ -56,13 +56,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ repo
   const { report } = await params;
   const url = new URL(request.url);
   const format = url.searchParams.get('format') ?? 'csv';
-  const to = url.searchParams.get('to') ?? localDateString();
-  const from = url.searchParams.get('from') ?? to;
+  // Validate dates: junk input would crash the range computation, and these
+  // values also flow into the Content-Disposition filename.
+  const isDate = (v: string | null): v is string =>
+    !!v && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v));
+  const to = isDate(url.searchParams.get('to')) ? url.searchParams.get('to')! : localDateString();
+  const from = isDate(url.searchParams.get('from')) ? url.searchParams.get('from')! : to;
 
   const table = await buildTable(report, from, to);
   if (!table) return NextResponse.json({ error: 'unknown_report' }, { status: 404 });
 
-  const filename = `${report}-${from}_${to}`;
+  const filename = `${report.replace(/[^\w-]/g, '')}-${from}_${to}`;
 
   if (format === 'xlsx') {
     const wb = new ExcelJS.Workbook();

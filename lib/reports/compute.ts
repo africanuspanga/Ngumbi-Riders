@@ -156,7 +156,9 @@ export type ContractProgress = {
 };
 
 export function contractProgress(obligations: ReportObligation[]): ContractProgress {
-  const counted = obligations.filter((o) => !EXCLUDED.has(o.status) || o.status === 'postponed');
+  // 'postponed' stays excluded: its replacement obligation on the same
+  // contract carries the installment; counting both double-counts it.
+  const counted = obligations.filter((o) => !EXCLUDED.has(o.status));
   const paid = counted.filter((o) => SETTLED.has(o.status));
   const remaining = counted.filter((o) => !SETTLED.has(o.status));
   const expectedCompletion = remaining.length

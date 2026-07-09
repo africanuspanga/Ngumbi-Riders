@@ -3,8 +3,13 @@ export type CsvCell = string | number | null | undefined;
 
 function cell(value: CsvCell): string {
   if (value == null) return '';
-  const s = String(value);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  let s = String(value);
+  // Neutralize spreadsheet formula injection: names and notes are user input,
+  // and Excel/LibreOffice execute cells starting with = + - @ or tab.
+  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(s)) {
+    s = `'${s}`;
+  }
+  return /[",\n']/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 export function toCsv(headers: string[], rows: CsvCell[][]): string {

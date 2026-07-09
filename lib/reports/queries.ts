@@ -30,13 +30,15 @@ export async function getCollectionReport(from: string, to: string): Promise<Col
     dueDate: o.due_date,
     amountDue: o.amount_due,
     status: o.status,
-    settledDate: o.settled_at ? o.settled_at.slice(0, 10) : null,
+    settledDate: o.settled_at ? localDateString(new Date(o.settled_at)) : null,
   }));
   const payments: ReportPayment[] = ((pays ?? []) as { amount: number; method: string; status: string; completed_at: string | null }[]).map((p) => ({
     amount: p.amount,
     method: p.method,
     status: p.status,
-    completedDate: p.completed_at ? p.completed_at.slice(0, 10) : null,
+    // EAT calendar date, not the UTC date: payments settled 00:00–03:00 EAT
+    // land on the previous UTC day and would silently drop out of the report.
+    completedDate: p.completed_at ? localDateString(new Date(p.completed_at)) : null,
   }));
 
   return collectionReport(obligations, payments, from, to);

@@ -31,7 +31,12 @@ self.addEventListener('fetch', (event) => {
   // Only handle same-origin page navigations; let everything else hit network.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() => caches.match('/offline')),
+      fetch(request).catch(async () => {
+        // caches.match can resolve to undefined (evicted / failed install);
+        // respondWith(undefined) throws and shows the browser error page.
+        const offline = await caches.match('/offline');
+        return offline ?? new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
+      }),
     );
   }
 });
@@ -58,8 +63,11 @@ self.addEventListener('notificationclick', (event) => {
   const url = event.notification.data?.url || '/';
   event.waitUntil(
     self.clients.matchAll({ type: 'window' }).then((clients) => {
+      // Exact-path match only: `includes('/')` would match any open window
+      // and focus the wrong page instead of opening the deep link.
+      const target = new URL(url, self.location.origin).href;
       for (const client of clients) {
-        if (client.url.includes(url) && 'focus' in client) return client.focus();
+        if (client.url === target && 'focus' in client) return client.focus();
       }
       return self.clients.openWindow(url);
     }),

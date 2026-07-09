@@ -1,13 +1,13 @@
 import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { nextReceiptNumber } from './service';
 import { notifyRider } from '@/lib/notifications/service';
 
 /*
  * Shared payment settlement helpers used by the webhook and the reconciliation
  * job. Settlement itself is the atomic, idempotent record_completed_payment
- * function; these wrappers gather the reserved obligations and a receipt number.
+ * function; these wrappers gather the reserved obligations. The receipt number
+ * is allocated from a Postgres sequence inside the function (migration 0017).
  */
 export async function settlePaymentCompleted(
   paymentId: string,
@@ -15,18 +15,19 @@ export async function settlePaymentCompleted(
   completedAtIso: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const admin = createAdminClient();
+  // Reservations are the immutable record of the selected obligations — read
+  // them regardless of is_active so an expiry sweep or out-of-order failure
+  // event cannot destroy the settlement inputs.
   const { data: reservations } = await admin
     .from('payment_reservations')
     .select('obligation_id')
-    .eq('payment_id', paymentId)
-    .eq('is_active', true);
+    .eq('payment_id', paymentId);
   const obligationIds = ((reservations ?? []) as { obligation_id: string }[]).map((r) => r.obligation_id);
 
-  const receiptNumber = await nextReceiptNumber(new Date(completedAtIso).getFullYear());
   const { error } = await admin.rpc('record_completed_payment', {
     p_payment_id: paymentId,
     p_obligation_ids: obligationIds,
-    p_receipt_number: receiptNumber,
+    p_receipt_number: '', // allocated inside the function (migration 0017)
     p_completed_at: completedAtIso,
   });
   if (error) return { ok: false, error: error.message };
@@ -47,7 +48,16 @@ export async function markPaymentFailed(
   status: 'failed' | 'expired' | 'cancelled',
 ): Promise<void> {
   const admin = createAdminClient();
-  await admin.from('payments').update({ status }).eq('id', paymentId);
+  // Never overwrite a completed payment: late/out-of-order failure events must
+  // not corrupt settled money (allocations, receipt, paid obligations).
+  const { data: changed } = await admin
+    .from('payments')
+    .update({ status })
+    .eq('id', paymentId)
+    .in('status', ['created', 'pending'])
+    .select('id');
+  if (!changed || changed.length === 0) return;
+
   await admin.from('payment_reservations').update({ is_active: false }).eq('payment_id', paymentId);
   await notifyRider(riderId, {
     type: 'payment_failed',

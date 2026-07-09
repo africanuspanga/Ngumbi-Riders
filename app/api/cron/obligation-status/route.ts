@@ -32,11 +32,33 @@ export async function GET(request: Request) {
       dueAtUtcMs: Date.parse(o.due_at),
       status: o.status,
     }));
-    const { toDue, toOverdue } = computeObligationTransitions(obligations, nowMs, today);
+    const { toDue: toDueCandidates, toOverdue: toOverdueCandidates } =
+      computeObligationTransitions(obligations, nowMs, today);
     const riderOf = new Map(rows.map((o) => [o.id, o.rider_id]));
 
-    if (toDue.length) await admin.from('payment_obligations').update({ status: 'due' }).in('id', toDue);
-    if (toOverdue.length) await admin.from('payment_obligations').update({ status: 'overdue' }).in('id', toOverdue);
+    // Status predicates guard against the select→update race: a payment can
+    // settle an obligation between our read and this write, and a blanket
+    // update would flip a PAID obligation back to due/overdue.
+    let toDue: string[] = [];
+    let toOverdue: string[] = [];
+    if (toDueCandidates.length) {
+      const { data: updated } = await admin
+        .from('payment_obligations')
+        .update({ status: 'due' })
+        .in('id', toDueCandidates)
+        .eq('status', 'scheduled')
+        .select('id');
+      toDue = ((updated ?? []) as { id: string }[]).map((o) => o.id);
+    }
+    if (toOverdueCandidates.length) {
+      const { data: updated } = await admin
+        .from('payment_obligations')
+        .update({ status: 'overdue' })
+        .in('id', toOverdueCandidates)
+        .in('status', ['scheduled', 'due'])
+        .select('id');
+      toOverdue = ((updated ?? []) as { id: string }[]).map((o) => o.id);
+    }
 
     // Rider reminders (deduped so repeated runs don't spam).
     for (const id of toDue) {

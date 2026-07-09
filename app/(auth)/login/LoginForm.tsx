@@ -40,7 +40,10 @@ export function LoginForm({ mode, next }: { mode: Mode; next?: string }) {
         else setError(t('invalidCredentials'));
         return;
       }
-      router.push(next || data.redirectTo || '/');
+      // Only follow same-origin relative paths — a crafted ?next=//evil.com
+      // link must not redirect a freshly logged-in user off-site.
+      const safeNext = next && /^\/(?!\/)/.test(next) && !next.includes('\\') ? next : null;
+      router.push(safeNext || data.redirectTo || '/');
       router.refresh();
     } catch {
       setError(t('invalidCredentials'));

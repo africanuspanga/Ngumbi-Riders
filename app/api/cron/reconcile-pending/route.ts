@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 
     const { data } = await admin
       .from('payments')
-      .select('id, rider_id, snippe_reference')
+      .select('id, rider_id, amount, snippe_reference')
       .eq('status', 'pending')
       .not('snippe_reference', 'is', null)
       .lt('created_at', cutoff)
@@ -29,13 +29,19 @@ export async function GET(request: Request) {
     let failed = 0;
     let unresolved = 0;
 
-    for (const p of (data ?? []) as { id: string; rider_id: string; snippe_reference: string }[]) {
+    for (const p of (data ?? []) as { id: string; rider_id: string; amount: number; snippe_reference: string }[]) {
       const status = await getPaymentStatus(p.snippe_reference);
       if (!status.ok) {
         unresolved++;
         continue;
       }
       if (status.data.status === 'completed') {
+        // Same amount guard as the webhook path: never settle a payment whose
+        // provider amount disagrees with the local row.
+        if (status.data.amountValue !== p.amount) {
+          unresolved++;
+          continue;
+        }
         const r = await settlePaymentCompleted(p.id, p.rider_id, new Date().toISOString());
         if (r.ok) settled++;
         else unresolved++;

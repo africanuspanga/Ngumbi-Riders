@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { timingSafeEqual } from 'node:crypto';
 import { serverEnv } from '@/lib/env';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -13,7 +14,10 @@ export function authorizeCron(request: Request): boolean {
   const secret = serverEnv().CRON_SECRET;
   if (!secret) return false;
   const auth = request.headers.get('authorization');
-  return auth === `Bearer ${secret}`;
+  if (!auth) return false;
+  const expected = Buffer.from(`Bearer ${secret}`);
+  const provided = Buffer.from(auth);
+  return provided.length === expected.length && timingSafeEqual(provided, expected);
 }
 
 export type JobResult = { ok: boolean; counts: Record<string, number>; error?: string };

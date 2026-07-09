@@ -37,10 +37,13 @@ export async function createIncident(input: unknown): Promise<ActionResult<{ id:
   return { ok: true, data: { id: (data as { id: string }).id } };
 }
 
+const INCIDENT_STATUSES = new Set(['open', 'in_progress', 'resolved']);
+
 /** Owner updates an incident's status. */
 export async function updateIncidentStatus(id: string, status: string): Promise<ActionResult> {
   const profile = await getSessionProfile();
   if (!profile || profile.role !== 'owner') return { ok: false, error: 'forbidden' };
+  if (!INCIDENT_STATUSES.has(status)) return { ok: false, error: 'invalid_status' };
   const admin = createAdminClient();
   const { error } = await admin.from('incident_reports').update({ status }).eq('id', id);
   if (error) return { ok: false, error: 'update_failed' };

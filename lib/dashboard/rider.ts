@@ -11,13 +11,15 @@ export type RiderObligation = {
 
 const SETTLED = new Set(['paid', 'paid_in_advance']);
 const UNPAID = new Set(['scheduled', 'due', 'overdue']);
+// 'postponed' is excluded: postponement creates a replacement obligation on
+// the same contract, so counting the original too would double-count the
+// installment in totals/progress.
 const COUNTS_TOWARD_TOTAL = new Set([
   'scheduled',
   'due',
   'overdue',
   'paid',
   'paid_in_advance',
-  'postponed',
 ]);
 
 export type RiderState = 'paid' | 'due' | 'overdue';

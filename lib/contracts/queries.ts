@@ -139,7 +139,11 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
     obligationStats: {
       total: obs.length,
       paid: obs.filter((o) => o.status === 'paid' || o.status === 'paid_in_advance').length,
-      value: obs.reduce((s, o) => s + o.amount_due, 0),
+      // Exclude replaced/voided rows so "total value" reflects what the
+      // contract actually bills (cancelled/postponed/exempted carry no value).
+      value: obs
+        .filter((o) => !['cancelled', 'postponed', 'exempted'].includes(o.status))
+        .reduce((s, o) => s + o.amount_due, 0),
     },
   };
 }

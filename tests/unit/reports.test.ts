@@ -82,6 +82,18 @@ describe('contractProgress', () => {
     expect(p.remaining).toBe(2);
     expect(p.expectedCompletion).toBe('2026-07-10');
   });
+
+  it('excludes postponed originals so the replacement row is not double-counted', () => {
+    const obs = [
+      ob('2026-07-01', 'paid'),
+      ob('2026-07-02', 'postponed'),
+      ob('2026-07-09', 'scheduled'), // replacement for 07-02
+    ];
+    const p = contractProgress(obs);
+    expect(p.total).toBe(2);
+    expect(p.remaining).toBe(1);
+    expect(p.remainingValue).toBe(5000);
+  });
 });
 
 describe('cashOperatingMargin', () => {
@@ -94,5 +106,24 @@ describe('toCsv', () => {
   it('escapes commas, quotes and newlines', () => {
     const csv = toCsv(['a', 'b'], [['x,y', 'he said "hi"'], [1, null]]);
     expect(csv).toBe('a,b\n"x,y","he said ""hi"""\n1,\n');
+  });
+
+  it('neutralizes spreadsheet formula injection in string cells', () => {
+    const csv = toCsv(
+      ['name', 'amount'],
+      [
+        ['=HYPERLINK("http://evil")', 5000],
+        ['+SUM(A1:A9)', 1],
+        ['-2+3', 1],
+        ['@cmd', 1],
+      ],
+    );
+    const lines = csv.trim().split('\n');
+    expect(lines[1]).toContain(`"'=HYPERLINK`);
+    expect(lines[2]).toContain(`"'+SUM`);
+    expect(lines[3]).toContain(`"'-2+3`);
+    expect(lines[4]).toContain(`"'@cmd`);
+    // Negative NUMBERS must remain untouched.
+    expect(toCsv(['n'], [[-5]])).toBe('n\n-5\n');
   });
 });

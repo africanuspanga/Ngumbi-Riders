@@ -321,11 +321,11 @@ export async function generateContractPdf(
   return { ok: true, data: { path } };
 }
 
-const LIFECYCLE: Record<string, { to: ContractStatus; cancelFuture: boolean }> = {
-  pause: { to: 'paused', cancelFuture: false },
-  resume: { to: 'active', cancelFuture: false },
-  complete_early: { to: 'completed_early', cancelFuture: true },
-  terminate: { to: 'terminated', cancelFuture: true },
+const LIFECYCLE: Record<string, { from: ContractStatus[]; to: ContractStatus; cancelFuture: boolean }> = {
+  pause: { from: ['active'], to: 'paused', cancelFuture: false },
+  resume: { from: ['paused'], to: 'active', cancelFuture: false },
+  complete_early: { from: ['active', 'paused'], to: 'completed_early', cancelFuture: true },
+  terminate: { from: ['active', 'paused'], to: 'terminated', cancelFuture: true },
 };
 
 export async function contractLifecycle(
@@ -337,11 +337,18 @@ export async function contractLifecycle(
   if (!cfg) return { ok: false, error: 'bad_action' };
   const supabase = await createServerSupabase();
 
-  const { error } = await supabase
+  // State machine enforced server-side: the update only applies when the
+  // contract is in a valid source state (never trust the client's buttons) —
+  // e.g. resume must not reactivate a terminated contract whose future
+  // obligations were already cancelled.
+  const { data: changed, error } = await supabase
     .from('contracts')
     .update({ status: cfg.to })
-    .eq('id', contractId);
+    .eq('id', contractId)
+    .in('status', cfg.from)
+    .select('id');
   if (error) return { ok: false, error: 'update_failed' };
+  if (!changed || changed.length === 0) return { ok: false, error: 'invalid_status' };
 
   if (cfg.cancelFuture) {
     // Cancel future UNPAID obligations; paid history is preserved (spec §3.4).

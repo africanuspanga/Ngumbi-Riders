@@ -1,7 +1,6 @@
 import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { formatReceiptNumber } from './receipt';
 import type { SelectableObligation } from './selection';
 
 /*
@@ -57,11 +56,4 @@ export async function loadRiderPaymentContext(
       (o) => ({ id: o.id, dueDate: o.due_date, amountDue: o.amount_due, status: o.status }),
     ),
   };
-}
-
-/** Allocate the next receipt number for the current year. */
-export async function nextReceiptNumber(year: number): Promise<string> {
-  const admin = createAdminClient();
-  const { count } = await admin.from('receipts').select('*', { count: 'exact', head: true });
-  return formatReceiptNumber(year, (count ?? 0) + 1);
 }
