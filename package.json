@@ -25,7 +25,8 @@
     "db:diff": "supabase db diff",
     "db:lint": "supabase db lint",
     "seed": "NODE_OPTIONS='--conditions=react-server' tsx scripts/seed.ts",
-    "verify": "npm run typecheck && npm run lint && npm run test"
+    "verify": "npm run typecheck && npm run lint && npm run test",
+    "owner:password": "NODE_OPTIONS='--conditions=react-server' tsx scripts/set-owner-password.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

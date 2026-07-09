@@ -1,25 +1,13 @@
 import { NextResponse } from 'next/server';
 import { authorizeCron, runJob } from '@/lib/jobs/runner';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { recomputeRiskForRider } from '@/lib/risk/recompute';
+import { riskRecalcTask } from '@/lib/jobs/tasks';
 
-// Daily risk recalculation for active riders (spec §20, §27).
+// Daily risk recalculation for active riders (spec §20, §27). On Hobby this
+// runs inside /api/cron/daily; this route remains for manual triggering.
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   if (!authorizeCron(request)) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-
-  const result = await runJob('risk-recalc', async () => {
-    const admin = createAdminClient();
-    const { data } = await admin.from('riders').select('id').eq('status', 'active').limit(2000);
-    let count = 0;
-    for (const r of (data ?? []) as { id: string }[]) {
-      await recomputeRiskForRider(r.id);
-      count++;
-    }
-    return { riders: count };
-  });
-
-  return NextResponse.json(result);
+  return NextResponse.json(await runJob('risk-recalc', riskRecalcTask));
 }
