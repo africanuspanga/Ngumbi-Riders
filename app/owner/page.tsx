@@ -34,8 +34,8 @@ export default async function OwnerHome() {
     <div className="flex flex-col gap-4">
       <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Karibu{profile.fullName ? `, ${profile.fullName.split(' ')[0]}` : ''}
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+            Karibu{profile.fullName ? ` Mr ${profile.fullName}` : ''}
           </h1>
           <p className="text-muted-foreground text-sm">{formatLocalDateTime(new Date())} · Dar es Salaam</p>
         </div>
@@ -235,7 +235,7 @@ function StatCard({
         <CardTitle className="text-muted-foreground text-xs font-normal">{label}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-1">
-        <p className={`text-2xl font-semibold tabular-nums ${tone ?? ''}`}>{value}</p>
+        <p className={`break-words text-lg font-semibold tabular-nums sm:text-2xl ${tone ?? ''}`}>{value}</p>
         <p className="text-muted-foreground text-xs">{footnote}</p>
       </CardContent>
     </Card>
