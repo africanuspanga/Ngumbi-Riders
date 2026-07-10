@@ -120,7 +120,7 @@ export function ContractBuilder({
                 type="button"
                 onClick={() => toggleWeekday(day)}
                 className={`min-h-11 rounded-[--radius-card] border px-3 text-sm font-semibold ${
-                  weekdays.includes(day) ? 'border-primary bg-primary text-white' : 'border-border bg-white text-muted'
+                  weekdays.includes(day) ? 'border-primary bg-primary text-white' : 'border-border bg-white text-muted-foreground'
                 }`}
               >
                 {label}

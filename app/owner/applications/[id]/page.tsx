@@ -25,7 +25,7 @@ export default async function ApplicationDetailPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/owner/applications" className="text-sm font-medium text-muted">
+        <Link href="/owner/applications" className="text-sm font-medium text-muted-foreground">
           ← Applications
         </Link>
       </div>
@@ -36,7 +36,7 @@ export default async function ApplicationDetailPage({
             {app.first_name} {app.middle_name ? `${app.middle_name} ` : ''}
             {app.last_name}
           </h1>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             {app.reference} · {app.primary_phone}
           </p>
         </div>
@@ -89,7 +89,7 @@ export default async function ApplicationDetailPage({
 
       <Section title="Applicant documents">
         {app.documents.length === 0 ? (
-          <p className="text-sm text-muted">No documents uploaded.</p>
+          <p className="text-sm text-muted-foreground">No documents uploaded.</p>
         ) : (
           <div className="flex flex-col gap-2">
             {app.documents.map((d) => (
@@ -156,7 +156,7 @@ function Grid({ children }: { children: React.ReactNode }) {
 function Info({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="flex flex-col">
-      <span className="text-xs text-muted">{label}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
       <span className="text-sm font-medium text-foreground">{value || '—'}</span>
     </div>
   );

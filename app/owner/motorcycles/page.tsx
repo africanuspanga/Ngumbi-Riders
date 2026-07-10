@@ -7,7 +7,7 @@ export const metadata = { title: 'Motorcycles' };
 const STATUS_TONE: Record<string, string> = {
   available: 'bg-surface text-[color:var(--color-paid)]',
   assigned: 'bg-blue-50 text-[color:var(--color-advance)]',
-  inactive: 'bg-surface text-muted',
+  inactive: 'bg-surface text-muted-foreground',
 };
 
 export default async function MotorcyclesPage() {
@@ -19,7 +19,7 @@ export default async function MotorcyclesPage() {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-primary-dark">Motorcycles</h1>
-          <p className="text-sm text-muted">Fleet register and assignment status.</p>
+          <p className="text-sm text-muted-foreground">Fleet register and assignment status.</p>
         </div>
         <Link
           href="/owner/motorcycles/new"
@@ -30,7 +30,7 @@ export default async function MotorcyclesPage() {
       </header>
 
       {motorcycles.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted">
+        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">
           No motorcycles yet.
         </p>
       ) : (
@@ -45,7 +45,7 @@ export default async function MotorcyclesPage() {
                   <span className="font-semibold text-foreground">
                     {m.registration_number}
                   </span>
-                  <span className="text-xs text-muted">
+                  <span className="text-xs text-muted-foreground">
                     {m.motorcycle_number}
                     {(m.make || m.model) && ` · ${[m.make, m.model].filter(Boolean).join(' ')}`}
                   </span>

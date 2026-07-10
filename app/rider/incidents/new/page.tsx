@@ -9,7 +9,7 @@ export default async function NewIncidentPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <Link href="/rider/incidents" className="text-sm font-medium text-muted">← Matukio</Link>
+        <Link href="/rider/incidents" className="text-sm font-medium text-muted-foreground">← Matukio</Link>
         <h1 className="mt-1 text-xl font-bold text-primary-dark">Ripoti tukio</h1>
       </div>
       <IncidentForm />

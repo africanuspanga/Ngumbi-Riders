@@ -24,7 +24,7 @@ export default async function RiderHome() {
       </header>
 
       {!home || home.dashboard.totalObligations === 0 ? (
-        <p className="text-muted">Huna mkataba unaoendelea kwa sasa.</p>
+        <p className="text-muted-foreground">Huna mkataba unaoendelea kwa sasa.</p>
       ) : (
         <>
           <div className={`rounded-[--radius-card] p-4 text-center ${(STATE_UI[home.dashboard.state] ?? STATE_UI.paid!).className}`}>
@@ -48,12 +48,12 @@ export default async function RiderHome() {
           <div className="flex flex-col gap-2 rounded-[--radius-card] border border-border bg-white p-4">
             <div className="flex justify-between text-sm">
               <span className="font-semibold text-primary-dark">Maendeleo ya mkataba</span>
-              <span className="text-muted">{home.dashboard.progressPercent}%</span>
+              <span className="text-muted-foreground">{home.dashboard.progressPercent}%</span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-surface">
               <div className="h-full bg-primary" style={{ width: `${home.dashboard.progressPercent}%` }} />
             </div>
-            <p className="text-xs text-muted">
+            <p className="text-xs text-muted-foreground">
               Zimelipwa {home.dashboard.paidCount}/{home.dashboard.totalObligations} · zilizobaki {formatTZS(home.dashboard.remainingValue)}
             </p>
           </div>
@@ -83,7 +83,7 @@ export default async function RiderHome() {
 
           {home.motorcycle && (
             <div className="rounded-[--radius-card] border border-border bg-white p-4">
-              <p className="text-xs text-muted">Pikipiki yako</p>
+              <p className="text-xs text-muted-foreground">Pikipiki yako</p>
               <p className="font-semibold text-foreground">
                 {home.motorcycle.registration}{home.motorcycle.model ? ` · ${home.motorcycle.model}` : ''}
               </p>

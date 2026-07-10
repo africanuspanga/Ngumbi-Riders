@@ -34,7 +34,7 @@ export default async function RiderDetailPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/owner/riders" className="text-sm font-medium text-muted">
+        <Link href="/owner/riders" className="text-sm font-medium text-muted-foreground">
           ← Riders
         </Link>
       </div>
@@ -45,11 +45,11 @@ export default async function RiderDetailPage({
             {rider.first_name} {rider.middle_name ? `${rider.middle_name} ` : ''}
             {rider.last_name}
           </h1>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             {rider.rider_number} · {rider.phone}
           </p>
         </div>
-        <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted">
+        <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
           {rider.status}
         </span>
       </header>
@@ -97,7 +97,7 @@ export default async function RiderDetailPage({
 
       <Section title="Assignment history">
         {rider.assignments.length === 0 ? (
-          <p className="text-sm text-muted">No assignments yet.</p>
+          <p className="text-sm text-muted-foreground">No assignments yet.</p>
         ) : (
           <ul className="flex flex-col gap-2 text-sm">
             {rider.assignments.map((a) => (
@@ -105,7 +105,7 @@ export default async function RiderDetailPage({
                 <Link href={`/owner/motorcycles/${a.motorcycle_id}`} className="text-primary-dark underline">
                   {a.registration}
                 </Link>
-                <span className="text-right text-muted">
+                <span className="text-right text-muted-foreground">
                   {a.start_date} → {a.end_date ?? 'active'}
                   {a.transfer_reason && ` · ${a.transfer_reason}`}
                 </span>
@@ -140,7 +140,7 @@ function Grid({ children }: { children: React.ReactNode }) {
 function Info({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="flex flex-col">
-      <span className="text-xs text-muted">{label}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
       <span className="text-sm font-medium text-foreground">{value || '—'}</span>
     </div>
   );

@@ -67,7 +67,7 @@ export default async function CalendarPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <Link href="/rider" className="text-sm font-medium text-muted">← Nyumbani</Link>
+        <Link href="/rider" className="text-sm font-medium text-muted-foreground">← Nyumbani</Link>
         <h1 className="mt-1 text-xl font-bold text-primary-dark">Kalenda ya malipo</h1>
       </div>
 
@@ -81,7 +81,7 @@ export default async function CalendarPage() {
       </div>
 
       {days.length === 0 ? (
-        <p className="text-muted">Hakuna kalenda kwa sasa.</p>
+        <p className="text-muted-foreground">Hakuna kalenda kwa sasa.</p>
       ) : (
         [...months.entries()].map(([month, list]) => {
           // Real calendar layout: columns are weekdays, with leading offset
@@ -93,10 +93,10 @@ export default async function CalendarPage() {
           const byDate = new Map(list.map((d) => [d.date, d]));
           return (
             <div key={month} className="flex flex-col gap-2">
-              <h2 className="text-sm font-semibold text-muted">{monthLabel(month)}</h2>
+              <h2 className="text-sm font-semibold text-muted-foreground">{monthLabel(month)}</h2>
               <div className="grid grid-cols-7 gap-1.5">
                 {WEEKDAYS.map((w) => (
-                  <div key={w} className="text-center text-[10px] font-semibold text-muted">
+                  <div key={w} className="text-center text-[10px] font-semibold text-muted-foreground">
                     {w}
                   </div>
                 ))}
@@ -110,7 +110,7 @@ export default async function CalendarPage() {
                     return (
                       <div
                         key={date}
-                        className="flex aspect-square items-center justify-center rounded text-[10px] text-muted"
+                        className="flex aspect-square items-center justify-center rounded text-[10px] text-muted-foreground"
                       >
                         {i + 1}
                       </div>

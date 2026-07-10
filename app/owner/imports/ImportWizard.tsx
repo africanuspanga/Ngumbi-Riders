@@ -83,7 +83,7 @@ export function ImportWizard() {
                 type="button"
                 onClick={() => setType(t)}
                 className={`flex-1 rounded-[--radius-card] border px-4 py-2.5 text-sm font-semibold ${
-                  type === t ? 'border-primary bg-primary text-white' : 'border-border bg-white text-muted'
+                  type === t ? 'border-primary bg-primary text-white' : 'border-border bg-white text-muted-foreground'
                 }`}
               >
                 {IMPORT_DEFS[t].label}
@@ -106,7 +106,7 @@ export function ImportWizard() {
             type="file"
             accept=".csv,.xlsx,.xls,text/csv"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="block w-full text-sm text-muted file:mr-3 file:min-h-11 file:rounded-[--radius-card] file:border-0 file:bg-surface file:px-4 file:py-2 file:font-semibold file:text-primary-dark"
+            className="block w-full text-sm text-muted-foreground file:mr-3 file:min-h-11 file:rounded-[--radius-card] file:border-0 file:bg-surface file:px-4 file:py-2 file:font-semibold file:text-primary-dark"
           />
         </div>
 
@@ -135,7 +135,7 @@ export function ImportWizard() {
 
         <div className="overflow-hidden rounded-[--radius-card] border border-border">
           <table className="w-full text-left text-sm">
-            <thead className="bg-surface text-muted">
+            <thead className="bg-surface text-muted-foreground">
               <tr>
                 <th className="px-3 py-2">Row</th>
                 <th className="px-3 py-2">Status</th>
@@ -147,7 +147,7 @@ export function ImportWizard() {
                 <tr key={r.rowNumber} className="border-t border-border">
                   <td className="px-3 py-2">{r.rowNumber}</td>
                   <td className="px-3 py-2">{r.status}</td>
-                  <td className="px-3 py-2 text-xs text-muted">{r.errors.join('; ')}</td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">{r.errors.join('; ')}</td>
                 </tr>
               ))}
             </tbody>
@@ -188,7 +188,7 @@ export function ImportWizard() {
 
         {report.riderPins.length > 0 && (
           <div className="flex flex-col gap-2">
-            <p className="text-sm text-muted">
+            <p className="text-sm text-muted-foreground">
               Temporary PINs (share once; riders change on first login):
             </p>
             <button
@@ -231,7 +231,7 @@ function Stat({ label, value, tone }: { label: string; value: number; tone: stri
   return (
     <div className="rounded-[--radius-card] border border-border bg-white p-3">
       <div className={`text-2xl font-bold ${tone}`}>{value}</div>
-      <div className="text-xs text-muted">{label}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
     </div>
   );
 }

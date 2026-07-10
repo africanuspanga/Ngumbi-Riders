@@ -31,7 +31,7 @@ export default async function ApplicationsPage({
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold text-primary-dark">Applications</h1>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Review rider applications, verify documents, and convert approved
           applicants into riders.
         </p>
@@ -51,7 +51,7 @@ export default async function ApplicationsPage({
       </nav>
 
       {applications.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted">
+        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">
           No applications{active ? ' with this status' : ''} yet.
         </p>
       ) : (
@@ -74,7 +74,7 @@ export default async function ApplicationsPage({
                       </span>
                     )}
                   </span>
-                  <span className="text-xs text-muted">
+                  <span className="text-xs text-muted-foreground">
                     {a.reference} · {a.primary_phone}
                   </span>
                 </div>
@@ -103,7 +103,7 @@ function FilterTab({
       className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
         active
           ? 'border-primary bg-primary text-white'
-          : 'border-border bg-white text-muted hover:bg-surface'
+          : 'border-border bg-white text-muted-foreground hover:bg-surface'
       }`}
     >
       {label}

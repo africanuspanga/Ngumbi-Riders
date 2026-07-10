@@ -27,17 +27,17 @@ export default async function ReportsPage({
     <div className="flex flex-col gap-6">
       <header>
         <h1 className="text-2xl font-bold text-primary-dark">Reports</h1>
-        <p className="text-sm text-muted">All amounts in TZS · Africa/Dar_es_Salaam.</p>
+        <p className="text-sm text-muted-foreground">All amounts in TZS · Africa/Dar_es_Salaam.</p>
       </header>
 
       {/* Date range */}
       <form className="flex flex-wrap items-end gap-3 rounded-[--radius-card] border border-border bg-white p-4">
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-muted">From</span>
+          <span className="text-muted-foreground">From</span>
           <input type="date" name="from" defaultValue={from} className="input" />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-muted">To</span>
+          <span className="text-muted-foreground">To</span>
           <input type="date" name="to" defaultValue={to} className="input" />
         </label>
         <button type="submit" className="rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover">
@@ -70,11 +70,11 @@ export default async function ReportsPage({
           <ExportLinks report="arrears" q="" />
         </div>
         {arrears.rows.length === 0 ? (
-          <p className="text-sm text-muted">No arrears. ✓</p>
+          <p className="text-sm text-muted-foreground">No arrears. ✓</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="text-muted">
+              <thead className="text-muted-foreground">
                 <tr><th className="py-1">Rider</th><th>Oldest</th><th>Days</th><th>Count</th><th className="text-right">Amount</th></tr>
               </thead>
               <tbody>
@@ -117,7 +117,7 @@ function ExportLinks({ report, q }: { report: string; q: string }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col">
-      <dt className="text-xs text-muted">{label}</dt>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="font-semibold text-foreground">{value}</dd>
     </div>
   );

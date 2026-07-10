@@ -9,7 +9,7 @@ export default async function NewMotorcyclePage() {
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6">
       <div>
-        <Link href="/owner/motorcycles" className="text-sm font-medium text-muted">
+        <Link href="/owner/motorcycles" className="text-sm font-medium text-muted-foreground">
           ← Motorcycles
         </Link>
         <h1 className="mt-1 text-2xl font-bold text-primary-dark">Add motorcycle</h1>

@@ -19,14 +19,14 @@ export default async function RiderExemptionsPage() {
       <ExemptionRequestForm obligations={obligations} />
 
       {requests.length === 0 ? (
-        <p className="text-muted">Hakuna maombi ya msamaha.</p>
+        <p className="text-muted-foreground">Hakuna maombi ya msamaha.</p>
       ) : (
         <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border bg-white">
           {requests.map((r) => (
             <li key={r.id} className="flex flex-col gap-0.5 px-4 py-3">
               <div className="flex justify-between">
                 <span className="font-semibold">{r.due_date ?? '—'}</span>
-                <span className="text-xs text-muted">{EXEMPTION_STATUS_LABELS[r.status] ?? r.status}</span>
+                <span className="text-xs text-muted-foreground">{EXEMPTION_STATUS_LABELS[r.status] ?? r.status}</span>
               </div>
               <p className="text-sm text-foreground">{r.reason}</p>
               {r.postponed_to_date && <p className="text-xs text-advance">Imeahirishwa hadi {r.postponed_to_date}</p>}

@@ -13,7 +13,7 @@ export default async function PayPage() {
     return (
       <div className="flex flex-col gap-3">
         <h1 className="text-xl font-bold text-primary-dark">Lipa</h1>
-        <p className="text-muted">Huna mkataba unaoendelea kwa sasa.</p>
+        <p className="text-muted-foreground">Huna mkataba unaoendelea kwa sasa.</p>
       </div>
     );
   }
@@ -27,7 +27,7 @@ export default async function PayPage() {
             Una madeni {view.arrearsCount} · {formatTZS(view.arrearsAmount)}
           </p>
         ) : (
-          <p className="text-sm text-muted">Malipo yanayohitajika: {view.outstandingCount}</p>
+          <p className="text-sm text-muted-foreground">Malipo yanayohitajika: {view.outstandingCount}</p>
         )}
       </header>
 

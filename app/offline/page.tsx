@@ -7,7 +7,7 @@ export default async function OfflinePage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-3 px-6 text-center">
       <h1 className="text-xl font-bold text-primary-dark">{c('offline')}</h1>
-      <p className="text-muted">
+      <p className="text-muted-foreground">
         Hakuna mtandao kwa sasa. Malipo hayawezi kufanyika bila mtandao.
       </p>
     </main>

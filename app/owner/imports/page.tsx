@@ -9,11 +9,11 @@ export default async function ImportsPage() {
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6">
       <div>
-        <Link href="/owner" className="text-sm font-medium text-muted">
+        <Link href="/owner" className="text-sm font-medium text-muted-foreground">
           ← Owner
         </Link>
         <h1 className="mt-1 text-2xl font-bold text-primary-dark">Imports</h1>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Load existing riders and motorcycles from CSV or Excel. Download a
           template, upload, review, then confirm.
         </p>

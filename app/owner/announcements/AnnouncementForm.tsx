@@ -39,7 +39,7 @@ export function AnnouncementForm() {
       </label>
       <input className="input" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
       <textarea className="input min-h-24" placeholder="Message" value={body} onChange={(e) => setBody(e.target.value)} />
-      {msg && <p className="text-sm text-muted">{msg}</p>}
+      {msg && <p className="text-sm text-muted-foreground">{msg}</p>}
       <button
         type="button"
         disabled={busy || !title.trim() || !body.trim()}

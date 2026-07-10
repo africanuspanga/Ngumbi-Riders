@@ -21,7 +21,7 @@ export default async function MotorcycleDetailPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/owner/motorcycles" className="text-sm font-medium text-muted">
+        <Link href="/owner/motorcycles" className="text-sm font-medium text-muted-foreground">
           ← Motorcycles
         </Link>
       </div>
@@ -31,12 +31,12 @@ export default async function MotorcycleDetailPage({
           <h1 className="text-2xl font-bold text-primary-dark">
             {m.registration_number}
           </h1>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             {m.motorcycle_number}
             {(m.make || m.model) && ` · ${[m.make, m.model].filter(Boolean).join(' ')}`}
           </p>
         </div>
-        <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted">
+        <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
           {m.status}
         </span>
       </header>
@@ -50,13 +50,13 @@ export default async function MotorcycleDetailPage({
             {active.rider_name} ({active.rider_number})
           </Link>
         ) : (
-          <p className="text-sm text-muted">Not assigned.</p>
+          <p className="text-sm text-muted-foreground">Not assigned.</p>
         )}
       </Section>
 
       <Section title="Assignment history">
         {m.assignments.length === 0 ? (
-          <p className="text-sm text-muted">No assignments yet.</p>
+          <p className="text-sm text-muted-foreground">No assignments yet.</p>
         ) : (
           <ul className="flex flex-col gap-2 text-sm">
             {m.assignments.map((a) => (
@@ -64,7 +64,7 @@ export default async function MotorcycleDetailPage({
                 <span className="text-foreground">
                   {a.rider_name} ({a.rider_number})
                 </span>
-                <span className="text-right text-muted">
+                <span className="text-right text-muted-foreground">
                   {a.start_date} → {a.end_date ?? 'active'}
                   {a.transfer_reason && ` · ${a.transfer_reason}`}
                 </span>
@@ -77,21 +77,21 @@ export default async function MotorcycleDetailPage({
       <Section title="Financials">
         <div className="grid grid-cols-3 gap-3 text-sm">
           <div>
-            <p className="text-xs text-muted">Collected</p>
+            <p className="text-xs text-muted-foreground">Collected</p>
             <p className="font-semibold text-[color:var(--color-paid)]">{formatTZS(m.collected)}</p>
           </div>
           <div>
-            <p className="text-xs text-muted">Expenses</p>
+            <p className="text-xs text-muted-foreground">Expenses</p>
             <p className="font-semibold">{formatTZS(m.totalExpenses)}</p>
           </div>
           <div>
-            <p className="text-xs text-muted">Cash operating margin</p>
+            <p className="text-xs text-muted-foreground">Cash operating margin</p>
             <p className={`font-semibold ${m.cashOperatingMargin >= 0 ? 'text-[color:var(--color-paid)]' : 'text-overdue'}`}>
               {formatTZS(m.cashOperatingMargin)}
             </p>
           </div>
         </div>
-        <p className="text-xs text-muted">
+        <p className="text-xs text-muted-foreground">
           Margin = collected contract revenue − recorded expenses (not full accounting profit).
         </p>
       </Section>

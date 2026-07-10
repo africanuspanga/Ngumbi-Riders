@@ -47,7 +47,7 @@ export function ManualRiderForm({ motorcycles }: { motorcycles: MotoOption[] }) 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
       <fieldset className="flex flex-col gap-4">
-        <legend className="mb-1 text-sm font-semibold text-muted">Identity</legend>
+        <legend className="mb-1 text-sm font-semibold text-muted-foreground">Identity</legend>
         <TextField label="First name" required error={errors.firstName?.message} {...register('firstName')} />
         <TextField label="Middle name" error={errors.middleName?.message} {...register('middleName')} />
         <TextField label="Last name" required error={errors.lastName?.message} {...register('lastName')} />
@@ -59,7 +59,7 @@ export function ManualRiderForm({ motorcycles }: { motorcycles: MotoOption[] }) 
           <button
             type="button"
             onClick={() => setValue('tempPin', suggestPin(), { shouldValidate: true })}
-            className="mb-[2px] rounded-[--radius-card] border border-border px-3 py-2 text-sm font-medium text-muted hover:bg-surface"
+            className="mb-[2px] rounded-[--radius-card] border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-surface"
           >
             Suggest
           </button>
@@ -67,7 +67,7 @@ export function ManualRiderForm({ motorcycles }: { motorcycles: MotoOption[] }) 
       </fieldset>
 
       <fieldset className="flex flex-col gap-4">
-        <legend className="mb-1 text-sm font-semibold text-muted">Contact & address (optional)</legend>
+        <legend className="mb-1 text-sm font-semibold text-muted-foreground">Contact & address (optional)</legend>
         <TextField label="Email" type="email" error={errors.email?.message} {...register('email')} />
         <TextField label="Date of birth" type="date" error={errors.dateOfBirth?.message} {...register('dateOfBirth')} />
         <SelectField label="Gender" error={errors.gender?.message} defaultValue="" {...register('gender')}>
@@ -83,13 +83,13 @@ export function ManualRiderForm({ motorcycles }: { motorcycles: MotoOption[] }) 
       </fieldset>
 
       <fieldset className="flex flex-col gap-4">
-        <legend className="mb-1 text-sm font-semibold text-muted">Identifiers (optional)</legend>
+        <legend className="mb-1 text-sm font-semibold text-muted-foreground">Identifiers (optional)</legend>
         <TextField label="NIDA number" inputMode="numeric" hint="20 digits — encrypted at rest" error={errors.nidaNumber?.message} {...register('nidaNumber')} />
         <TextField label="Driving licence number" error={errors.drivingLicenceNumber?.message} {...register('drivingLicenceNumber')} />
       </fieldset>
 
       <fieldset className="flex flex-col gap-4">
-        <legend className="mb-1 text-sm font-semibold text-muted">Assign a motorcycle (optional)</legend>
+        <legend className="mb-1 text-sm font-semibold text-muted-foreground">Assign a motorcycle (optional)</legend>
         <SelectField label="Motorcycle" error={errors.motorcycleId?.message} defaultValue="" {...register('motorcycleId')}>
           <option value="">— none —</option>
           {motorcycles.map((m) => (

@@ -24,7 +24,7 @@ export function RiskControls({ id, current, reasons }: { id: string; current: Ri
       <div>
         <span className="text-sm">Current: <strong className="capitalize">{current}</strong></span>
         {reasons.length > 0 && (
-          <ul className="mt-1 list-inside list-disc text-xs text-muted">
+          <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
             {reasons.map((r, i) => <li key={i}>{r}</li>)}
           </ul>
         )}
@@ -38,7 +38,7 @@ export function RiskControls({ id, current, reasons }: { id: string; current: Ri
         {pending ? '…' : 'Recompute risk'}
       </button>
       <div className="flex flex-col gap-2 border-t border-border pt-2">
-        <span className="text-xs font-semibold text-muted">Manual override</span>
+        <span className="text-xs font-semibold text-muted-foreground">Manual override</span>
         <div className="flex flex-wrap gap-2">
           <select className="input max-w-[8rem]" value={override} onChange={(e) => setOverride(e.target.value as RiskLevel)}>
             {RISK_LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
@@ -70,7 +70,7 @@ export function RiderPinReset({ id }: { id: string }) {
         <span className="text-sm font-semibold text-primary-dark">
           New temporary PIN: <span className="font-mono text-lg tracking-[0.3em]">{tempPin}</span>
         </span>
-        <p className="text-xs text-muted">
+        <p className="text-xs text-muted-foreground">
           Shown only once — hand it to the rider now. Their old PIN no longer
           works, and they must choose a new PIN on their next sign-in.
         </p>
@@ -80,7 +80,7 @@ export function RiderPinReset({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-sm text-muted">
+      <p className="text-sm text-muted-foreground">
         Rider forgot their PIN? Issue a new temporary one. This signs them out
         of the old PIN immediately.
       </p>
@@ -164,11 +164,11 @@ export function RiderRevealSecrets({ id }: { id: string }) {
     return (
       <div className="flex flex-col gap-1 text-sm">
         <div className="flex justify-between border-b border-border py-1">
-          <span className="text-muted">NIDA</span>
+          <span className="text-muted-foreground">NIDA</span>
           <span className="font-mono font-medium">{values.nida ?? '—'}</span>
         </div>
         <div className="flex justify-between border-b border-border py-1">
-          <span className="text-muted">Licence</span>
+          <span className="text-muted-foreground">Licence</span>
           <span className="font-mono font-medium">{values.licence ?? '—'}</span>
         </div>
       </div>
@@ -182,7 +182,7 @@ export function RiderRevealSecrets({ id }: { id: string }) {
         const res = await revealRiderSecrets(id);
         if (res.ok) setValues(res.data ?? { nida: null, licence: null });
       })}
-      className="self-start rounded-[--radius-card] border border-border px-3 py-2 text-sm font-medium text-muted hover:bg-surface disabled:opacity-60"
+      className="self-start rounded-[--radius-card] border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-surface disabled:opacity-60"
     >
       {pending ? '…' : 'Reveal NIDA & licence'}
     </button>

@@ -18,16 +18,16 @@ export default async function RiderIncidentsPage() {
         </Link>
       </header>
       {incidents.length === 0 ? (
-        <p className="text-muted">Hakuna matukio.</p>
+        <p className="text-muted-foreground">Hakuna matukio.</p>
       ) : (
         <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border bg-white">
           {incidents.map((i) => (
             <li key={i.id} className="flex flex-col gap-0.5 px-4 py-3">
               <div className="flex justify-between">
                 <span className="font-semibold">{INCIDENT_LABELS[i.category as keyof typeof INCIDENT_LABELS] ?? i.category}</span>
-                <span className="text-xs text-muted">{i.status}</span>
+                <span className="text-xs text-muted-foreground">{i.status}</span>
               </div>
-              <span className="text-xs text-muted">{i.occurred_at.slice(0, 16).replace('T', ' ')}</span>
+              <span className="text-xs text-muted-foreground">{i.occurred_at.slice(0, 16).replace('T', ' ')}</span>
               <p className="text-sm text-foreground">{i.description}</p>
             </li>
           ))}

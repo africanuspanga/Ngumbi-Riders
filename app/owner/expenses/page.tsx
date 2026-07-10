@@ -20,7 +20,7 @@ export default async function ExpensesPage() {
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <header>
         <h1 className="text-2xl font-bold text-primary-dark">Motorcycle expenses</h1>
-        <p className="text-sm text-muted">Feeds maintenance and cash-operating-margin reports.</p>
+        <p className="text-sm text-muted-foreground">Feeds maintenance and cash-operating-margin reports.</p>
       </header>
 
       <ExpenseForm
@@ -31,10 +31,10 @@ export default async function ExpensesPage() {
       <section className="flex flex-col gap-2 rounded-[--radius-card] border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">This year · total {formatTZS(expenses.total)}</h2>
         {expenses.rows.length === 0 ? (
-          <p className="text-sm text-muted">No expenses recorded.</p>
+          <p className="text-sm text-muted-foreground">No expenses recorded.</p>
         ) : (
           <table className="w-full text-left text-sm">
-            <thead className="text-muted"><tr><th className="py-1">Date</th><th>Motorcycle</th><th>Category</th><th className="text-right">Amount</th></tr></thead>
+            <thead className="text-muted-foreground"><tr><th className="py-1">Date</th><th>Motorcycle</th><th>Category</th><th className="text-right">Amount</th></tr></thead>
             <tbody>
               {expenses.rows.map((e, i) => (
                 <tr key={i} className="border-t border-border">

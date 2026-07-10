@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSessionProfile } from '@/lib/auth/session';
+import { AppShell } from '@/components/app-shell';
 
 export default async function OwnerLayout({
   children,
@@ -10,9 +11,5 @@ export default async function OwnerLayout({
   if (!profile) redirect('/login?next=/owner');
   if (profile.role !== 'owner') redirect('/rider');
 
-  return (
-    <div className="mx-auto min-h-dvh max-w-5xl px-4 py-6 md:px-8">
-      {children}
-    </div>
-  );
+  return <AppShell ownerName={profile.fullName ?? 'Owner'}>{children}</AppShell>;
 }

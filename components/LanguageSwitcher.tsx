@@ -71,7 +71,7 @@ function LangOption({
       className={`flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-60 ${
         active
           ? 'bg-primary text-white shadow-sm'
-          : 'text-muted hover:bg-surface'
+          : 'text-muted-foreground hover:bg-surface'
       }`}
     >
       {flag}

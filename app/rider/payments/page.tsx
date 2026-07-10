@@ -10,8 +10,8 @@ const TONE: Record<string, string> = {
   completed: 'text-[color:var(--color-paid)]',
   pending: 'text-[color:var(--color-warning)]',
   failed: 'text-[color:var(--color-overdue)]',
-  expired: 'text-muted',
-  cancelled: 'text-muted',
+  expired: 'text-muted-foreground',
+  cancelled: 'text-muted-foreground',
 };
 
 // Rider-facing: Swahili labels, never raw status enums (spec §36.11).
@@ -33,7 +33,7 @@ export default async function RiderPaymentsPage() {
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-bold text-primary-dark">Malipo yangu</h1>
       {payments.length === 0 ? (
-        <p className="text-muted">Bado hujafanya malipo.</p>
+        <p className="text-muted-foreground">Bado hujafanya malipo.</p>
       ) : (
         <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border bg-white">
           {payments.map((p) => (
@@ -41,11 +41,11 @@ export default async function RiderPaymentsPage() {
               <Link href={`/rider/payments/${p.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-surface">
                 <div className="flex flex-col">
                   <span className="font-semibold">{formatTZS(p.amount)}</span>
-                  <span className="text-xs text-muted">
+                  <span className="text-xs text-muted-foreground">
                     {localDateString(new Date(p.completed_at ?? p.created_at))} · {p.method === 'cash' ? 'Taslimu' : 'Pesa za simu'}
                   </span>
                 </div>
-                <span className={`text-sm font-semibold ${TONE[p.status] ?? 'text-muted'}`}>{STATUS_LABEL[p.status] ?? p.status}</span>
+                <span className={`text-sm font-semibold ${TONE[p.status] ?? 'text-muted-foreground'}`}>{STATUS_LABEL[p.status] ?? p.status}</span>
               </Link>
             </li>
           ))}

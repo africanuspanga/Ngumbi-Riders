@@ -9,7 +9,7 @@ const STATUS_TONE: Record<string, string> = {
   active: 'bg-surface text-[color:var(--color-paid)]',
   suspended: 'bg-amber-50 text-[color:var(--color-warning)]',
   terminated: 'bg-red-50 text-[color:var(--color-overdue)]',
-  inactive: 'bg-surface text-muted',
+  inactive: 'bg-surface text-muted-foreground',
 };
 
 const RISK_TONE: Record<string, string> = {
@@ -28,7 +28,7 @@ export default async function RidersPage() {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-primary-dark">Riders</h1>
-          <p className="text-sm text-muted">Rider directory and status.</p>
+          <p className="text-sm text-muted-foreground">Rider directory and status.</p>
         </div>
         <Link
           href="/owner/riders/new"
@@ -39,7 +39,7 @@ export default async function RidersPage() {
       </header>
 
       {riders.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted">
+        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">
           No riders yet.
         </p>
       ) : (
@@ -54,7 +54,7 @@ export default async function RidersPage() {
                   <span className="font-semibold text-foreground">
                     {r.first_name} {r.last_name}
                   </span>
-                  <span className="text-xs text-muted">
+                  <span className="text-xs text-muted-foreground">
                     {r.rider_number} · {r.phone}
                   </span>
                 </div>

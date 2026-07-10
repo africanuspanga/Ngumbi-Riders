@@ -71,7 +71,7 @@ export function CashPaymentForm({ candidates, today }: { candidates: CashCandida
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium">Outstanding obligations (oldest first)</span>
           {candidate.obligations.length === 0 ? (
-            <p className="text-sm text-muted">Nothing outstanding.</p>
+            <p className="text-sm text-muted-foreground">Nothing outstanding.</p>
           ) : (
             <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border">
               {candidate.obligations.map((o) => (

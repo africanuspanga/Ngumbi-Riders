@@ -30,7 +30,7 @@ export function GeneratePdfButton({ contractId }: { contractId: string }) {
       >
         {pending ? 'Generating…' : 'Generate contract PDF'}
       </button>
-      {msg && <p className="text-xs text-muted">{msg}</p>}
+      {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
     </div>
   );
 }
@@ -113,7 +113,7 @@ export function PhysicalUpload({ contractId }: { contractId: string }) {
         accept=".pdf,.jpg,.jpeg,.png"
         onChange={onChange}
         disabled={pending}
-        className="block w-full text-sm text-muted file:mr-3 file:min-h-11 file:rounded-[--radius-card] file:border-0 file:bg-surface file:px-4 file:py-2 file:font-semibold file:text-primary-dark"
+        className="block w-full text-sm text-muted-foreground file:mr-3 file:min-h-11 file:rounded-[--radius-card] file:border-0 file:bg-surface file:px-4 file:py-2 file:font-semibold file:text-primary-dark"
       />
       {error && <p className="text-xs text-overdue">{error}</p>}
     </div>

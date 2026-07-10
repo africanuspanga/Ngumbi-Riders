@@ -310,7 +310,7 @@ function GuarantorStep({
   const e = errors[prefix];
   return (
     <>
-      <p className="text-sm text-muted">{t('fields.guarantorIntro')}</p>
+      <p className="text-sm text-muted-foreground">{t('fields.guarantorIntro')}</p>
       <TextField label={t('fields.gFullName')} required error={te(e?.fullName)} {...register(`${prefix}.fullName`)} />
       <TextField label={t('fields.gPhone')} type="tel" inputMode="tel" required error={te(e?.phone)} {...register(`${prefix}.phone`)} />
       <TextField label={t('fields.gNida')} inputMode="numeric" required error={te(e?.nidaNumber)} {...register(`${prefix}.nidaNumber`)} />
@@ -424,7 +424,7 @@ function ReviewStep({
       <Row label={t('review.regionDistrict')} value={`${values.region ?? ''} / ${values.district ?? ''}`} />
       <Row label={t('review.guarantors')} value="2" />
       <Row label={t('review.uploaded')} value={`${uploaded}`} />
-      <p className="mt-2 text-muted">{t('review.note')}</p>
+      <p className="mt-2 text-muted-foreground">{t('review.note')}</p>
     </div>
   );
 }
@@ -432,7 +432,7 @@ function ReviewStep({
 function Row({ label, value }: { label: string; value?: string }) {
   return (
     <div className="flex justify-between gap-4 border-b border-border pb-2">
-      <span className="text-muted">{label}</span>
+      <span className="text-muted-foreground">{label}</span>
       <span className="text-right font-medium text-foreground">{value || '—'}</span>
     </div>
   );

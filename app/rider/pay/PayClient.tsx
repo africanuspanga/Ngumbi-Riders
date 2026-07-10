@@ -89,7 +89,7 @@ export function PayClient({
       <div className="flex flex-col gap-4 rounded-[--radius-card] border border-border bg-white p-5 text-center">
         <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-surface border-t-primary" />
         <p className="font-semibold text-primary-dark">Inasubiri uthibitisho…</p>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Angalia simu yako ({payerPhone}) na weka PIN ya pesa za simu kuthibitisha.
         </p>
         <button
@@ -119,7 +119,7 @@ export function PayClient({
   }
 
   if (options.length === 0) {
-    return <p className="text-muted">Huna malipo yanayohitajika kwa sasa. ✓</p>;
+    return <p className="text-muted-foreground">Huna malipo yanayohitajika kwa sasa. ✓</p>;
   }
 
   return (
@@ -149,7 +149,7 @@ export function PayClient({
           value={payerPhone}
           onChange={(e) => setPayerPhone(e.target.value)}
         />
-        <span className="text-xs text-muted">Unaweza kutumia namba ya mtu mwingine.</span>
+        <span className="text-xs text-muted-foreground">Unaweza kutumia namba ya mtu mwingine.</span>
       </label>
 
       {error && <p role="alert" className="text-sm font-medium text-overdue">{error}</p>}

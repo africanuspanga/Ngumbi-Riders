@@ -64,7 +64,7 @@ export function FileInput({
         type="file"
         accept={ACCEPT_ATTRIBUTE}
         onChange={handle}
-        className="block w-full text-sm text-muted file:mr-3 file:min-h-11 file:rounded-[--radius-card] file:border-0 file:bg-surface file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary-dark"
+        className="block w-full text-sm text-muted-foreground file:mr-3 file:min-h-11 file:rounded-[--radius-card] file:border-0 file:bg-surface file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary-dark"
       />
       {file && !error && (
         <span className="text-xs text-paid">✓ {file.name}</span>

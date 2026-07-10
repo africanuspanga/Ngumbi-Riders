@@ -12,11 +12,11 @@ export default async function NewRiderPage() {
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6">
       <div>
-        <Link href="/owner/riders" className="text-sm font-medium text-muted">
+        <Link href="/owner/riders" className="text-sm font-medium text-muted-foreground">
           ← Riders
         </Link>
         <h1 className="mt-1 text-2xl font-bold text-primary-dark">Add rider</h1>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Create an existing or new rider. A contract can be created later
           (Phase 4).
         </p>

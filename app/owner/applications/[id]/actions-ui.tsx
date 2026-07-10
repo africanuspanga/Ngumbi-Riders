@@ -40,7 +40,7 @@ export function StatusActions({
 
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold text-muted">Move to</h3>
+      <h3 className="text-sm font-semibold text-muted-foreground">Move to</h3>
       <div className="flex flex-wrap gap-2">
         {targets.map((to) => (
           <button
@@ -91,7 +91,7 @@ export function RevealSecrets({ id }: { id: string }) {
         type="button"
         onClick={reveal}
         disabled={pending}
-        className="self-start rounded-[--radius-card] border border-border px-3 py-2 text-sm font-medium text-muted hover:bg-surface disabled:opacity-60"
+        className="self-start rounded-[--radius-card] border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-surface disabled:opacity-60"
       >
         {pending ? '…' : 'Reveal NIDA & licence'}
       </button>
@@ -191,7 +191,7 @@ export function ConvertButton({ id }: { id: string }) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4 border-b border-border py-1">
-      <span className="text-muted">{label}</span>
+      <span className="text-muted-foreground">{label}</span>
       <span className="font-mono font-medium text-foreground">{value}</span>
     </div>
   );

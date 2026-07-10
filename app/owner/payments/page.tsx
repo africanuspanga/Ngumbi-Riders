@@ -10,8 +10,8 @@ const TONE: Record<string, string> = {
   completed: 'text-[color:var(--color-paid)]',
   pending: 'text-[color:var(--color-warning)]',
   failed: 'text-[color:var(--color-overdue)]',
-  expired: 'text-muted',
-  cancelled: 'text-muted',
+  expired: 'text-muted-foreground',
+  cancelled: 'text-muted-foreground',
   reversed: 'text-[color:var(--color-overdue)]',
 };
 
@@ -24,7 +24,7 @@ export default async function OwnerPaymentsPage() {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-primary-dark">Payments</h1>
-          <p className="text-sm text-muted">All mobile-money and cash transactions.</p>
+          <p className="text-sm text-muted-foreground">All mobile-money and cash transactions.</p>
         </div>
         <div className="flex gap-2">
           <Link href="/owner/payments/cash" className="rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover">
@@ -37,18 +37,18 @@ export default async function OwnerPaymentsPage() {
       </header>
 
       {payments.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted">No payments yet.</p>
+        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">No payments yet.</p>
       ) : (
         <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border bg-white">
           {payments.map((p) => (
             <li key={p.id} className="flex items-center justify-between px-4 py-3">
               <div className="flex flex-col">
                 <span className="font-semibold">{p.rider_name} · {formatTZS(p.amount)}</span>
-                <span className="text-xs text-muted">
+                <span className="text-xs text-muted-foreground">
                   {localDateString(new Date(p.completed_at ?? p.created_at))} · {p.method === 'cash' ? 'Cash' : 'Mobile money'}
                 </span>
               </div>
-              <span className={`text-sm font-semibold ${TONE[p.status] ?? 'text-muted'}`}>{p.status}</span>
+              <span className={`text-sm font-semibold ${TONE[p.status] ?? 'text-muted-foreground'}`}>{p.status}</span>
             </li>
           ))}
         </ul>

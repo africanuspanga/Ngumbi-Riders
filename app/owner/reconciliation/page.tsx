@@ -12,9 +12,9 @@ export default async function ReconciliationPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/owner/payments" className="text-sm font-medium text-muted">← Payments</Link>
+        <Link href="/owner/payments" className="text-sm font-medium text-muted-foreground">← Payments</Link>
         <h1 className="mt-1 text-2xl font-bold text-primary-dark">Snippe reconciliation</h1>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Pending and failed payments to review. The reconciliation cron (Phase 8)
           will auto-resolve stale pending attempts against Snippe.
         </p>
@@ -28,13 +28,13 @@ export default async function ReconciliationPage() {
       <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">Stale pending (&gt; 1 hour)</h2>
         {s.stalePending.length === 0 ? (
-          <p className="text-sm text-muted">None. ✓</p>
+          <p className="text-sm text-muted-foreground">None. ✓</p>
         ) : (
           <ul className="flex flex-col divide-y divide-border text-sm">
             {s.stalePending.map((p) => (
               <li key={p.id} className="flex justify-between py-2">
                 <span>{formatTZS(p.amount)}</span>
-                <span className="text-muted">{p.created_at.slice(0, 16).replace('T', ' ')}</span>
+                <span className="text-muted-foreground">{p.created_at.slice(0, 16).replace('T', ' ')}</span>
               </li>
             ))}
           </ul>
@@ -48,7 +48,7 @@ function Stat({ label, value, tone }: { label: string; value: number; tone: stri
   return (
     <div className="rounded-[--radius-card] border border-border bg-white p-4">
       <div className={`text-2xl font-bold ${tone}`}>{value}</div>
-      <div className="text-xs text-muted">{label}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
     </div>
   );
 }

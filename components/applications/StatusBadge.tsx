@@ -2,7 +2,7 @@ import type { ApplicationStatus } from '@/lib/supabase/types';
 import { STATUS_META } from '@/lib/applications/status';
 
 const TONE_CLASS: Record<string, string> = {
-  neutral: 'bg-surface text-muted',
+  neutral: 'bg-surface text-muted-foreground',
   progress: 'bg-blue-50 text-[color:var(--color-advance)]',
   good: 'bg-surface text-[color:var(--color-paid)]',
   bad: 'bg-red-50 text-[color:var(--color-overdue)]',

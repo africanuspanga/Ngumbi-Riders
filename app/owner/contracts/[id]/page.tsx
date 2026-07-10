@@ -34,7 +34,7 @@ export default async function ContractDetailPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/owner/contracts" className="text-sm font-medium text-muted">
+        <Link href="/owner/contracts" className="text-sm font-medium text-muted-foreground">
           ← Contracts
         </Link>
       </div>
@@ -42,11 +42,11 @@ export default async function ContractDetailPage({
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-primary-dark">{c.contract_number}</h1>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             {c.rider_name} ({c.rider_number}) · {c.registration}
           </p>
         </div>
-        <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted">
+        <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
           {c.status}
         </span>
       </header>
@@ -73,7 +73,7 @@ export default async function ContractDetailPage({
 
       <Section title="Obligations">
         {c.obligationStats.total === 0 ? (
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             No obligations yet — activate the contract to generate the calendar.
           </p>
         ) : (
@@ -90,12 +90,12 @@ export default async function ContractDetailPage({
               {c.signatures.map((s) => (
                 <li key={s.id} className="flex justify-between border-b border-border py-1">
                   <span className="capitalize">{s.signer_role}{s.signer_name ? ` · ${s.signer_name}` : ''}</span>
-                  <span className="text-muted">{s.method}</span>
+                  <span className="text-muted-foreground">{s.method}</span>
                 </li>
               ))}
-              {c.hasSignedDocument && <li className="text-muted">Signed physical copy on file ✓</li>}
+              {c.hasSignedDocument && <li className="text-muted-foreground">Signed physical copy on file ✓</li>}
               {c.signatures.length === 0 && !c.hasSignedDocument && (
-                <li className="text-muted">No signatures yet.</li>
+                <li className="text-muted-foreground">No signatures yet.</li>
               )}
             </ul>
           </Section>
@@ -146,7 +146,7 @@ function Grid({ children }: { children: React.ReactNode }) {
 function Info({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="flex flex-col">
-      <span className="text-xs text-muted">{label}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
       <span className="text-sm font-medium text-foreground">{value || '—'}</span>
     </div>
   );

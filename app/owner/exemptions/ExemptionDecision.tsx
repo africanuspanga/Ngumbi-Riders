@@ -31,7 +31,7 @@ export function ExemptionDecision({ id, status }: { id: string; status: string }
     <div className="flex flex-col gap-2 border-t border-border pt-2">
       <div className="flex flex-wrap gap-2">
         {status === 'submitted' && (
-          <button type="button" disabled={pending} onClick={() => run(() => setExemptionUnderReview(id))} className="rounded-[--radius-card] border border-border bg-white px-3 py-1.5 text-sm font-medium text-muted hover:bg-surface">
+          <button type="button" disabled={pending} onClick={() => run(() => setExemptionUnderReview(id))} className="rounded-[--radius-card] border border-border bg-white px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-surface">
             Kagua
           </button>
         )}

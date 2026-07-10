@@ -22,11 +22,11 @@ export default async function ApplySuccessPage({
       </div>
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold text-primary-dark">{t('success.title')}</h1>
-        <p className="text-muted">{t('success.message')}</p>
+        <p className="text-muted-foreground">{t('success.message')}</p>
       </div>
       {ref && (
         <div className="w-full rounded-[--radius-card] border border-border bg-white p-4">
-          <p className="text-xs text-muted">{t('success.refLabel')}</p>
+          <p className="text-xs text-muted-foreground">{t('success.refLabel')}</p>
           <p className="text-lg font-bold tracking-wide text-primary-dark">{ref}</p>
         </div>
       )}

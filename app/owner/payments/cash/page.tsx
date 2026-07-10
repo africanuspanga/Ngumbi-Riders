@@ -13,9 +13,9 @@ export default async function CashPaymentPage() {
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6">
       <div>
-        <Link href="/owner/payments" className="text-sm font-medium text-muted">← Payments</Link>
+        <Link href="/owner/payments" className="text-sm font-medium text-muted-foreground">← Payments</Link>
         <h1 className="mt-1 text-2xl font-bold text-primary-dark">Record cash payment</h1>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Only the owner can record cash. The amount is computed from the selected
           whole obligations.
         </p>

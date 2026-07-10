@@ -91,7 +91,7 @@ export function SignaturePad({
         type="button"
         onClick={clear}
         disabled={!hasInk}
-        className="self-end text-sm font-medium text-muted disabled:opacity-50"
+        className="self-end text-sm font-medium text-muted-foreground disabled:opacity-50"
       >
         {clearLabel}
       </button>

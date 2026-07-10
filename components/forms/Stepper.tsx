@@ -14,7 +14,7 @@ export function Stepper({
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between text-sm">
         <span className="font-semibold text-primary-dark">{label}</span>
-        <span className="text-muted">
+        <span className="text-muted-foreground">
           {current + 1}/{total}
         </span>
       </div>

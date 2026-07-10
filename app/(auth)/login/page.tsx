@@ -27,7 +27,7 @@ export default async function LoginPage({
       }
     >
       <LoginForm mode="rider" next={next} />
-      <p className="mt-4 text-sm text-muted">{t('forgotPin')}</p>
+      <p className="mt-4 text-sm text-muted-foreground">{t('forgotPin')}</p>
     </LoginShell>
   );
 }

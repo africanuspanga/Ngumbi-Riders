@@ -39,7 +39,7 @@ export function LoginShell({
       </div>
 
       {footer && (
-        <div className="pb-2 text-center text-sm text-muted">{footer}</div>
+        <div className="pb-2 text-center text-sm text-muted-foreground">{footer}</div>
       )}
     </main>
   );

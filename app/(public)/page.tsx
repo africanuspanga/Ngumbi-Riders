@@ -22,7 +22,7 @@ export default async function LandingPage() {
           className="rounded-2xl"
         />
         <h1 className="text-2xl font-bold text-primary-dark">{c('appName')}</h1>
-        <p className="text-muted">{t('tagline')}</p>
+        <p className="text-muted-foreground">{t('tagline')}</p>
       </div>
 
       <div className="flex w-full flex-col gap-3">

@@ -243,3 +243,36 @@ export async function getRiderCalendar(): Promise<CalendarDay[]> {
     })),
   );
 }
+
+// ---- Collections chart (owner dashboard) -----------------------------------
+export type CollectionsPoint = { date: string; collected: number };
+
+/** Completed payment totals per EAT day for the last `days` days (inclusive
+ * of today). Days without payments are zero-filled so the chart axis is
+ * continuous. */
+export async function getCollectionsSeries(days = 14): Promise<CollectionsPoint[]> {
+  const supabase = await createServerSupabase();
+  const today = localDateString();
+  // Anchor at noon EAT so day arithmetic never crosses a boundary.
+  const anchorMs = Date.parse(`${today}T12:00:00+03:00`);
+  const dates: string[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    dates.push(localDateString(new Date(anchorMs - i * 86_400_000)));
+  }
+  const startUtc = new Date(Date.parse(`${dates[0]}T00:00:00+03:00`)).toISOString();
+
+  const { data } = await supabase
+    .from('payments')
+    .select('amount, completed_at')
+    .eq('status', 'completed')
+    .gte('completed_at', startUtc)
+    .limit(10000);
+
+  const byDay = new Map<string, number>(dates.map((d) => [d, 0]));
+  for (const p of (data ?? []) as { amount: number; completed_at: string | null }[]) {
+    if (!p.completed_at) continue;
+    const day = localDateString(new Date(p.completed_at));
+    if (byDay.has(day)) byDay.set(day, (byDay.get(day) ?? 0) + p.amount);
+  }
+  return dates.map((date) => ({ date, collected: byDay.get(date) ?? 0 }));
+}

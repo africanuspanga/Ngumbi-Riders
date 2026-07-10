@@ -13,14 +13,14 @@ export default async function OwnerExemptionsPage() {
     <div className="flex flex-col gap-6">
       <header>
         <h1 className="text-2xl font-bold text-primary-dark">Exemption requests</h1>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Waive an obligation or postpone it. Decisions preserve the original due
           date in history.
         </p>
       </header>
 
       {exemptions.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted">No exemption requests.</p>
+        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">No exemption requests.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {exemptions.map((e) => (
@@ -28,9 +28,9 @@ export default async function OwnerExemptionsPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold text-foreground">{e.rider_name}</p>
-                  <p className="text-xs text-muted">Obligation: {e.due_date ?? '—'}</p>
+                  <p className="text-xs text-muted-foreground">Obligation: {e.due_date ?? '—'}</p>
                 </div>
-                <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted">
+                <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
                   {EXEMPTION_STATUS_LABELS[e.status] ?? e.status}
                 </span>
               </div>

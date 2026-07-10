@@ -15,13 +15,13 @@ export default async function ApplyPage() {
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-5 py-8">
       <header className="flex flex-col gap-1">
         <div className="flex items-center justify-between">
-          <Link href="/" className="text-sm font-medium text-muted">
+          <Link href="/" className="text-sm font-medium text-muted-foreground">
             {t('header.back')}
           </Link>
           <LanguageSwitcher />
         </div>
         <h1 className="text-2xl font-bold text-primary-dark">{t('header.title')}</h1>
-        <p className="text-sm text-muted">{t('header.subtitle')}</p>
+        <p className="text-sm text-muted-foreground">{t('header.subtitle')}</p>
       </header>
       <ApplicationForm />
     </main>

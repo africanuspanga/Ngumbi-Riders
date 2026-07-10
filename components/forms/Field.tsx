@@ -25,7 +25,7 @@ export function FieldShell({
         {required && <span className="text-overdue"> *</span>}
       </span>
       {children}
-      {hint && !error && <span className="text-xs text-muted">{hint}</span>}
+      {hint && !error && <span className="text-xs text-muted-foreground">{hint}</span>}
       {error && (
         <span role="alert" className="text-xs font-medium text-overdue">
           {error}

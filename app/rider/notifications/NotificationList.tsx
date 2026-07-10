@@ -24,7 +24,7 @@ export function NotificationList({ notifications }: { notifications: Notificatio
         </button>
       )}
       {notifications.length === 0 ? (
-        <p className="text-muted">Hakuna arifa.</p>
+        <p className="text-muted-foreground">Hakuna arifa.</p>
       ) : (
         <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border bg-white">
           {notifications.map((n) => {
@@ -32,9 +32,9 @@ export function NotificationList({ notifications }: { notifications: Notificatio
               <div className="flex items-start gap-2">
                 {!n.read_at && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />}
                 <div className="flex flex-col">
-                  <span className={`font-semibold ${n.read_at ? 'text-muted' : 'text-foreground'}`}>{n.title}</span>
-                  {n.body && <span className="text-sm text-muted">{n.body}</span>}
-                  <span className="text-xs text-muted">{n.created_at.slice(0, 16).replace('T', ' ')}</span>
+                  <span className={`font-semibold ${n.read_at ? 'text-muted-foreground' : 'text-foreground'}`}>{n.title}</span>
+                  {n.body && <span className="text-sm text-muted-foreground">{n.body}</span>}
+                  <span className="text-xs text-muted-foreground">{n.created_at.slice(0, 16).replace('T', ' ')}</span>
                 </div>
               </div>
             );

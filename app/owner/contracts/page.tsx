@@ -6,7 +6,7 @@ import { formatTZS } from '@/lib/money/format';
 export const metadata = { title: 'Contracts' };
 
 const STATUS_TONE: Record<string, string> = {
-  draft: 'bg-surface text-muted',
+  draft: 'bg-surface text-muted-foreground',
   awaiting_signatures: 'bg-amber-50 text-[color:var(--color-warning)]',
   scheduled: 'bg-blue-50 text-[color:var(--color-advance)]',
   active: 'bg-surface text-[color:var(--color-paid)]',
@@ -14,7 +14,7 @@ const STATUS_TONE: Record<string, string> = {
   completed: 'bg-surface text-[color:var(--color-paid)]',
   completed_early: 'bg-surface text-[color:var(--color-paid)]',
   terminated: 'bg-red-50 text-[color:var(--color-overdue)]',
-  cancelled: 'bg-surface text-muted',
+  cancelled: 'bg-surface text-muted-foreground',
 };
 
 export default async function ContractsPage() {
@@ -26,7 +26,7 @@ export default async function ContractsPage() {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-primary-dark">Contracts</h1>
-          <p className="text-sm text-muted">Lease agreements and their status.</p>
+          <p className="text-sm text-muted-foreground">Lease agreements and their status.</p>
         </div>
         <Link
           href="/owner/contracts/new"
@@ -37,7 +37,7 @@ export default async function ContractsPage() {
       </header>
 
       {contracts.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted">
+        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">
           No contracts yet.
         </p>
       ) : (
@@ -52,7 +52,7 @@ export default async function ContractsPage() {
                   <span className="font-semibold text-foreground">
                     {c.contract_number} · {c.rider_name}
                   </span>
-                  <span className="text-xs text-muted">
+                  <span className="text-xs text-muted-foreground">
                     {c.registration} · {formatTZS(c.installment_amount)}/installment
                     {c.start_date && ` · ${c.start_date} → ${c.end_date}`}
                   </span>

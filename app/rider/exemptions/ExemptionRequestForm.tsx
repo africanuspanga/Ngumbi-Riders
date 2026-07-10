@@ -32,7 +32,7 @@ export function ExemptionRequestForm({ obligations }: { obligations: Obligation[
   }
 
   if (obligations.length === 0) {
-    return <p className="text-sm text-muted">Huna malipo yanayoweza kuombewa msamaha.</p>;
+    return <p className="text-sm text-muted-foreground">Huna malipo yanayoweza kuombewa msamaha.</p>;
   }
 
   return (
