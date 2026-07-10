@@ -18,7 +18,10 @@ export const changePinSchema = z.object({
 export type ChangePinInput = z.infer<typeof changePinSchema>;
 
 export const ownerLoginSchema = z.object({
-  email: z.string().email(),
+  // Email address OR phone number — the route resolves which one it is and
+  // strictly re-validates (canonical E.164 or a real email) before the value
+  // reaches the rate limiter or Supabase.
+  email: z.string().trim().min(3).max(200),
   password: z.string().min(8).max(200),
 });
 export type OwnerLoginInput = z.infer<typeof ownerLoginSchema>;

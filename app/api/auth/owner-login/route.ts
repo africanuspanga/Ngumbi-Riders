@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { z } from 'zod';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { ownerLoginSchema } from '@/lib/validation/auth';
+import { normalizePhone } from '@/lib/auth/phone';
 import {
   checkLoginRateLimit,
   recordLoginAttempt,
@@ -8,8 +10,10 @@ import {
 import { getClientIp } from '@/lib/security/request';
 import { writeAudit } from '@/lib/audit/audit';
 
-// Owner authentication: Supabase email/password (spec §7.1). No PIN. Shares the
-// same brute-force throttle, keyed by IP (and the email as a pseudo-phone key).
+// Owner authentication: Supabase email/password OR phone/password (spec §7.1 —
+// the owner may sign in with either identifier; his auth user carries both a
+// confirmed email and a confirmed phone). No PIN. Shares the same brute-force
+// throttle, keyed by IP (and the identifier as a pseudo-phone key).
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
@@ -31,7 +35,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
   }
 
-  const emailKey = parsed.data.email.toLowerCase();
+  // Resolve the identifier strictly: a canonical E.164 phone or a validated
+  // email. Nothing else may reach the rate limiter (its filter interpolates
+  // the key) or Supabase.
+  let identifier: { phone: string } | { email: string };
+  try {
+    identifier = { phone: normalizePhone(parsed.data.email) };
+  } catch {
+    const email = z.string().email().safeParse(parsed.data.email.toLowerCase());
+    if (!email.success) {
+      await recordLoginAttempt({ phone: 'invalid', ip, outcome: 'invalid_credentials', userAgent });
+      return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
+    }
+    identifier = { email: email.data };
+  }
+  const emailKey = 'phone' in identifier ? identifier.phone : identifier.email;
   const decision = await checkLoginRateLimit(emailKey, ip);
   if (!decision.allowed) {
     return NextResponse.json(
@@ -41,10 +59,16 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = await createServerSupabase();
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: parsed.data.email,
-    password: parsed.data.password,
-  });
+  const { data, error } =
+    'phone' in identifier
+      ? await supabase.auth.signInWithPassword({
+          phone: identifier.phone,
+          password: parsed.data.password,
+        })
+      : await supabase.auth.signInWithPassword({
+          email: identifier.email,
+          password: parsed.data.password,
+        });
 
   if (error || !data.user) {
     await recordLoginAttempt({

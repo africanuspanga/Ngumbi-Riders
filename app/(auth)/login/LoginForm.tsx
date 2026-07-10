@@ -88,11 +88,12 @@ export function LoginForm({ mode, next }: { mode: Mode; next?: string }) {
         <>
           <Field label={t('email')}>
             <input
-              type="email"
-              autoComplete="email"
+              type="text"
+              autoComplete="username"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="owner@ngumbi.co.tz / 0753 522 155"
               className="input"
             />
           </Field>

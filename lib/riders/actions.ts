@@ -6,6 +6,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { normalizePhone } from '@/lib/auth/phone';
 import { validatePin } from '@/lib/auth/pin';
 import { createRiderUser } from '@/lib/auth/provision';
+import { generateTempPin } from '@/lib/auth/temp-pin';
+import { derivePassword } from '@/lib/auth/pin-derive';
 import { encryptOptionalPII, decryptPII } from '@/lib/security/crypto';
 import { writeAudit } from '@/lib/audit/audit';
 import { localDateString } from '@/lib/dates/tz';
@@ -101,6 +103,49 @@ export async function createRiderManually(
 
   revalidatePath('/owner/riders');
   return { ok: true, data: { riderId: created.riderId, riderNumber } };
+}
+
+/**
+ * Owner-issued PIN reset (spec §7.3): generates a fresh CSPRNG temp PIN,
+ * re-derives the auth password server-side (the raw PIN is never stored or
+ * sent to Supabase), and forces a PIN change on the rider's next login. The
+ * temp PIN is returned ONCE for the owner to hand to the rider.
+ */
+export async function resetRiderPin(
+  id: string,
+): Promise<ActionResult<{ tempPin: string }>> {
+  const ownerId = await assertOwner();
+  const admin = createAdminClient();
+
+  const { data } = await admin
+    .from('riders')
+    .select('profile_id, phone')
+    .eq('id', id)
+    .maybeSingle();
+  const rider = data as { profile_id: string; phone: string } | null;
+  if (!rider) return { ok: false, error: 'not_found' };
+
+  const tempPin = generateTempPin(rider.phone);
+  const { error } = await admin.auth.admin.updateUserById(rider.profile_id, {
+    password: derivePassword(rider.phone, tempPin),
+  });
+  if (error) return { ok: false, error: 'update_failed' };
+
+  const { error: flagErr } = await admin
+    .from('profiles')
+    .update({ must_change_pin: true })
+    .eq('id', rider.profile_id);
+  if (flagErr) return { ok: false, error: 'update_failed' };
+
+  await writeAudit({
+    actorId: ownerId,
+    actorRole: 'owner',
+    action: 'rider.pin_reset',
+    entityType: 'rider',
+    entityId: id,
+  });
+  revalidatePath(`/owner/riders/${id}`);
+  return { ok: true, data: { tempPin } };
 }
 
 export async function setRiderStatus(

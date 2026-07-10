@@ -10,22 +10,28 @@ works in Swahili or English (toggle at the top of the login page).
 
 - **Owner sign-in page:** `/login/owner` (bookmark this — the main `/login`
   page is for riders and only shows phone + PIN).
-- **Email:** `owner@ngumbi.co.tz`
-- **Password:** the seed password is a temporary default (see
-  `scripts/seed.ts`). **Change it before the pilot:**
+- **Sign in with either** the email `owner@ngumbi.co.tz` **or the phone
+  number** `+255 753 522 155` (any format works — 0753…, +255753…), plus your
+  password.
+- To change the password (or the sign-in phone) later:
 
   ```bash
   OWNER_NEW_PASSWORD='pick-a-strong-password' npm run owner:password
+  OWNER_NEW_PASSWORD='...' OWNER_PHONE='+2557...' npm run owner:password
   ```
 
   (Run from the project folder; needs `.env.local`. You can also change it in
   the Supabase dashboard → Authentication → Users.)
 
 Riders sign in at `/login` with their **phone number + 4-digit PIN**. New
-riders get a temporary PIN and are forced to choose their own on first login.
-If a rider forgets their PIN, there is currently no self-service reset — the
-owner re-issues one (feature follow-up: a "reset PIN" button on the rider
-page; until then it's done via the developer/Supabase dashboard).
+riders join through the public application form at `/apply` (you approve and
+convert them, §3) or you create them directly — either way they receive a
+temporary PIN and are forced to choose their own on first login.
+
+**If a rider forgets their PIN:** open their page under `/owner/riders` →
+**Sign-in / PIN → Reset PIN**. You get a new temporary PIN (shown once) to
+hand to them; their old PIN stops working immediately and they must choose a
+new one at next sign-in. Every reset is recorded in the audit trail.
 
 ## 2. The dashboard (`/owner`)
 

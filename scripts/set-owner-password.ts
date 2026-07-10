@@ -1,8 +1,14 @@
 /*
- * Set (or reset) the owner account's password using the Supabase Admin API.
+ * Set (or reset) the owner account's password — and optionally the owner's
+ * sign-in phone number — using the Supabase Admin API.
  *
  * Run:
  *   OWNER_NEW_PASSWORD='your-new-password' npm run owner:password
+ *   OWNER_NEW_PASSWORD='...' OWNER_PHONE='+2557...' npm run owner:password
+ *
+ * With OWNER_PHONE set, the phone is attached (confirmed) to the owner's auth
+ * user so the owner can sign in at /login/owner with either the email or the
+ * phone number + password.
  *
  * Optionally set SEED_OWNER_EMAIL if the owner email differs from the default.
  * Requires .env.local with SUPABASE_SERVICE_ROLE_KEY (server-only).
@@ -10,6 +16,7 @@
 import './load-env';
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { normalizePhone } from '@/lib/auth/phone';
 
 const OWNER_EMAIL = process.env.SEED_OWNER_EMAIL ?? 'owner@ngumbi.co.tz';
 
@@ -46,12 +53,20 @@ async function main() {
     console.error(`No owner auth user matches ${OWNER_EMAIL} (set SEED_OWNER_EMAIL if it differs).`);
     process.exit(1);
   }
-  const { error } = await admin.auth.admin.updateUserById(userId, { password });
+  const attrs: { password: string; phone?: string; phone_confirm?: boolean } = { password };
+  if (process.env.OWNER_PHONE) {
+    attrs.phone = normalizePhone(process.env.OWNER_PHONE);
+    attrs.phone_confirm = true;
+  }
+
+  const { error } = await admin.auth.admin.updateUserById(userId, attrs);
   if (error) {
-    console.error(`Password update failed: ${error.message}`);
+    console.error(`Update failed: ${error.message}`);
     process.exit(1);
   }
-  console.log(`Password updated for ${OWNER_EMAIL}. Sign in at /login/owner.`);
+  console.log(
+    `Password updated for ${OWNER_EMAIL}${attrs.phone ? ` (sign-in phone: ${attrs.phone})` : ''}. Sign in at /login/owner.`,
+  );
 }
 
 main().catch((e) => {

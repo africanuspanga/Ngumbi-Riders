@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { revealRiderSecrets, setRiderStatus } from '@/lib/riders/actions';
+import { revealRiderSecrets, setRiderStatus, resetRiderPin } from '@/lib/riders/actions';
 import {
   assignMotorcycle,
   transferMotorcycle,
@@ -54,6 +54,77 @@ export function RiskControls({ id, current, reasons }: { id: string; current: Ri
           Apply override
         </button>
       </div>
+    </div>
+  );
+}
+
+export function RiderPinReset({ id }: { id: string }) {
+  const [pending, start] = useTransition();
+  const [confirming, setConfirming] = useState(false);
+  const [tempPin, setTempPin] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  if (tempPin) {
+    return (
+      <div className="flex flex-col gap-2 rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 p-3">
+        <span className="text-sm font-semibold text-primary-dark">
+          New temporary PIN: <span className="font-mono text-lg tracking-[0.3em]">{tempPin}</span>
+        </span>
+        <p className="text-xs text-muted">
+          Shown only once — hand it to the rider now. Their old PIN no longer
+          works, and they must choose a new PIN on their next sign-in.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-sm text-muted">
+        Rider forgot their PIN? Issue a new temporary one. This signs them out
+        of the old PIN immediately.
+      </p>
+      {!confirming ? (
+        <button
+          type="button"
+          onClick={() => setConfirming(true)}
+          className="self-start rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface"
+        >
+          Reset PIN…
+        </button>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                setError(null);
+                const res = await resetRiderPin(id);
+                if (res.ok && res.data) setTempPin(res.data.tempPin);
+                else setError('Reset failed — try again.');
+                setConfirming(false);
+              })
+            }
+            className="rounded-[--radius-card] bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+          >
+            {pending ? '…' : 'Confirm reset'}
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => setConfirming(false)}
+            className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="text-sm font-medium text-overdue">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

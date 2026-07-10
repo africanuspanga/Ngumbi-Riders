@@ -25,7 +25,7 @@
     "ownerTab": "Owner",
     "phone": "Phone number",
     "pin": "Four-digit PIN",
-    "email": "Email",
+    "email": "Email or phone number",
     "password": "Password",
     "submit": "Sign in",
     "pending": "Signing in…",

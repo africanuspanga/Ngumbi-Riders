@@ -6,6 +6,7 @@ import { listAvailableMotorcycles } from '@/lib/motorcycles/queries';
 import {
   RiderStatusActions,
   RiderRevealSecrets,
+  RiderPinReset,
   AssignmentActions,
   RiskControls,
 } from './rider-actions';
@@ -73,6 +74,10 @@ export default async function RiderDetailPage({
 
       <Section title="Sensitive identifiers">
         <RiderRevealSecrets id={rider.id} />
+      </Section>
+
+      <Section title="Sign-in / PIN">
+        <RiderPinReset id={rider.id} />
       </Section>
 
       <Section title="Motorcycle">
