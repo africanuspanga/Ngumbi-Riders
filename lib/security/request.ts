@@ -8,6 +8,12 @@ import 'server-only';
 const IP_SHAPE = /^[0-9a-fA-F:.]{3,45}$/;
 
 export function getClientIp(headers: Headers): string {
+  // Prefer the proxy-set header: on Vercel `x-real-ip` is written by the
+  // platform and can't be spoofed by the client, whereas the FIRST hop of
+  // x-forwarded-for is client-supplied — an attacker rotating it per request
+  // would otherwise never trip the per-IP throttle.
+  const real = headers.get('x-real-ip')?.trim();
+  if (real && IP_SHAPE.test(real)) return real;
   const forwarded = headers.get('x-forwarded-for');
   if (forwarded) {
     const first = forwarded.split(',')[0]?.trim();
@@ -16,7 +22,5 @@ export function getClientIp(headers: Headers): string {
     // (which would fail the rate limiter open).
     if (first && IP_SHAPE.test(first)) return first;
   }
-  const real = headers.get('x-real-ip')?.trim();
-  if (real && IP_SHAPE.test(real)) return real;
   return 'unknown';
 }

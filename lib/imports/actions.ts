@@ -5,6 +5,7 @@ import { getSessionProfile } from '@/lib/auth/session';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createRiderUser } from '@/lib/auth/provision';
 import { generateTempPin } from '@/lib/auth/temp-pin';
+import { validatePin } from '@/lib/auth/pin';
 import { encryptOptionalPII } from '@/lib/security/crypto';
 import { writeAudit } from '@/lib/audit/audit';
 import { parseImportFile } from './parse';
@@ -206,7 +207,12 @@ export async function commitImport(batchId: string): Promise<CommitResult> {
       const d = result.data;
       riderSeq++;
       const riderNumber = `NGR-R-${String(riderSeq).padStart(4, '0')}`;
-      const tempPin = d.temp_pin && /^\d{4}$/.test(d.temp_pin) ? d.temp_pin : generateTempPin(d.phone);
+      // A spreadsheet-supplied PIN must pass the same weak-PIN rules as every
+      // other credential path (no 1234/0000/phone-derived PINs via import).
+      const tempPin =
+        d.temp_pin && /^\d{4}$/.test(d.temp_pin) && validatePin(d.temp_pin, d.phone).ok
+          ? d.temp_pin
+          : generateTempPin(d.phone);
       let created;
       try {
         created = await createRiderUser({

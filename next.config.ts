@@ -46,6 +46,13 @@ const nextConfig: NextConfig = {
   // Never bundle server-only secrets or the admin client into client code.
   // @react-pdf/renderer is a heavy Node renderer kept out of the bundle.
   serverExternalPackages: ['@supabase/supabase-js', '@react-pdf/renderer', 'web-push'],
+  experimental: {
+    serverActions: {
+      // Owner uploads go through server actions (scanned signed contracts,
+      // XLSX imports) — the 1 MB default rejects real-world files.
+      bodySizeLimit: '15mb',
+    },
+  },
   async headers() {
     return [
       {

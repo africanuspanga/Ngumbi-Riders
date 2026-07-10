@@ -4,10 +4,10 @@ import { applicationSchema } from '@/lib/validation/application';
 import { encryptPII } from '@/lib/security/crypto';
 import { normalizePhone } from '@/lib/auth/phone';
 import { formatApplicationReference } from '@/lib/applications/reference';
-import { validateFile, ACCEPTED_EXTENSIONS } from '@/lib/applications/documents';
-import { fileSignatureMatches } from '@/lib/applications/file-signature';
+import { createUploadToken } from '@/lib/applications/upload-token';
 import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { getClientIp } from '@/lib/security/request';
+import { localDateString } from '@/lib/dates/tz';
 
 /*
  * Public rider application submission (spec §8, §23.3). Anonymous users have no
@@ -16,17 +16,15 @@ import { getClientIp } from '@/lib/security/request';
  * payload is re-validated here and sensitive identifiers are encrypted before
  * insert (spec §25.1).
  *
- * NOTE: activates once Supabase credentials are configured. Until then it
- * returns a clear error. Duplicate detection currently keys on phone (plaintext);
- * a deterministic blind-index for NIDA/licence is a tracked follow-up.
+ * Documents are NOT part of this request: 13 files in one multipart body blows
+ * Vercel's ~4.5 MB request cap, so this endpoint returns a short-lived signed
+ * upload token and the client posts each document individually to
+ * /api/applications/documents.
+ *
+ * Duplicate detection currently keys on phone (plaintext); a deterministic
+ * blind-index for NIDA/licence is a tracked follow-up.
  */
 export const runtime = 'nodejs';
-
-function extOf(name: string): string {
-  const dot = name.lastIndexOf('.');
-  const ext = dot === -1 ? '' : name.slice(dot + 1).toLowerCase();
-  return (ACCEPTED_EXTENSIONS as readonly string[]).includes(ext) ? ext : 'bin';
-}
 
 export async function POST(request: NextRequest) {
   // Throttle public submissions per IP (spec §25.2).
@@ -64,29 +62,6 @@ export async function POST(request: NextRequest) {
   const data = parsed.data;
   const primaryPhone = normalizePhone(data.primaryPhone);
 
-  // ---- Re-validate uploaded files server-side ----------------------------
-  const docEntries = [...form.entries()].filter(
-    ([k, v]) => k.startsWith('doc:') && v instanceof File,
-  ) as [string, File][];
-  for (const [, file] of docEntries) {
-    const check = validateFile({ name: file.name, type: file.type, size: file.size });
-    if (!check.ok) {
-      return NextResponse.json(
-        { error: 'file_rejected', reason: check.reason },
-        { status: 422 },
-      );
-    }
-    // Confirm the real leading bytes match the claimed type — a lying MIME
-    // type / extension is not enough to get a file stored (spec §8.6, §24).
-    const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
-    if (!fileSignatureMatches(head, file.type)) {
-      return NextResponse.json(
-        { error: 'file_rejected', reason: 'signature' },
-        { status: 422 },
-      );
-    }
-  }
-
   const admin = createAdminClient();
 
   // ---- Duplicate detection (warn, never silently block — spec §8.6) ------
@@ -106,7 +81,8 @@ export async function POST(request: NextRequest) {
   if (dupRiders && dupRiders.length > 0) duplicateFlags.push('phone_matches_rider');
 
   // ---- Allocate a human-readable reference (retry on race) ---------------
-  const year = new Date().getFullYear();
+  // Business year in EAT, not server-UTC (differs 21:00–24:00 UTC on Dec 31).
+  const year = Number(localDateString().slice(0, 4));
   const yearStart = `${year}-01-01`;
   const yearEnd = `${year + 1}-01-01`;
 
@@ -184,43 +160,6 @@ export async function POST(request: NextRequest) {
     guarantorIds.push((gRow as { id: string }).id);
   }
 
-  // ---- Upload documents to private buckets --------------------------------
-  for (const [key, file] of docEntries) {
-    const docKey = key.slice('doc:'.length); // e.g. applicant.nida_front
-    const [scope, docType] = docKey.split('.');
-    if (!scope || !docType) continue;
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const ext = extOf(file.name);
-
-    if (scope === 'applicant') {
-      const path = `${applicationId}/${docType}.${ext}`;
-      const { error } = await admin.storage
-        .from('application-documents')
-        .upload(path, buffer, { contentType: file.type, upsert: true });
-      if (!error) {
-        await admin.from('application_documents').insert({
-          application_id: applicationId,
-          doc_type: docType,
-          storage_path: path,
-        });
-      }
-    } else {
-      const gIndex = scope === 'guarantorOne' ? 0 : 1;
-      const guarantorId = guarantorIds[gIndex];
-      const path = `${applicationId}/${guarantorId}/${docType}.${ext}`;
-      const { error } = await admin.storage
-        .from('guarantor-documents')
-        .upload(path, buffer, { contentType: file.type, upsert: true });
-      if (!error && guarantorId) {
-        await admin.from('guarantor_documents').insert({
-          guarantor_id: guarantorId,
-          doc_type: docType,
-          storage_path: path,
-        });
-      }
-    }
-  }
-
   // ---- Drawn signature (transparent PNG data URL) -------------------------
   if (data.signature.startsWith('data:image/')) {
     const base64 = data.signature.split(',')[1] ?? '';
@@ -238,5 +177,9 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, reference, applicationId });
+  // Documents are uploaded one-by-one via /api/applications/documents using
+  // this short-lived capability token (Vercel request-size cap).
+  const uploadToken = createUploadToken(applicationId);
+
+  return NextResponse.json({ ok: true, reference, applicationId, uploadToken });
 }

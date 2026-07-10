@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireRider } from '@/lib/auth/session';
 import { getReceiptView } from '@/lib/payments/queries';
 import { formatTZS } from '@/lib/money/format';
+import { localDateString } from '@/lib/dates/tz';
 
 export const metadata = { title: 'Risiti' };
 
@@ -33,7 +34,10 @@ export default async function RiderReceiptPage({
 
         <dl className="flex flex-col gap-2 text-sm">
           <Row label="Namba ya risiti" value={receipt.receiptNumber} />
-          <Row label="Tarehe" value={receipt.completedAt?.slice(0, 10)} />
+          <Row
+            label="Tarehe"
+            value={receipt.completedAt ? localDateString(new Date(receipt.completedAt)) : null}
+          />
           <Row label="Msimbo wa uthibitisho" value={receipt.verificationCode} />
         </dl>
 

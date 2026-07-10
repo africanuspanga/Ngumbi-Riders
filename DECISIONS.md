@@ -5,6 +5,37 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-031 · Settlement is self-defending at the DB chokepoint (migration 0018)
+The 2026-07-10 deep-dive found that nothing enforced "an obligation being
+settled must still be outstanding and owned by this payment": a cash payment
+could settle obligations reserved by an in-flight mobile payment (stranding the
+rider's mobile money on `allocation_mismatch` forever), and a late
+`payment.completed` could flip an owner-waived (`exempted`) or `postponed`
+obligation back to `paid`. Migration 0018 makes `record_completed_payment`
+verify payment status ∈ (created,pending), obligation status ∈
+(scheduled,due,overdue), rider match, and no active reservation by another
+payment; the exemption functions gained rider-match + reservation guards and
+`exemptions_self_insert` now pins the inserted shape (a rider could previously
+file an exemption against ANOTHER rider's obligation and the owner's approval
+would corrupt the victim's ledger). The webhook maps invariant violations to a
+200 + audit row + owner notification (`payment_issue`) instead of a retry loop,
+and matches payments by `metadata.payment_id` as a fallback when the reference
+was never stored. Reversal events are flagged to the owner (un-settlement flow
+is still a follow-up).
+
+## D-030 · /apply uploads one document per request (Vercel body cap)
+Vercel caps request bodies at ~4.5 MB, so the original single multipart POST of
+payload + 13 documents could never succeed in production with real phone
+photos. The submit endpoint now accepts the text payload + drawn signature
+only and returns a stateless 2-hour HMAC upload token
+(`lib/applications/upload-token`, signed with `AUTH_PIN_PEPPER`); the client
+then posts each document individually to `/api/applications/documents`
+(rate-limited by the pre-existing `upload_sign` policy, scope/doc-type
+allowlisted, magic-byte-scanned, idempotent for retries). `MAX_FILE_BYTES`
+dropped 10 MiB → 4 MiB to fit the per-request cap. A submission abandoned
+mid-upload leaves an application with partial documents — visible to the owner
+in review, strictly better than the old all-or-nothing failure.
+
 ## D-029 · Go-live DB ops run through the Management API, not `db push`
 The hosted project's Postgres password is unknown locally (a reset was not
 authorized during the 2026-07-09 go-live session), so migrations were applied

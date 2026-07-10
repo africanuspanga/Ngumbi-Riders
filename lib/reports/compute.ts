@@ -127,9 +127,14 @@ export function paymentPerformance(obligations: ReportObligation[]): PaymentPerf
   let totalDelay = 0;
   for (const o of settled) {
     const delay = daysBetween(o.dueDate, o.settledDate!);
-    if (o.status === 'paid_in_advance' || delay < 0) advance++;
-    if (delay <= 0) onTime++;
-    else {
+    if (o.status === 'paid_in_advance' || delay < 0) {
+      // Advance settlements are never "late" — a paid_in_advance row whose
+      // settledDate drifted past dueDate must not pollute averageDelayDays.
+      advance++;
+      if (delay <= 0) onTime++;
+    } else if (delay <= 0) {
+      onTime++;
+    } else {
       late++;
       totalDelay += delay;
     }

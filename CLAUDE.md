@@ -4,12 +4,17 @@
 > **Product source of truth = [`Docs/NGUMBI_RIDERS_BUILD_SPEC.md`](Docs/NGUMBI_RIDERS_BUILD_SPEC.md)** (the full build
 > spec). This file never overrides the spec; it tracks execution against it.
 >
+> **New here? Read [`Docs/HANDOVER.md`](Docs/HANDOVER.md) first** — the
+> orientation guide for future sessions and developers (how the system works
+> and why); this file tracks where execution stands right now.
+>
 > Companion docs: [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md) ·
-> [`DECISIONS.md`](DECISIONS.md) (D-001…D-028) · [`docs/MIGRATION_PLAN.md`](docs/MIGRATION_PLAN.md) ·
-> [`docs/ROUTE_MAP.md`](docs/ROUTE_MAP.md) · [`docs/RLS_MATRIX.md`](docs/RLS_MATRIX.md) ·
-> [`docs/LAUNCH_CHECKLIST.md`](docs/LAUNCH_CHECKLIST.md) ·
-> [`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md) ·
-> [`docs/BACKUP_RECOVERY.md`](docs/BACKUP_RECOVERY.md)
+> [`DECISIONS.md`](DECISIONS.md) (D-001…D-031) · [`Docs/MIGRATION_PLAN.md`](Docs/MIGRATION_PLAN.md) ·
+> [`Docs/ROUTE_MAP.md`](Docs/ROUTE_MAP.md) · [`Docs/RLS_MATRIX.md`](Docs/RLS_MATRIX.md) ·
+> [`Docs/LAUNCH_CHECKLIST.md`](Docs/LAUNCH_CHECKLIST.md) ·
+> [`Docs/SECURITY_REVIEW.md`](Docs/SECURITY_REVIEW.md) ·
+> [`Docs/BACKUP_RECOVERY.md`](Docs/BACKUP_RECOVERY.md) ·
+> [`Docs/SAAS_PLAN.md`](Docs/SAAS_PLAN.md) (future multi-tenant SaaS blueprint — plan only, not built)
 
 ---
 
@@ -29,11 +34,82 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 ## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
 
 Verified locally: `npm run typecheck` ✅ · `npm run lint` ✅ ·
-`npm run test` ✅ (155 unit pass, 10 RLS skip) · `npm run build` ✅ (55 routes).
+`npm run test` ✅ (158 unit pass, 10 RLS skip) · `npm run build` ✅ (56 routes).
+
+**DEEP-DIVE REVIEW #2 (2026-07-10) — all findings fixed in code; two ops
+actions remain.** Six parallel review passes (payments/money, auth/security,
+cron/jobs, DB/RLS, API surface, domain/date math) over the whole codebase.
+What was found and fixed:
+- **Money integrity (migration 0018 + code, D-031):** `record_completed_payment`
+  now refuses payments outside created/pending, non-outstanding obligations
+  (exempted/postponed/cancelled were silently flipped back to `paid` —
+  reversing owner waivers / double-billing postponements), rider mismatches,
+  and obligations actively reserved by ANOTHER payment (cash could previously
+  settle days reserved by an in-flight mobile payment, permanently stranding
+  the rider's mobile money). Exemption waive/postpone gained the same
+  rider-match + reservation guards; contract activation refuses an empty
+  calendar; `recordCashPayment` also pre-checks reservations and rejects
+  future dates.
+- **Loud failures instead of silent ones:** webhook amount/currency mismatches,
+  settlement invariant violations and reversal/chargeback events now write an
+  audit row + owner `payment_issue` notification (previously: silent 200 or an
+  infinite 500 retry loop). The initiate route's reference-store step is
+  error-checked, and the webhook falls back to matching by
+  `metadata.payment_id` so a payment whose reference was never stored is no
+  longer unmatchable forever. Webhook dedupe keys on error code 23505, not the
+  message text. Daily-summary email failure now fails the job run (was
+  recorded as "success"); outbox retries failed sends (≤5 attempts) and no
+  longer permanently strands messages enqueued before the Resend key exists.
+- **RLS tightening (0018):** `exemptions_self_insert` pins status/decision
+  columns and requires the obligation to belong to the inserting rider (a
+  forged row could previously make the owner waive a DIFFERENT rider's
+  obligation); `incidents_self_insert` pins `status='open'`; riders can update
+  only `notifications.read_at`; one open exemption per obligation; definer
+  functions get `search_path = public, pg_temp`; missing FK indexes added.
+- **Cron correctness:** daily summary now reports the day that just ENDED (it
+  ran at 00:00 EAT and always summarized the minute-old empty new day);
+  obligation-status query gained the missing `due_date <= today` filter (it
+  fetched the entire future calendar and silently truncated at 10k rows);
+  dispatcher `maxDuration` 60→300s (Hobby max); transition notifications are
+  best-effort per rider (one failure no longer permanently skips the rest).
+- **/apply could never work in production (D-030):** 13 documents in one
+  multipart POST exceeds Vercel's ~4.5 MB body cap. Now: submit payload first
+  → signed 2h upload token → one document per request to
+  `/api/applications/documents` (allowlisted scope/docType, magic-byte scan,
+  idempotent retries, `upload_sign` rate limit). Per-file cap 10→4 MiB.
+  `serverActions.bodySizeLimit` raised to 15 MB for owner uploads (scanned
+  contracts, XLSX imports).
+- **Credentials:** convert-to-rider used `Math.random()` for the temp PIN —
+  now the shared CSPRNG `lib/auth/temp-pin`; CSV-imported PINs must pass the
+  weak-PIN rules; convert-to-rider PII copy errors are surfaced (were silently
+  swallowed); owner-login counts malformed probes toward the throttle;
+  `getClientIp` prefers platform-set `x-real-ip` over spoofable first-hop XFF.
+- **Dashboards/dates:** owner-KPI obligation query scoped to unpaid + due-today
+  (was ALL history: silent 5k-row truncation with no ORDER BY ⇒ arbitrarily
+  wrong KPIs at scale — same fix in the daily summary); payment dates render
+  the EAT day via `localDateString` (were UTC slices, off by one 21:00–24:00
+  UTC); rider payment statuses show Swahili labels, not raw enums; rider
+  calendar is now weekday-aligned with a Swahili month header; exemption
+  reject/under-review are conditional updates (couldn't overwrite a decided
+  request's history any more); application reference year computed in EAT;
+  arrears label "31+ days"; `paymentPerformance` buckets are exclusive.
+
+⚠ **REQUIRED OPS (do before pilot):**
+1. **Apply migrations 0017 AND 0018 to the live DB** via the Management API SQL
+   endpoint (D-029 workflow) and record versions `0017`/`0018` in
+   `supabase_migrations.schema_migrations`. The live DB has only 0001–0016
+   (0017 was authored in deep-dive #1 after go-live and there is no record of
+   it being applied — verify with `select version from
+   supabase_migrations.schema_migrations order by version` first). Until then
+   the receipt-sequence fix and ALL the settlement guards exist only locally.
+2. **Delete/disable the 3 demo riders** seeded on 2026-07-09 — their phones AND
+   PINs are published in `scripts/seed.ts` in a public repo, i.e. anyone can
+   log in as them. Change the owner temp password at the same time.
 
 **GO-LIVE PROGRESS (2026-07-09).** Hosted Supabase project **Ng'umbi Riders**
 (ref `rdofxxxdrqnhtewwzous`, Frankfurt, org Driftmark Africa) is provisioned:
-- **All 16 migrations applied** via the Management API SQL endpoint (no DB
+- **Migrations 0001–0016 applied** (0017/0018 pending — see REQUIRED OPS
+  above) via the Management API SQL endpoint (no DB
   password available locally — password reset was not authorized; the CLI's
   `supabase_migrations.schema_migrations` table is populated so `db push`
   stays consistent). Live DB verified: 39 public tables, RLS enabled on all,
@@ -114,7 +190,9 @@ one transaction). Lifecycle: pause/resume/complete-early/terminate.
 
 **Phase 2 (all code-complete; activates when Supabase creds land):** public
 multi-step application form (`/apply`, 9 steps, RHF + zod, session draft,
-signature pad, 13 doc uploads), AES-256-GCM PII encryption, `/apply/success`,
+signature pad, 13 doc uploads — **one request per document** via a signed
+upload token + `/api/applications/documents`, D-030, since Vercel caps request
+bodies at ~4.5 MB), AES-256-GCM PII encryption, `/apply/success`,
 submission endpoint (`/api/applications`) with **magic-byte file scan** +
 **durable per-IP rate limiting** (migration 0012), **bilingual (sw/en)** with a
 cookie `LanguageSwitcher`, and the **owner review pipeline**
@@ -145,19 +223,25 @@ the auth user + one-time temp PIN, copies encrypted PII).
    instead of `db push` (see D-029).
 
 ### ▶ Immediate next actions
-Migrations, env, seed, types, auth config and the live RLS proof are DONE
-(see §2). Remaining critical path:
+Migrations 0001–0016, env, seed, types, auth config and the live RLS proof are
+DONE (see §2). Remaining critical path:
 ```bash
+# 0. apply migrations 0017 + 0018 to the live DB (Management API, D-029) and
+#    record their versions in supabase_migrations.schema_migrations
+# 0b. delete/disable the 3 demo riders (PINs are public in scripts/seed.ts)
+#     and change the owner temp password
 # 1. deploy to Vercel (env vars from .env.local) -> gives HTTPS URL
 # 2. point Snippe webhook at <url>/api/webhooks/snippe; set SNIPPE_WEBHOOK_SECRET
 # 3. Vercel Cron picks up vercel.json; set CRON_SECRET in Vercel env
 ```
 Then: verify Resend DNS, import real riders/motorcycles via `/owner/imports`,
-reconcile sample totals, change the owner temp password, and run the pilot. If a feature
+reconcile sample totals, and run the pilot. If a feature
 session is wanted instead, the highest-value **follow-ups** are: contract
 extend/renegotiate + `regenerate_future_obligations` + addendum PDF (§10.4);
-receipt PDF + payment-reversal handling (§13, §12.3); remaining report views +
-PDF export (§19.1); nonce-based CSP; blind-index NIDA dedupe (D-014).
+receipt PDF + payment-reversal **un-settlement flow** (§13, §12.3 — reversal
+events are now flagged to the owner but nothing un-settles automatically);
+remaining report views + PDF export (§19.1); nonce-based CSP; blind-index NIDA
+dedupe (D-014).
 
 ---
 
@@ -218,7 +302,7 @@ lib/auth/            phone (E.164) · pin (validation) · pin-derive (HMAC, serv
 lib/security/        request (client IP)     lib/audit/  audit writer
 lib/money/ dates/ i18n/ validation/          domain utilities
 
-supabase/migrations/ 0001..0011 + seed.sql    supabase/config.toml
+supabase/migrations/ 0001..0018 + seed.sql    supabase/config.toml
 scripts/seed.ts      owner + demo rider seeding
 tests/unit/          phone, pin, lockout, money
 tests/integration/rls/ isolation suite (opt-in via RLS_TEST_ENABLED)
@@ -273,12 +357,44 @@ Repo: https://github.com/africanuspanga/Ngumbi-Riders (branch `main`).
 
 ## 7. Known follow-ups / tech debt to revisit
 
-- `lib/supabase/types.ts` is a structural placeholder — regenerate real types
-  from the live DB and re-add the `<Database>` generic to the clients (DECISIONS
-  D-010).
 - Rate limiting is app-level per-phone/IP (small race acceptable at <100 riders);
   consider a SECURITY DEFINER atomic version if abuse appears (D-005).
-- Phase 5 must **revoke direct writes** on payments/allocations/obligations once
-  the controlled money functions exist (see MIGRATION_PLAN Phase 5).
 - Sentry/observability wired in Phase 10 (route handlers currently log via
   `login_attempts` + `audit_logs`).
+
+From deep-dive #2 (2026-07-10) — real but deliberately deferred:
+- **Payment reversal un-settlement**: `reversed` exists in the enum and
+  reversal webhooks now alert the owner, but there is no controlled function
+  that un-settles allocations/obligations (corrections must be reversal events,
+  never overwrites — spec rule 6).
+- **Contract end-date convention (needs an owner decision)**: a "1-month"
+  contract starting Jan 31 currently ends Feb 27 (clamped `addMonths` then −1
+  day double-shortens month-end starts; codified in `tests/unit/schedule.test.ts`).
+  The natural lease convention would be last-day-of-month (Feb 28). Decide
+  before generating real contracts — obligations are money.
+- **Risk recompute is ~3 queries/rider serially** (`lib/jobs/tasks.ts`
+  riskRecalcTask). Fine under the 300s dispatcher budget at pilot scale;
+  batch it before the fleet grows past a few hundred riders.
+- **Stale `running` job rows**: a dispatcher crash/timeout leaves
+  `system_job_runs` rows at `running` forever; `/owner/system` should treat
+  running > ~15 min as failed.
+- **Reconcile settles with `now()`** as completed_at (Snippe status API doesn't
+  return the completion time) — receipt year/paid-in-advance classification can
+  drift for payments reconciled after midnight.
+- **`mustChangePin` is enforced on pages only** — rider API routes/actions
+  check the role but not the forced-PIN-change flag (not an escalation; a
+  policy gap).
+- **LanguageSwitcher isn't mounted in the rider area** (rider pages are
+  hardcoded Swahili; catalogs sw/en are at parity, 131 keys each).
+- **Export default range** (`/api/reports/[report]/export` defaults from=to)
+  differs from the report page default (1st of month) — only bites hand-typed
+  URLs.
+- **Push subscribe upserts by endpoint** — an authenticated user replaying
+  another's (unguessable) endpoint URL could reassign it (delivery DoS at
+  worst).
+- **Application/rider/contract numbers use count(*)+1** with unique-constraint
+  retries — replace with DB sequences if concurrent creation ever matters.
+- **`incident_reports`/`rider_applications` free-text fields** have no length
+  caps; announcements likewise.
+- Owner file uploads (physical contract copy, drawn signature) skip magic-byte
+  sniffing — owner-only surface, but inconsistent with the public endpoint.

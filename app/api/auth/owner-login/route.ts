@@ -25,6 +25,9 @@ export async function POST(request: NextRequest) {
 
   const parsed = ownerLoginSchema.safeParse(body);
   if (!parsed.success) {
+    // Malformed probes count toward the IP throttle like any failed attempt —
+    // otherwise crafted payloads bypass the lockout counter entirely.
+    await recordLoginAttempt({ phone: 'invalid', ip, outcome: 'invalid_credentials', userAgent });
     return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
   }
 

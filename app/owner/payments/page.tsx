@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireOwner } from '@/lib/auth/session';
 import { listAllPayments } from '@/lib/payments/queries';
 import { formatTZS } from '@/lib/money/format';
+import { localDateString } from '@/lib/dates/tz';
 
 export const metadata = { title: 'Payments' };
 
@@ -44,7 +45,7 @@ export default async function OwnerPaymentsPage() {
               <div className="flex flex-col">
                 <span className="font-semibold">{p.rider_name} · {formatTZS(p.amount)}</span>
                 <span className="text-xs text-muted">
-                  {(p.completed_at ?? p.created_at).slice(0, 10)} · {p.method === 'cash' ? 'Cash' : 'Mobile money'}
+                  {localDateString(new Date(p.completed_at ?? p.created_at))} · {p.method === 'cash' ? 'Cash' : 'Mobile money'}
                 </span>
               </div>
               <span className={`text-sm font-semibold ${TONE[p.status] ?? 'text-muted'}`}>{p.status}</span>

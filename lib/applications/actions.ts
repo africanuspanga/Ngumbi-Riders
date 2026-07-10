@@ -7,7 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { decryptPII } from '@/lib/security/crypto';
 import { canTransition } from './status';
 import { createRiderUser } from '@/lib/auth/provision';
-import { validatePin } from '@/lib/auth/pin';
+import { generateTempPin } from '@/lib/auth/temp-pin';
 import { writeAudit } from '@/lib/audit/audit';
 import type { ApplicationStatus } from '@/lib/supabase/types';
 
@@ -122,14 +122,6 @@ export async function getSignedDocumentUrl(
   return { ok: true, data: { url: data.signedUrl } };
 }
 
-function generateTempPin(canonicalPhone: string): string {
-  for (let i = 0; i < 100; i++) {
-    const pin = String(Math.floor(1000 + Math.random() * 9000));
-    if (validatePin(pin, canonicalPhone).ok) return pin;
-  }
-  return '2907';
-}
-
 /**
  * Convert an approved application into a rider without retyping data (§8.6).
  * Creates the auth user with a temporary PIN, copies profile + encrypted PII,
@@ -179,7 +171,9 @@ export async function convertToRider(
   }
 
   // Copy address/profile fields and the encrypted identifiers onto the rider.
-  await admin
+  // These are identity data — a silent partial copy would lose the rider's
+  // NIDA/licence while the application still reads "converted".
+  const { error: copyErr } = await admin
     .from('riders')
     .update({
       email: a.email,
@@ -193,11 +187,30 @@ export async function convertToRider(
     })
     .eq('id', created.riderId);
 
-  await admin.from('rider_private_data').insert({
+  const { error: piiErr } = await admin.from('rider_private_data').insert({
     rider_id: created.riderId,
     nida_number_encrypted: a.nida_number_encrypted,
     driving_licence_encrypted: a.driving_licence_encrypted,
   });
+
+  if (copyErr || piiErr) {
+    await writeAudit({
+      actorId: ownerId,
+      actorRole: 'owner',
+      action: 'application.convert_copy_failed',
+      entityType: 'rider_application',
+      entityId: id,
+      metadata: {
+        riderId: created.riderId,
+        profileCopyError: copyErr?.message ?? null,
+        piiCopyError: piiErr?.message ?? null,
+      },
+    });
+    // The auth user + rider row exist, but the application is NOT marked
+    // converted — surface the failure so the owner resolves it instead of
+    // silently losing the identity data.
+    return { ok: false, error: 'copy_failed' };
+  }
 
   await supabase
     .from('rider_applications')

@@ -58,6 +58,11 @@ export function ApplicationForm() {
   const [docError, setDocError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Set once the application row is created; document uploads resume from
+  // here on retry instead of re-submitting (and duplicating) the application.
+  const [submission, setSubmission] = useState<{ reference: string; uploadToken: string } | null>(
+    null,
+  );
 
   const te: ErrorT = (e) => {
     if (!e) return undefined;
@@ -138,27 +143,54 @@ export function ApplicationForm() {
     }
     setSubmitting(true);
     try {
-      const fd = new FormData();
-      fd.append('payload', JSON.stringify(data));
-      for (const [key, file] of Object.entries(files)) {
-        if (file) fd.append(`doc:${key}`, file, file.name);
+      // Step 1: submit the application itself (text payload + signature).
+      // On a retry after a partial failure, reuse the already-created
+      // application instead of duplicating it.
+      let sub = submission;
+      if (!sub) {
+        const fd = new FormData();
+        fd.append('payload', JSON.stringify(data));
+        const res = await fetch('/api/applications', { method: 'POST', body: fd });
+        const result = await res.json();
+        if (!res.ok) {
+          if (result?.error === 'rate_limited') setSubmitError(t('errors.rateLimited'));
+          else if (result?.error === 'duplicate') setSubmitError(t('errors.duplicate'));
+          else setSubmitError(t('errors.submitFailed'));
+          return;
+        }
+        sub = { reference: result.reference, uploadToken: result.uploadToken };
+        setSubmission(sub);
       }
-      const res = await fetch('/api/applications', {
-        method: 'POST',
-        body: fd,
-      });
-      const result = await res.json();
-      if (!res.ok) {
-        if (result?.error === 'rate_limited') setSubmitError(t('errors.rateLimited'));
-        else if (result?.error === 'file_rejected') {
-          setSubmitError(t('errors.fileRejected'));
-          setStep(6);
-        } else if (result?.error === 'duplicate') setSubmitError(t('errors.duplicate'));
-        else setSubmitError(t('errors.submitFailed'));
-        return;
+
+      // Step 2: upload each document individually — the platform caps request
+      // bodies well below the combined size of 13 documents. Uploads are
+      // idempotent server-side, so retrying the whole loop is safe.
+      for (const key of REQUIRED_DOC_KEYS) {
+        const file = files[key];
+        if (!file) continue;
+        const dot = key.indexOf('.');
+        const scope = key.slice(0, dot);
+        const docType = key.slice(dot + 1);
+        const fd = new FormData();
+        fd.append('token', sub.uploadToken);
+        fd.append('scope', scope);
+        fd.append('docType', docType);
+        fd.append('file', file, file.name);
+        const res = await fetch('/api/applications/documents', { method: 'POST', body: fd });
+        if (!res.ok) {
+          const result = await res.json().catch(() => null);
+          if (result?.error === 'file_rejected') {
+            setSubmitError(t('errors.fileRejected'));
+            setStep(6);
+          } else {
+            setSubmitError(t('errors.submitFailed'));
+          }
+          return;
+        }
       }
+
       sessionStorage.removeItem(DRAFT_KEY);
-      router.push(`/apply/success?ref=${encodeURIComponent(result.reference)}`);
+      router.push(`/apply/success?ref=${encodeURIComponent(sub.reference)}`);
     } catch {
       setSubmitError(t('errors.network'));
     } finally {

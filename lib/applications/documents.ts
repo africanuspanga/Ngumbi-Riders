@@ -12,7 +12,10 @@ export const ACCEPTED_MIME_TYPES = [
 
 export const ACCEPTED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png'] as const;
 
-export const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MiB (matches storage limit)
+// 4 MiB: documents are uploaded one per request, and Vercel caps request
+// bodies at ~4.5 MB — a larger limit here would accept files the platform
+// then rejects with an opaque 413.
+export const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
 // Required applicant documents (spec §8.3).
 export const APPLICANT_DOC_TYPES = [

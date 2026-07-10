@@ -35,12 +35,16 @@ export async function enqueueMessage(input: {
   });
 }
 
+const MAX_ATTEMPTS = 5;
+
 export async function processOutbox(limit = 50): Promise<{ sent: number; failed: number; skipped: number }> {
   const admin = createAdminClient();
+  // Failed messages are retried until MAX_ATTEMPTS — a single transient send
+  // error must not permanently strand a message ("nothing is lost").
   const { data } = await admin
     .from('message_outbox')
     .select('id, channel, recipient, subject, payload, attempts')
-    .eq('status', 'pending')
+    .or(`status.eq.pending,and(status.eq.failed,attempts.lt.${MAX_ATTEMPTS})`)
     .limit(limit);
 
   let sent = 0;
@@ -65,6 +69,11 @@ export async function processOutbox(limit = 50): Promise<{ sent: number; failed:
       if (res.ok) {
         await admin.from('message_outbox').update({ status: 'sent' }).eq('id', m.id);
         sent++;
+      } else if (res.error === 'not_configured') {
+        // Resend key not set yet — leave the message pending (don't burn
+        // attempts); it delivers on the first run after the key lands.
+        await admin.from('message_outbox').update({ last_error: 'not_configured' }).eq('id', m.id);
+        skipped++;
       } else {
         await admin
           .from('message_outbox')

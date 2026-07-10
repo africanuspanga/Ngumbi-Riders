@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit/audit';
 import { newIdempotencyKey } from './idempotency';
 import { triggerPush } from '@/lib/snippe/client';
+import { localDateString } from '@/lib/dates/tz';
 
 async function assertOwner(): Promise<string> {
   const profile = await getSessionProfile();
@@ -40,6 +41,9 @@ export async function recordCashPayment(input: {
   }
   const completedAtMs = Date.parse(`${input.paymentDate}T12:00:00+03:00`);
   if (Number.isNaN(completedAtMs)) return { ok: false, error: 'invalid_date' };
+  // Cash is recorded after the fact — a future-dated settlement would corrupt
+  // paid/paid_in_advance classification and the receipt year.
+  if (input.paymentDate > localDateString()) return { ok: false, error: 'future_date' };
   const completedAt = new Date(completedAtMs).toISOString();
 
   const admin = createAdminClient();
@@ -72,6 +76,20 @@ export async function recordCashPayment(input: {
   }
   const amount = rows.reduce((s, o) => s + o.amount_due, 0);
   if (amount <= 0) return { ok: false, error: 'invalid_amount' };
+
+  // An obligation reserved by an in-flight mobile payment belongs to that
+  // payment's settlement — cash-settling it now would leave the rider's mobile
+  // money permanently unallocatable when its webhook lands (the DB function
+  // also enforces this; checking here gives the owner a clear error).
+  const { data: reserved } = await admin
+    .from('payment_reservations')
+    .select('obligation_id')
+    .in('obligation_id', input.obligationIds)
+    .eq('is_active', true)
+    .limit(1);
+  if (reserved && reserved.length > 0) {
+    return { ok: false, error: 'reserved_by_pending_payment' };
+  }
 
   // Oldest-first invariant (spec §12.2): the selected set must be exactly the
   // N oldest outstanding obligations of the contract — cash follows the same

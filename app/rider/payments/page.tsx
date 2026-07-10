@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireRider } from '@/lib/auth/session';
 import { listRiderPayments } from '@/lib/payments/queries';
 import { formatTZS } from '@/lib/money/format';
+import { localDateString } from '@/lib/dates/tz';
 
 export const metadata = { title: 'Malipo' };
 
@@ -11,6 +12,17 @@ const TONE: Record<string, string> = {
   failed: 'text-[color:var(--color-overdue)]',
   expired: 'text-muted',
   cancelled: 'text-muted',
+};
+
+// Rider-facing: Swahili labels, never raw status enums (spec §36.11).
+const STATUS_LABEL: Record<string, string> = {
+  created: 'Inasubiri',
+  pending: 'Inasubiri',
+  completed: 'Imekamilika',
+  failed: 'Imeshindikana',
+  expired: 'Imeisha muda',
+  cancelled: 'Imeghairiwa',
+  reversed: 'Imerejeshwa',
 };
 
 export default async function RiderPaymentsPage() {
@@ -30,10 +42,10 @@ export default async function RiderPaymentsPage() {
                 <div className="flex flex-col">
                   <span className="font-semibold">{formatTZS(p.amount)}</span>
                   <span className="text-xs text-muted">
-                    {(p.completed_at ?? p.created_at).slice(0, 10)} · {p.method === 'cash' ? 'Taslimu' : 'Pesa za simu'}
+                    {localDateString(new Date(p.completed_at ?? p.created_at))} · {p.method === 'cash' ? 'Taslimu' : 'Pesa za simu'}
                   </span>
                 </div>
-                <span className={`text-sm font-semibold ${TONE[p.status] ?? 'text-muted'}`}>{p.status}</span>
+                <span className={`text-sm font-semibold ${TONE[p.status] ?? 'text-muted'}`}>{STATUS_LABEL[p.status] ?? p.status}</span>
               </Link>
             </li>
           ))}

@@ -128,7 +128,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: snippe.error }, { status });
   }
 
-  await admin
+  // At this point a real USSD push is on the rider's phone. If storing the
+  // provider reference fails, the webhook can no longer match by reference —
+  // its metadata.payment_id fallback still can, but the failure must be on
+  // record, not swallowed.
+  const { error: refErr } = await admin
     .from('payments')
     .update({
       status: 'pending',
@@ -136,6 +140,16 @@ export async function POST(request: NextRequest) {
       provider_payment_id: snippe.data.reference,
     })
     .eq('id', paymentId);
+  if (refErr) {
+    await writeAudit({
+      actorId: null,
+      actorRole: 'system',
+      action: 'payment.reference_store_failed',
+      entityType: 'payment',
+      entityId: paymentId,
+      metadata: { reference: snippe.data.reference, error: refErr.message },
+    });
+  }
 
   await writeAudit({
     actorId: user.id,

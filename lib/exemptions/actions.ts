@@ -71,8 +71,15 @@ async function notifyExemptionDecision(exemptionId: string, title: string, body:
 export async function setExemptionUnderReview(id: string): Promise<ActionResult> {
   const ownerId = await assertOwner();
   const supabase = await createServerSupabase();
-  const { error } = await supabase.from('exemption_requests').update({ status: 'under_review' }).eq('id', id);
+  // Conditional update: never pull an already-decided request back into review.
+  const { data, error } = await supabase
+    .from('exemption_requests')
+    .update({ status: 'under_review' })
+    .eq('id', id)
+    .eq('status', 'submitted')
+    .select('id');
   if (error) return { ok: false, error: 'update_failed' };
+  if (!data || data.length === 0) return { ok: false, error: 'invalid_status' };
   await writeAudit({ actorId: ownerId, actorRole: 'owner', action: 'exemption.under_review', entityType: 'exemption_request', entityId: id });
   revalidatePath('/owner/exemptions');
   return { ok: true };
@@ -120,11 +127,16 @@ export async function postponeExemption(id: string, newDate: string): Promise<Ac
 export async function rejectExemption(id: string, note?: string): Promise<ActionResult> {
   const ownerId = await assertOwner();
   const supabase = await createServerSupabase();
-  const { error } = await supabase
+  // Conditional update: rejecting an already-waived/postponed request would
+  // leave the request status contradicting the obligation's money history.
+  const { data, error } = await supabase
     .from('exemption_requests')
     .update({ status: 'rejected', decision_note: note ?? null, decided_by: ownerId, decided_at: new Date().toISOString() })
-    .eq('id', id);
+    .eq('id', id)
+    .in('status', ['submitted', 'under_review'])
+    .select('id');
   if (error) return { ok: false, error: 'update_failed' };
+  if (!data || data.length === 0) return { ok: false, error: 'invalid_status' };
   await notifyExemptionDecision(id, 'Ombi la msamaha', 'Ombi lako la msamaha halikukubaliwa.');
   await writeAudit({ actorId: ownerId, actorRole: 'owner', action: 'exemption.rejected', entityType: 'exemption_request', entityId: id });
   revalidatePath('/owner/exemptions');

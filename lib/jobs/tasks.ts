@@ -27,10 +27,16 @@ export const obligationStatusTask: CronTask = async () => {
   const today = localDateString();
   const nowMs = Date.now();
 
+  // Transitions only ever touch obligations whose due date has arrived —
+  // without the due_date filter this query pulls the ENTIRE future calendar
+  // and the row cap silently drops an arbitrary subset (including today's
+  // actionable rows) once contracts × days exceed it.
   const { data } = await admin
     .from('payment_obligations')
     .select('id, rider_id, due_date, due_at, status')
     .in('status', ['scheduled', 'due'])
+    .lte('due_date', today)
+    .order('due_date', { ascending: true })
     .limit(10000);
   const rows = (data ?? []) as { id: string; rider_id: string; due_date: string; due_at: string; status: string }[];
 
@@ -68,24 +74,36 @@ export const obligationStatusTask: CronTask = async () => {
     toOverdue = ((updated ?? []) as { id: string }[]).map((o) => o.id);
   }
 
-  // Rider reminders (deduped so repeated runs don't spam).
+  // Rider reminders (deduped so repeated runs don't spam). Best-effort: the
+  // status flips above are already committed, so a notify failure mid-loop
+  // must not abort the job — the remaining riders would never be notified
+  // (re-runs re-select zero updated rows).
+  let notifyErrors = 0;
   for (const id of toDue) {
-    await notifyRider(riderOf.get(id)!, {
-      type: 'payment_due',
-      title: 'Malipo ya leo',
-      body: 'Kumbuka kulipa malipo ya leo kabla ya muda.',
-      deepLink: '/rider/pay',
-      dedupeKey: `payment_due:${id}`,
-    });
+    try {
+      await notifyRider(riderOf.get(id)!, {
+        type: 'payment_due',
+        title: 'Malipo ya leo',
+        body: 'Kumbuka kulipa malipo ya leo kabla ya muda.',
+        deepLink: '/rider/pay',
+        dedupeKey: `payment_due:${id}`,
+      });
+    } catch {
+      notifyErrors++;
+    }
   }
   for (const id of toOverdue) {
-    await notifyRider(riderOf.get(id)!, {
-      type: 'payment_overdue',
-      title: 'Una deni',
-      body: 'Malipo yako yamechelewa. Tafadhali lipa haraka.',
-      deepLink: '/rider/pay',
-      dedupeKey: `payment_overdue:${id}:${today}`,
-    });
+    try {
+      await notifyRider(riderOf.get(id)!, {
+        type: 'payment_overdue',
+        title: 'Una deni',
+        body: 'Malipo yako yamechelewa. Tafadhali lipa haraka.',
+        deepLink: '/rider/pay',
+        dedupeKey: `payment_overdue:${id}:${today}`,
+      });
+    } catch {
+      notifyErrors++;
+    }
   }
 
   // Owner overdue digest (once per day).
@@ -99,7 +117,7 @@ export const obligationStatusTask: CronTask = async () => {
     });
   }
 
-  return { due: toDue.length, overdue: toOverdue.length };
+  return { due: toDue.length, overdue: toOverdue.length, notifyErrors };
 };
 
 /** Pending Snippe reconciliation (spec §12.5): resolves missed webhooks. */
@@ -254,7 +272,7 @@ export const dataQualityTask: CronTask = async () => {
       title: 'Data quality issues detected',
       body: `Mismatched allocations: ${allocationMismatch}, orphaned assignments: ${orphanedAssignments}, settled w/o allocation: ${settledWithoutAllocation}.`,
       deepLink: '/owner/system',
-      dedupeKey: `data_quality:${new Date().toISOString().slice(0, 10)}`,
+      dedupeKey: `data_quality:${localDateString()}`,
     });
   }
   return counts;
@@ -263,13 +281,24 @@ export const dataQualityTask: CronTask = async () => {
 /** Daily owner summary via Resend (spec §18.1). Idempotent per date. */
 export const dailySummaryTask: CronTask = async (): Promise<Record<string, number>> => {
   const admin = createAdminClient();
-  const today = localDateString();
-  const todayStartUtc = new Date(`${today}T00:00:00+03:00`).toISOString();
-  const tomorrowStartUtc = new Date(Date.parse(`${today}T00:00:00+03:00`) + 86_400_000).toISOString();
+  // The dispatcher fires at 00:00 EAT — the day worth summarizing is the one
+  // that just ENDED. Using the minute-old new day would permanently report
+  // zero collections (and the idempotency row would lock that in all day).
+  const summaryDate = localDateString(new Date(Date.now() - 86_400_000));
+  const dayStartUtc = new Date(`${summaryDate}T00:00:00+03:00`).toISOString();
+  const dayEndUtc = new Date(Date.parse(`${summaryDate}T00:00:00+03:00`) + 86_400_000).toISOString();
 
   const [{ data: obs }, { data: pays }, { data: pendingRows }, { data: appsRows }] = await Promise.all([
-    admin.from('payment_obligations').select('rider_id, due_date, amount_due, status').lte('due_date', today).limit(10000),
-    admin.from('payments').select('amount, status, method').eq('status', 'completed').gte('completed_at', todayStartUtc).lt('completed_at', tomorrowStartUtc),
+    // Only rows the KPI math actually uses: still-unpaid history (arrears) and
+    // everything due on the summary day — NOT all paid history, which would
+    // blow past the row cap within months and silently skew every number.
+    admin
+      .from('payment_obligations')
+      .select('rider_id, due_date, amount_due, status')
+      .lte('due_date', summaryDate)
+      .or(`status.in.(scheduled,due,overdue),due_date.eq.${summaryDate}`)
+      .limit(10000),
+    admin.from('payments').select('amount, status, method').eq('status', 'completed').gte('completed_at', dayStartUtc).lt('completed_at', dayEndUtc),
     admin.from('payments').select('id').eq('status', 'pending'),
     admin.from('rider_applications').select('id').in('status', ['submitted', 'under_review', 'interview', 'verification']),
   ]);
@@ -281,14 +310,14 @@ export const dailySummaryTask: CronTask = async (): Promise<Record<string, numbe
     amount: p.amount,
     status: p.status,
     method: p.method,
-    completedDate: today,
+    completedDate: summaryDate,
   }));
-  const kpis = computeOwnerKpis(obligations, paymentsToday, today);
+  const kpis = computeOwnerKpis(obligations, paymentsToday, summaryDate);
   const cashToday = paymentsToday.filter((p) => p.method === 'cash').reduce((s, p) => s + p.amount, 0);
   const mobileToday = paymentsToday.filter((p) => p.method === 'mobile_money').reduce((s, p) => s + p.amount, 0);
 
   const metrics = {
-    date: today,
+    date: summaryDate,
     expectedToday: kpis.expectedToday,
     settledToday: kpis.settledToday,
     collectedToday: kpis.collectedToday,
@@ -309,12 +338,12 @@ export const dailySummaryTask: CronTask = async (): Promise<Record<string, numbe
   // in that state would re-send it.
   const { error: insErr } = await admin
     .from('daily_summaries')
-    .insert({ summary_date: today, metrics, idempotency_key: `daily:${today}` });
+    .insert({ summary_date: summaryDate, metrics, idempotency_key: `daily:${summaryDate}` });
   if (insErr) {
-    if (!/duplicate key/i.test(insErr.message)) {
+    if (insErr.code !== '23505' && !/duplicate key/i.test(insErr.message)) {
       throw new Error(`summary_insert_failed: ${insErr.message}`);
     }
-    const { data: existing } = await admin.from('daily_summaries').select('email_sent_at').eq('summary_date', today).maybeSingle();
+    const { data: existing } = await admin.from('daily_summaries').select('email_sent_at').eq('summary_date', summaryDate).maybeSingle();
     if ((existing as { email_sent_at: string | null } | null)?.email_sent_at) {
       return { emailed: 0, skipped: 1 };
     }
@@ -322,12 +351,15 @@ export const dailySummaryTask: CronTask = async (): Promise<Record<string, numbe
 
   const to = serverEnv().OWNER_SUMMARY_EMAIL;
   if (!to) return { emailed: 0, no_recipient: 1 };
-  const res = await sendEmail({ to, subject: `Ng'umbi Riders — Daily Summary ${today}`, html: composeDailySummaryHtml(metrics) });
+  const res = await sendEmail({ to, subject: `Ng'umbi Riders — Daily Summary ${summaryDate}`, html: composeDailySummaryHtml(metrics) });
   if (res.ok) {
-    await admin.from('daily_summaries').update({ email_sent_at: new Date().toISOString() }).eq('summary_date', today);
+    await admin.from('daily_summaries').update({ email_sent_at: new Date().toISOString() }).eq('summary_date', summaryDate);
     return { emailed: 1 };
   }
-  return { emailed: 0, error: 1 };
+  if (res.error === 'not_configured') return { emailed: 0, not_configured: 1 };
+  // The email IS this job's deliverable — a send failure must surface as a
+  // failed run in system_job_runs, not a green "success" with error: 1.
+  throw new Error(`summary_email_failed: ${res.error}`);
 };
 
 /**

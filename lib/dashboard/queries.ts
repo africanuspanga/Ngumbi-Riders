@@ -48,11 +48,15 @@ export async function getOwnerDashboard(): Promise<OwnerDashboard> {
 
   const [obRes, payRes, ridersActive, motosActive, endingRes, appsRes, riskRes, pendingRes] =
     await Promise.all([
+      // Only rows the KPI math uses: still-unpaid history (arrears/aging) and
+      // everything due today. Fetching ALL paid history would exceed the row
+      // cap within months and, with no ORDER BY, silently corrupt every KPI.
       supabase
         .from('payment_obligations')
         .select('rider_id, due_date, amount_due, status')
         .lte('due_date', today)
-        .limit(5000),
+        .or(`status.in.(scheduled,due,overdue),due_date.eq.${today}`)
+        .limit(10000),
       supabase
         .from('payments')
         .select('amount, status, method')
@@ -203,7 +207,9 @@ export async function getRiderHome(): Promise<RiderHome | null> {
     dashboard: computeRiderDashboard(obligations, today),
     motorcycle: moto ? { registration: moto.registration_number, model: moto.model } : null,
     recentPayments: ((pays ?? []) as { id: string; amount: number; status: string; completed_at: string | null; created_at: string }[]).map(
-      (p) => ({ id: p.id, amount: p.amount, status: p.status, date: (p.completed_at ?? p.created_at).slice(0, 10) }),
+      // EAT calendar date, not the UTC slice — a payment completed 00:00–03:00
+      // EAT would otherwise display the previous day.
+      (p) => ({ id: p.id, amount: p.amount, status: p.status, date: localDateString(new Date(p.completed_at ?? p.created_at)) }),
     ),
     unreadNotifications: (notifs ?? []).length,
   };

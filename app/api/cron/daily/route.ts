@@ -11,7 +11,10 @@ import { DAILY_TASKS } from '@/lib/jobs/tasks';
  */
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+// All seven tasks run serially (risk recompute + up to 50 Snippe/Resend HTTP
+// calls) — 60s risked a mid-run timeout that both skips the remaining jobs
+// and strands system_job_runs rows as 'running'. 300s is the Hobby maximum.
+export const maxDuration = 300;
 
 export async function GET(request: Request) {
   if (!authorizeCron(request)) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });

@@ -66,7 +66,7 @@ export default async function OwnerHome() {
             <AgingRow label="2–3 days" value={d.aging.twoToThree} />
             <AgingRow label="4–7 days" value={d.aging.fourToSeven} />
             <AgingRow label="8–30 days" value={d.aging.eightToThirty} />
-            <AgingRow label="30+ days" value={d.aging.overThirty} />
+            <AgingRow label="31+ days" value={d.aging.overThirty} />
           </ul>
         </Panel>
 

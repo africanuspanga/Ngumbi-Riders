@@ -25,6 +25,8 @@ reset` (local, needs Docker).
 | `0015_exemption_functions.sql` | `apply_exemption_waiver` / `apply_postponement` — SECURITY DEFINER, owner-guarded; waive or postpone an obligation while preserving the original due date in history (§16.2, §22.3). |
 | `0014_payment_functions.sql` | `record_completed_payment` — SECURITY DEFINER, service-role only; allocates whole obligations, enforces allocations = amount, writes the receipt, releases reservations. Idempotent (webhook-replay safe). Used by the Snippe webhook and cash payments (§12, §22.2). |
 | `0016_harden_financial_writes.sql` | Revokes direct INSERT/UPDATE/DELETE on money + audit/login/signed-doc tables from anon/authenticated (§22.3, §25.2). |
+| `0017_fix_state_guards.sql` | Deep-dive #1 fixes: receipt numbers from a Postgres sequence inside `record_completed_payment` (old count(*)+1 raced); exemption waive/postpone status guards (paid obligations can't be postponed / re-decided); contract activation only from pre-active states. |
+| `0018_settlement_and_rls_hardening.sql` | Deep-dive #2 (D-031): `record_completed_payment` self-defends (payment status, obligation outstanding, rider match, no foreign active reservation); exemption fns get rider-match + reservation guards; activation refuses empty calendars; `exemptions_self_insert`/`incidents_self_insert` pin inserted shape + obligation ownership; riders update only `notifications.read_at`; one open exemption per obligation; `search_path = public, pg_temp`; FK indexes; receipt seq starts at 1. |
 | `seed.sql` | Non-auth reference data (settings defaults, template v1, demo motorcycles). Auth users via `scripts/seed.ts`. |
 
 ### Constraints already enforced (spec §22.2)
