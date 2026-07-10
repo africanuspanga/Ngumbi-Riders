@@ -30,10 +30,12 @@ export function NavUser({ name }: { name: string }) {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Avatar className="size-8 cursor-pointer" />}>
-        <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
-          {initials || 'N'}
-        </AvatarFallback>
+      <DropdownMenuTrigger className="cursor-pointer rounded-full">
+        <Avatar className="size-8">
+          <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+            {initials || 'N'}
+          </AvatarFallback>
+        </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="flex flex-col">
