@@ -94,22 +94,27 @@ What was found and fixed:
   request's history any more); application reference year computed in EAT;
   arrears label "31+ days"; `paymentPerformance` buckets are exclusive.
 
+✅ **Migration 0018 APPLIED LIVE (2026-07-11)** via the Management API (D-029)
+and recorded in `supabase_migrations.schema_migrations` — 0017 turned out to be
+already applied at go-live, so the live DB now has **all 18 migrations**.
+Verified live: settlement/waiver/postponement/activation guards present, 4
+definer functions carry `search_path = public, pg_temp`, both rider-insert
+policies pinned, 5 new indexes, `app_settings` trigger, notifications
+column-grant = `read_at` only, receipt sequence next value = 1. The
+`SUPABASE_ACCESS_TOKEN` (sbp_, Driftmark Africa) used for this is now stored in
+`.env.local` for future DB ops.
+
 ⚠ **REQUIRED OPS (do before pilot):**
-1. **Apply migrations 0017 AND 0018 to the live DB** via the Management API SQL
-   endpoint (D-029 workflow) and record versions `0017`/`0018` in
-   `supabase_migrations.schema_migrations`. The live DB has only 0001–0016
-   (0017 was authored in deep-dive #1 after go-live and there is no record of
-   it being applied — verify with `select version from
-   supabase_migrations.schema_migrations order by version` first). Until then
-   the receipt-sequence fix and ALL the settlement guards exist only locally.
-2. **Delete/disable the 3 demo riders** seeded on 2026-07-09 — their phones AND
+1. **Delete/disable the 3 demo riders** seeded on 2026-07-09 — their phones AND
    PINs are published in `scripts/seed.ts` in a public repo, i.e. anyone can
-   log in as them. Change the owner temp password at the same time.
+   log in as them. (Verified 2026-07-11: all three are `active` with 0
+   contracts / 0 payments, so deletion is clean.) Change the owner temp
+   password at the same time.
 
 **GO-LIVE PROGRESS (2026-07-09).** Hosted Supabase project **Ng'umbi Riders**
 (ref `rdofxxxdrqnhtewwzous`, Frankfurt, org Driftmark Africa) is provisioned:
-- **Migrations 0001–0016 applied** (0017/0018 pending — see REQUIRED OPS
-  above) via the Management API SQL endpoint (no DB
+- **All 18 migrations applied** (0018 on 2026-07-11) via the Management API
+  SQL endpoint (no DB
   password available locally — password reset was not authorized; the CLI's
   `supabase_migrations.schema_migrations` table is populated so `db push`
   stays consistent). Live DB verified: 39 public tables, RLS enabled on all,
@@ -223,13 +228,11 @@ the auth user + one-time temp PIN, copies encrypted PII).
    instead of `db push` (see D-029).
 
 ### ▶ Immediate next actions
-Migrations 0001–0016, env, seed, types, auth config and the live RLS proof are
+All 18 migrations, env, seed, types, auth config and the live RLS proof are
 DONE (see §2). Remaining critical path:
 ```bash
-# 0. apply migrations 0017 + 0018 to the live DB (Management API, D-029) and
-#    record their versions in supabase_migrations.schema_migrations
-# 0b. delete/disable the 3 demo riders (PINs are public in scripts/seed.ts)
-#     and change the owner temp password
+# 0. delete/disable the 3 demo riders (PINs are public in scripts/seed.ts)
+#    and change the owner temp password
 # 1. deploy to Vercel (env vars from .env.local) -> gives HTTPS URL
 # 2. point Snippe webhook at <url>/api/webhooks/snippe; set SNIPPE_WEBHOOK_SECRET
 # 3. Vercel Cron picks up vercel.json; set CRON_SECRET in Vercel env
