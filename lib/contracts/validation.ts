@@ -25,5 +25,7 @@ export const contractBuilderSchema = z
   );
 
 export type ContractBuilderInput = z.infer<typeof contractBuilderSchema>;
+// Pre-coercion shape (number fields arrive as strings from form inputs).
+export type ContractBuilderFormInput = z.input<typeof contractBuilderSchema>;
 
 export const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

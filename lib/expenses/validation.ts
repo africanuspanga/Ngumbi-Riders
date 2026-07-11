@@ -25,3 +25,5 @@ export const expenseSchema = z.object({
 });
 
 export type ExpenseInput = z.infer<typeof expenseSchema>;
+// Pre-coercion shape (`amount` arrives as a string from the form input).
+export type ExpenseFormInput = z.input<typeof expenseSchema>;

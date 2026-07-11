@@ -7,6 +7,7 @@ import { useState } from 'react';
 import {
   contractBuilderSchema,
   type ContractBuilderInput,
+  type ContractBuilderFormInput,
   WEEKDAY_LABELS,
 } from '@/lib/contracts/validation';
 import { createContract } from '@/lib/contracts/actions';
@@ -36,7 +37,7 @@ export function ContractBuilder({
     control,
     setValue,
     formState: { errors, isSubmitting },
-  } = useForm<ContractBuilderInput>({
+  } = useForm<ContractBuilderFormInput, unknown, ContractBuilderInput>({
     resolver: zodResolver(contractBuilderSchema),
     defaultValues: {
       scheduleType: 'daily',

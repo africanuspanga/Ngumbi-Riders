@@ -27,9 +27,15 @@ export const clientEnv = clientSchema.parse({
 });
 
 // ---- Server-only ---------------------------------------------------------
+// .env files keep placeholder keys around (`KEY=`); an empty value means
+// "not configured" and must behave exactly like an absent one instead of
+// failing format validation and crashing the first server use.
+const emptyAsUndefined = (v: unknown) => (v === '' ? undefined : v);
+const optionalEmail = z.preprocess(emptyAsUndefined, z.string().email().optional());
+
 const serverSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-  DATABASE_URL: z.string().min(1).optional(),
+  DATABASE_URL: z.preprocess(emptyAsUndefined, z.string().min(1).optional()),
   AUTH_PIN_PEPPER: z
     .string()
     .min(32, 'AUTH_PIN_PEPPER must be at least 32 characters'),
@@ -39,10 +45,10 @@ const serverSchema = z.object({
   // Integration secrets are optional until their phase is configured.
   SNIPPE_API_KEY: z.string().optional(),
   SNIPPE_WEBHOOK_SECRET: z.string().optional(),
-  SNIPPE_BASE_URL: z.string().url().optional(),
+  SNIPPE_BASE_URL: z.preprocess(emptyAsUndefined, z.string().url().optional()),
   RESEND_API_KEY: z.string().optional(),
-  RESEND_FROM_EMAIL: z.string().email().optional(),
-  OWNER_SUMMARY_EMAIL: z.string().email().optional(),
+  RESEND_FROM_EMAIL: optionalEmail,
+  OWNER_SUMMARY_EMAIL: optionalEmail,
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().optional(),

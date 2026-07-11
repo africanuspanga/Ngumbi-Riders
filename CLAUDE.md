@@ -34,7 +34,23 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 ## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
 
 Verified locally: `npm run typecheck` ✅ · `npm run lint` ✅ ·
-`npm run test` ✅ (158 unit pass, 10 RLS skip) · `npm run build` ✅ (56 routes).
+`npm run test` ✅ (161 unit pass, 10 RLS skip) · `npm run build` ✅ (56 routes).
+
+**LIVE-SITE BLOCKER FIX (2026-07-11) — needs deploy.** The production `/apply`
+wizard could never pass step 1 (reported by the owner testing
+www.ngumbi.co.tz): `@hookform/resolvers` v3 does not recognise zod v4's error
+shape (`.issues` replaced `.errors`) and RETHREW the ZodError instead of
+returning a field-error map, so every react-hook-form `trigger()` /
+`handleSubmit()` rejected silently — the Continue button did nothing, in all
+6 RHF forms (apply wizard, contract builder, expense/motorcycle/rider/incident
+forms). Fixed: `@hookform/resolvers` upgraded 3.10.0 → ^5.4.0 (zod-v4-aware);
+the two `z.coerce` forms (`ContractBuilder`, `ExpenseForm`) now use
+`useForm<FormInput, unknown, Output>` input/output generics; regression test
+`tests/unit/application-resolver.test.ts` exercises the resolver the way the
+wizard does. Also fixed while verifying: an EMPTY optional env value
+(`OWNER_SUMMARY_EMAIL=` added to `.env.local` 2026-07-11) failed
+`.email()`/`.url()` validation and made `serverEnv()` throw on first use —
+`lib/env.ts` now treats `''` as "not configured" for optional vars.
 
 **DEEP-DIVE REVIEW #2 (2026-07-10) — all findings fixed in code; two ops
 actions remain.** Six parallel review passes (payments/money, auth/security,

@@ -4,7 +4,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { expenseSchema, type ExpenseInput, EXPENSE_CATEGORIES } from '@/lib/expenses/validation';
+import {
+  expenseSchema,
+  type ExpenseInput,
+  type ExpenseFormInput,
+  EXPENSE_CATEGORIES,
+} from '@/lib/expenses/validation';
 import { addExpense } from '@/lib/expenses/actions';
 import { TextField, SelectField } from '@/components/forms/Field';
 
@@ -18,7 +23,10 @@ export function ExpenseForm({ motorcycles, today }: { motorcycles: Moto[]; today
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<ExpenseInput>({ resolver: zodResolver(expenseSchema), defaultValues: { expenseDate: today } });
+  } = useForm<ExpenseFormInput, unknown, ExpenseInput>({
+    resolver: zodResolver(expenseSchema),
+    defaultValues: { expenseDate: today },
+  });
 
   async function onSubmit(values: ExpenseInput) {
     setError(null);
