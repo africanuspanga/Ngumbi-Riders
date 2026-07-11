@@ -19,12 +19,16 @@ export function IncidentForm() {
 
   async function onSubmit(values: IncidentInput) {
     setError(null);
-    const res = await createIncident(values);
-    if (res.ok) {
-      router.push('/rider/incidents');
-      router.refresh();
-    } else {
-      setError('Imeshindikana kutuma. Jaribu tena.');
+    try {
+      const res = await createIncident(values);
+      if (res.ok) {
+        router.push('/rider/incidents');
+        router.refresh();
+      } else {
+        setError('Imeshindikana kutuma. Jaribu tena.');
+      }
+    } catch {
+      setError('Imeshindikana kutuma. Angalia mtandao kisha jaribu tena.');
     }
   }
 

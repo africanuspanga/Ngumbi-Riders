@@ -20,14 +20,19 @@ export function ExemptionRequestForm({ obligations }: { obligations: Obligation[
     }
     setBusy(true);
     setError(null);
-    const res = await createExemptionRequest({ obligationId, reason });
-    setBusy(false);
-    if (res.ok) {
-      setObligationId('');
-      setReason('');
-      router.refresh();
-    } else {
-      setError('Imeshindikana kutuma ombi.');
+    try {
+      const res = await createExemptionRequest({ obligationId, reason });
+      if (res.ok) {
+        setObligationId('');
+        setReason('');
+        router.refresh();
+      } else {
+        setError('Imeshindikana kutuma ombi.');
+      }
+    } catch {
+      setError('Imeshindikana kutuma ombi. Angalia mtandao kisha jaribu tena.');
+    } finally {
+      setBusy(false);
     }
   }
 

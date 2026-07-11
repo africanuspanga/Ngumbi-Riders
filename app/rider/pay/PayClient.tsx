@@ -26,6 +26,17 @@ export function PayClient({
   const [status, setStatus] = useState<string>(initialPendingId ? 'pending' : 'idle');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [resendNote, setResendNote] = useState<string | null>(null);
+
+  async function resend(id: string) {
+    setResendNote(null);
+    try {
+      const res = await resendUssdPush(id);
+      setResendNote(res.ok ? 'Ombi limetumwa tena. Angalia simu yako.' : 'Imeshindikana kutuma tena. Jaribu tena.');
+    } catch {
+      setResendNote('Imeshindikana kutuma tena. Angalia mtandao kisha jaribu tena.');
+    }
+  }
 
   const poll = useCallback(async (id: string) => {
     try {
@@ -71,6 +82,7 @@ export function PayClient({
           invalid_phone: 'Namba ya simu si sahihi.',
           not_configured: 'Malipo bado hayajawashwa. Jaribu tena baadaye.',
           no_active_contract: 'Huna mkataba unaoendelea.',
+          obligation_reserved: 'Siku ulizochagua zina malipo mengine yanayosubiri. Jaribu tena baadaye.',
         };
         setError(map[data.error] ?? 'Imeshindikana kuanzisha malipo.');
         return;
@@ -94,16 +106,17 @@ export function PayClient({
         </p>
         <button
           type="button"
-          onClick={() => resendUssdPush(paymentId)}
+          onClick={() => resend(paymentId)}
           className="text-sm font-medium text-primary underline"
         >
           Tuma tena ombi la USSD
         </button>
+        {resendNote && <p className="text-xs text-muted-foreground">{resendNote}</p>}
       </div>
     );
   }
 
-  if (status === 'failed' || status === 'expired' || status === 'cancelled') {
+  if (status === 'failed' || status === 'expired' || status === 'cancelled' || status === 'reversed') {
     return (
       <div className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-5 text-center">
         <p className="font-semibold text-overdue">Malipo hayakukamilika</p>

@@ -48,6 +48,8 @@ export function ImportWizard() {
       } else {
         setError(res.error);
       }
+    } catch {
+      setError('Upload failed — network error or the file is too large. Try again.');
     } finally {
       setBusy(false);
     }
@@ -66,6 +68,8 @@ export function ImportWizard() {
       } else {
         setError(res.error);
       }
+    } catch {
+      setError('Commit failed to reach the server. Re-run the dry run and check the registers before retrying.');
     } finally {
       setBusy(false);
     }

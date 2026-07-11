@@ -33,10 +33,13 @@ export function LoginForm({ mode, next }: { mode: Mode; next?: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      // A platform error page (413/429/5xx) is not JSON — don't let a server
+      // problem read as "wrong credentials" and burn lockout attempts.
+      const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        if (data.error === 'locked') setError(t('locked'));
+        if (data?.error === 'locked') setError(t('locked'));
+        else if (!data) setError(t('network'));
         else setError(t('invalidCredentials'));
         return;
       }
@@ -46,7 +49,7 @@ export function LoginForm({ mode, next }: { mode: Mode; next?: string }) {
       router.push(safeNext || data.redirectTo || '/');
       router.refresh();
     } catch {
-      setError(t('invalidCredentials'));
+      setError(t('network'));
     } finally {
       setPending(false);
     }

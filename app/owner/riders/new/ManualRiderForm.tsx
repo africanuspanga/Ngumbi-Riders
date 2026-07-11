@@ -30,17 +30,21 @@ export function ManualRiderForm({ motorcycles }: { motorcycles: MotoOption[] }) 
 
   async function onSubmit(values: ManualRiderInput) {
     setError(null);
-    const res = await createRiderManually(values);
-    if (res.ok && res.data) {
-      router.push(`/owner/riders/${res.data.riderId}`);
-      router.refresh();
-    } else if (!res.ok) {
-      const map: Record<string, string> = {
-        weak_pin: 'Temporary PIN is too easy to guess. Choose another.',
-        duplicate: 'A rider with this phone already exists.',
-        validation: 'Please check the highlighted fields.',
-      };
-      setError(map[res.error] ?? 'Could not create the rider.');
+    try {
+      const res = await createRiderManually(values);
+      if (res.ok && res.data) {
+        router.push(`/owner/riders/${res.data.riderId}`);
+        router.refresh();
+      } else if (!res.ok) {
+        const map: Record<string, string> = {
+          weak_pin: 'Temporary PIN is too easy to guess. Choose another.',
+          duplicate: 'A rider with this phone already exists.',
+          validation: 'Please check the highlighted fields.',
+        };
+        setError(map[res.error] ?? 'Could not create the rider.');
+      }
+    } catch {
+      setError('Network error — check the rider register before retrying.');
     }
   }
 

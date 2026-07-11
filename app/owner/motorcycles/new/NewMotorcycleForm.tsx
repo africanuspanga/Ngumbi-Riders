@@ -19,16 +19,20 @@ export function NewMotorcycleForm() {
 
   async function onSubmit(values: MotorcycleInput) {
     setError(null);
-    const res = await createMotorcycle(values);
-    if (res.ok && res.data) {
-      router.push(`/owner/motorcycles/${res.data.id}`);
-      router.refresh();
-    } else {
-      setError(
-        !res.ok && res.error === 'duplicate'
-          ? 'A motorcycle with this registration already exists.'
-          : 'Could not create the motorcycle.',
-      );
+    try {
+      const res = await createMotorcycle(values);
+      if (res.ok && res.data) {
+        router.push(`/owner/motorcycles/${res.data.id}`);
+        router.refresh();
+      } else {
+        setError(
+          !res.ok && res.error === 'duplicate'
+            ? 'A motorcycle with this registration already exists.'
+            : 'Could not create the motorcycle.',
+        );
+      }
+    } catch {
+      setError('Network error — check the register before retrying.');
     }
   }
 

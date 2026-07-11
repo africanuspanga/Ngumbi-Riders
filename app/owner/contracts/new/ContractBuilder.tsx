@@ -81,12 +81,16 @@ export function ContractBuilder({
 
   async function onSubmit(v: ContractBuilderInput) {
     setError(null);
-    const res = await createContract(v);
-    if (res.ok && res.data) {
-      router.push(`/owner/contracts/${res.data.id}`);
-      router.refresh();
-    } else {
-      setError('Could not create the contract. Check the fields.');
+    try {
+      const res = await createContract(v);
+      if (res.ok && res.data) {
+        router.push(`/owner/contracts/${res.data.id}`);
+        router.refresh();
+      } else {
+        setError('Could not create the contract. Check the fields.');
+      }
+    } catch {
+      setError('Network error — check the contract register before retrying.');
     }
   }
 

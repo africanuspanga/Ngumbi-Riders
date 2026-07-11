@@ -50,6 +50,9 @@ export function CashPaymentForm({ candidates, today }: { candidates: CashCandida
       } else {
         setError(res.error);
       }
+    } catch {
+      // Money mutation: the request may or may not have reached the server.
+      setError('Network error — check the payments list before retrying so the payment is not recorded twice.');
     } finally {
       setBusy(false);
     }

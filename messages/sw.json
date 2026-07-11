@@ -34,7 +34,8 @@
     "riderLink": "Ingia kama mwendeshaji",
     "invalidCredentials": "Namba ya simu au PIN si sahihi.",
     "locked": "Akaunti imefungwa kwa muda. Jaribu tena baadaye.",
-    "tooManyAttempts": "Umejaribu mara nyingi. Subiri dakika 30."
+    "tooManyAttempts": "Umejaribu mara nyingi. Subiri dakika 30.",
+    "network": "Imeshindikana kuunganisha na seva. Angalia mtandao kisha jaribu tena."
   },
   "pin": {
     "changeTitle": "Badilisha PIN",
@@ -43,7 +44,8 @@
     "confirm": "Thibitisha PIN mpya",
     "weak": "PIN hii ni rahisi mno. Chagua nyingine.",
     "mismatch": "PIN mpya hazilingani.",
-    "mustChange": "Tafadhali badilisha PIN yako ya muda kabla ya kuendelea."
+    "mustChange": "Tafadhali badilisha PIN yako ya muda kabla ya kuendelea.",
+    "network": "Imeshindikana kuunganisha. Angalia mtandao kisha jaribu tena."
   },
   "apply": {
     "header": {

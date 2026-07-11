@@ -19,6 +19,14 @@ export const INCIDENT_LABELS: Record<(typeof INCIDENT_CATEGORIES)[number], strin
   personal_emergency: 'Dharura binafsi',
 };
 
+// Rider-facing Swahili labels for incident status (spec §36.11); the value set
+// is enforced in lib/incidents/actions.ts (INCIDENT_STATUSES).
+export const INCIDENT_STATUS_LABELS_SW: Record<string, string> = {
+  open: 'Limepokelewa',
+  in_progress: 'Linashughulikiwa',
+  resolved: 'Limetatuliwa',
+};
+
 export const incidentSchema = z.object({
   category: z.enum(INCIDENT_CATEGORIES),
   occurredAt: z.string().refine((v) => !Number.isNaN(Date.parse(v)), { message: 'Tarehe si sahihi' }),

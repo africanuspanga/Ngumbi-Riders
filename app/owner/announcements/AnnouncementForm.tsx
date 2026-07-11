@@ -16,15 +16,20 @@ export function AnnouncementForm() {
     if (!title.trim() || !body.trim()) return;
     setBusy(true);
     setMsg(null);
-    const res = await sendAnnouncement({ audience, title, body });
-    setBusy(false);
-    if (res.ok) {
-      setMsg(`Sent to ${res.sent} rider(s).`);
-      setTitle('');
-      setBody('');
-      router.refresh();
-    } else {
-      setMsg('Could not send.');
+    try {
+      const res = await sendAnnouncement({ audience, title, body });
+      if (res.ok) {
+        setMsg(`Sent to ${res.sent} rider(s).`);
+        setTitle('');
+        setBody('');
+        router.refresh();
+      } else {
+        setMsg('Could not send.');
+      }
+    } catch {
+      setMsg('Could not send (network error). Try again.');
+    } finally {
+      setBusy(false);
     }
   }
 

@@ -30,12 +30,16 @@ export function ExpenseForm({ motorcycles, today }: { motorcycles: Moto[]; today
 
   async function onSubmit(values: ExpenseInput) {
     setError(null);
-    const res = await addExpense(values);
-    if (res.ok) {
-      reset({ expenseDate: today });
-      router.refresh();
-    } else {
-      setError('Could not save the expense.');
+    try {
+      const res = await addExpense(values);
+      if (res.ok) {
+        reset({ expenseDate: today });
+        router.refresh();
+      } else {
+        setError('Could not save the expense.');
+      }
+    } catch {
+      setError('Network error — check the ledger before retrying.');
     }
   }
 

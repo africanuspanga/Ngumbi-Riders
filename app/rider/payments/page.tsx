@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireRider } from '@/lib/auth/session';
 import { listRiderPayments } from '@/lib/payments/queries';
+import { PAYMENT_STATUS_LABELS_SW as STATUS_LABEL } from '@/lib/payments/labels';
 import { formatTZS } from '@/lib/money/format';
 import { localDateString } from '@/lib/dates/tz';
 
@@ -12,17 +13,6 @@ const TONE: Record<string, string> = {
   failed: 'text-[color:var(--color-overdue)]',
   expired: 'text-muted-foreground',
   cancelled: 'text-muted-foreground',
-};
-
-// Rider-facing: Swahili labels, never raw status enums (spec §36.11).
-const STATUS_LABEL: Record<string, string> = {
-  created: 'Inasubiri',
-  pending: 'Inasubiri',
-  completed: 'Imekamilika',
-  failed: 'Imeshindikana',
-  expired: 'Imeisha muda',
-  cancelled: 'Imeghairiwa',
-  reversed: 'Imerejeshwa',
 };
 
 export default async function RiderPaymentsPage() {

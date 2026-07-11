@@ -34,7 +34,8 @@
     "riderLink": "Rider sign in",
     "invalidCredentials": "Phone number or PIN is incorrect.",
     "locked": "Account temporarily locked. Please try again later.",
-    "tooManyAttempts": "Too many attempts. Wait 30 minutes."
+    "tooManyAttempts": "Too many attempts. Wait 30 minutes.",
+    "network": "Could not reach the server. Check your connection and try again."
   },
   "pin": {
     "changeTitle": "Change PIN",
@@ -43,7 +44,8 @@
     "confirm": "Confirm new PIN",
     "weak": "That PIN is too easy to guess. Choose another.",
     "mismatch": "New PINs do not match.",
-    "mustChange": "Please change your temporary PIN before continuing."
+    "mustChange": "Please change your temporary PIN before continuing.",
+    "network": "Connection failed. Check your network and try again."
   },
   "apply": {
     "header": {

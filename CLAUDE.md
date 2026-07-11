@@ -52,6 +52,27 @@ wizard does. Also fixed while verifying: an EMPTY optional env value
 `.email()`/`.url()` validation and made `serverEnv()` throw on first use —
 `lib/env.ts` now treats `''` as "not configured" for optional vars.
 
+**SILENT-FAILURE HARDENING SWEEP (2026-07-11).** Three parallel review passes
+(silent client-side failures, dynamic i18n keys/enum-label leaks, dependency
+runtime seams) after the resolver incident. Fixed: root `app/error.tsx` +
+`app/global-error.tsx` (a rejected server action inside `startTransition`
+previously showed Next's bare production error screen); try/catch + visible
+error state on ChangePinForm, AnnouncementForm, ExemptionRequestForm,
+CashPaymentForm, ImportWizard (both phases), contract LifecycleButtons (result
+was ignored entirely), and all five RHF `onSubmit`s; PayClient's resend-USSD
+button now reports success/failure, knows `obligation_reserved`, and treats
+`reversed` as terminal; rider receipt + incident pages no longer leak raw
+English enums (`lib/payments/labels.ts`, `INCIDENT_STATUS_LABELS_SW`);
+FileInput size message said 10MB but the cap is 4 MiB; login no longer reports
+a server/network failure as "wrong credentials" (new `login.network`,
+`pin.network` keys). Remaining from the sweep (deferred): logout buttons no-op
+when offline; RiderStatusActions/IncidentStatus/RiskControls ignore action
+results; `setManualRisk` swallows its DB error server-side (reads as success);
+notification mark-read never checks errors; push-subscribe replay (known);
+no component-level test renders any client form — vitest is node-only, which
+is structurally why the resolver bug shipped (consider jsdom + RTL smoke
+tests for the wizard/login).
+
 **DEEP-DIVE REVIEW #2 (2026-07-10) — all findings fixed in code; two ops
 actions remain.** Six parallel review passes (payments/money, auth/security,
 cron/jobs, DB/RLS, API surface, domain/date math) over the whole codebase.

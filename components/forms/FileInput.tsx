@@ -10,7 +10,7 @@ import {
 const REJECTION_MESSAGE: Record<FileRejection, string> = {
   type: 'Aina ya faili hairuhusiwi. Tumia PDF, JPG au PNG.',
   extension: 'Kiendelezi cha faili si sahihi.',
-  size: 'Faili ni kubwa mno (kikomo 10MB).',
+  size: 'Faili ni kubwa mno (kikomo 4MB).',
   empty: 'Faili ni tupu.',
 };
 

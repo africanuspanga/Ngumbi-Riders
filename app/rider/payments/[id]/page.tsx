@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireRider } from '@/lib/auth/session';
 import { getReceiptView } from '@/lib/payments/queries';
+import { PAYMENT_STATUS_LABELS_SW } from '@/lib/payments/labels';
 import { formatTZS } from '@/lib/money/format';
 import { localDateString } from '@/lib/dates/tz';
 
@@ -28,7 +29,7 @@ export default async function RiderReceiptPage({
           ) : null}
           <h1 className="text-2xl font-bold text-primary-dark">{formatTZS(receipt.amount)}</h1>
           <p className="text-sm text-muted-foreground">
-            {receipt.method === 'cash' ? 'Taslimu' : 'Pesa za simu'} · {receipt.status}
+            {receipt.method === 'cash' ? 'Taslimu' : 'Pesa za simu'} · {PAYMENT_STATUS_LABELS_SW[receipt.status] ?? receipt.status}
           </p>
         </div>
 

@@ -175,6 +175,7 @@ export function LifecycleButtons({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   const actions: { key: 'pause' | 'resume' | 'complete_early' | 'terminate'; label: string }[] = [];
   if (status === 'active') {
@@ -185,21 +186,37 @@ export function LifecycleButtons({
   if (actions.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-2">
-      {actions.map((a) => (
-        <button
-          key={a.key}
-          type="button"
-          disabled={pending}
-          onClick={() => start(async () => {
-            await contractLifecycle(contractId, a.key);
-            router.refresh();
-          })}
-          className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
-        >
-          {a.label}
-        </button>
-      ))}
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-2">
+        {actions.map((a) => (
+          <button
+            key={a.key}
+            type="button"
+            disabled={pending}
+            onClick={() => start(async () => {
+              setError(null);
+              try {
+                const res = await contractLifecycle(contractId, a.key);
+                if (!res.ok) {
+                  setError(`Could not ${a.label.toLowerCase()} this contract (${res.error}).`);
+                  return;
+                }
+                router.refresh();
+              } catch {
+                setError(`Could not ${a.label.toLowerCase()} this contract — network error. Reload and check the contract status before retrying.`);
+              }
+            })}
+            className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+          >
+            {a.label}
+          </button>
+        ))}
+      </div>
+      {error && (
+        <p role="alert" className="text-sm font-medium text-overdue">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

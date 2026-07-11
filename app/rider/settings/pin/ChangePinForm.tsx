@@ -38,6 +38,9 @@ export function ChangePinForm({ forced }: { forced: boolean }) {
       }
       router.push(data.redirectTo || '/rider');
       router.refresh();
+    } catch {
+      // Network failure or a non-JSON error body (e.g. a platform 5xx page).
+      setError(t('network'));
     } finally {
       setPending(false);
     }
