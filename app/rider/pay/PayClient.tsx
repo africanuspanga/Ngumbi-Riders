@@ -81,6 +81,9 @@ export function PayClient({
           below_minimum: 'Kiasi ni kidogo mno.',
           invalid_phone: 'Namba ya simu si sahihi.',
           not_configured: 'Malipo bado hayajawashwa. Jaribu tena baadaye.',
+          config_error: 'Malipo bado hayajakamilika kusanidiwa. Tafadhali mwambie mmiliki.',
+          provider_error: 'Imeshindikana kuanzisha malipo kwa sasa. Jaribu tena baadaye; ikiendelea, mwambie mmiliki.',
+          server_error: 'Hitilafu ya mfumo imetokea. Jaribu tena.',
           no_active_contract: 'Huna mkataba unaoendelea.',
           obligation_reserved: 'Siku ulizochagua zina malipo mengine yanayosubiri. Jaribu tena baadaye.',
         };

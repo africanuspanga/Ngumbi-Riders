@@ -109,6 +109,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'obligation_reserved' }, { status: 409 });
   }
 
+  // Snippe must be able to reach our webhook over public HTTPS to ever complete
+  // the payment. When NEXT_PUBLIC_APP_URL is unset in production it falls back to
+  // http://localhost:3000 (see lib/env.ts), which the provider can never call
+  // back — that misconfiguration otherwise surfaces to the rider as an opaque
+  // "failed to initialize". Fail fast, loudly, and diagnosably instead.
+  const appUrl = clientEnv.NEXT_PUBLIC_APP_URL;
+  const webhookUrl = `${appUrl}/api/webhooks/snippe`;
+  if (
+    process.env.NODE_ENV === 'production' &&
+    /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)/i.test(appUrl)
+  ) {
+    await admin.from('payments').update({ status: 'failed' }).eq('id', paymentId);
+    await admin.from('payment_reservations').update({ is_active: false }).eq('payment_id', paymentId);
+    console.error('[pay/initiate] NEXT_PUBLIC_APP_URL is not a public URL:', appUrl);
+    await writeAudit({
+      actorId: null,
+      actorRole: 'system',
+      action: 'payment.misconfigured',
+      entityType: 'payment',
+      entityId: paymentId,
+      metadata: { reason: 'app_url_not_public', appUrl },
+    });
+    return NextResponse.json({ error: 'config_error' }, { status: 503 });
+  }
+
   // Create the Snippe mobile-money intent (USSD push).
   const snippe = await createMobilePayment({
     amount: selection.amount,
@@ -117,15 +142,30 @@ export async function POST(request: NextRequest) {
     lastname: ctx.lastName,
     email: ctx.email ?? '',
     idempotencyKey: idemKey,
-    webhookUrl: `${clientEnv.NEXT_PUBLIC_APP_URL}/api/webhooks/snippe`,
+    webhookUrl,
     metadata: { payment_id: paymentId },
   });
 
   if (!snippe.ok) {
     await admin.from('payments').update({ status: 'failed' }).eq('id', paymentId);
     await admin.from('payment_reservations').update({ is_active: false }).eq('payment_id', paymentId);
-    const status = snippe.error === 'not_configured' ? 503 : 502;
-    return NextResponse.json({ error: snippe.error }, { status });
+    // The provider's real error was previously returned to the client but never
+    // logged — so a scope/credential/config failure looked like a generic
+    // "failed to initialize" with no server trace. Record it (console + audit)
+    // and hand the client a stable, non-leaky code.
+    console.error('[pay/initiate] Snippe rejected the payment:', snippe.error, snippe.code ?? '');
+    await writeAudit({
+      actorId: null,
+      actorRole: 'system',
+      action: 'payment.provider_error',
+      entityType: 'payment',
+      entityId: paymentId,
+      metadata: { error: snippe.error, code: snippe.code ?? null },
+    });
+    if (snippe.error === 'not_configured') {
+      return NextResponse.json({ error: 'not_configured' }, { status: 503 });
+    }
+    return NextResponse.json({ error: 'provider_error' }, { status: 502 });
   }
 
   // At this point a real USSD push is on the rider's phone. If storing the
