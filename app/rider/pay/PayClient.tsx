@@ -2,10 +2,23 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { resendUssdPush, cancelPendingPayment } from '@/lib/payments/actions';
+import { resendUssdPush, cancelPendingPayment, cancelCurrentPendingPayment } from '@/lib/payments/actions';
 import { Confetti } from '@/components/rider/Confetti';
 
 type Option = { key: string; label: string; count: number; amount: number };
+
+// Initiate-route error codes → rider-facing Swahili copy.
+const ERROR_MESSAGES: Record<string, string> = {
+  pending_exists: 'Una malipo yanayosubiri tayari.',
+  below_minimum: 'Kiasi ni kidogo mno.',
+  invalid_phone: 'Namba ya simu si sahihi.',
+  not_configured: 'Malipo bado hayajawashwa. Jaribu tena baadaye.',
+  config_error: 'Malipo bado hayajakamilika kusanidiwa. Tafadhali mwambie mmiliki.',
+  provider_error: 'Imeshindikana kuanzisha malipo kwa sasa. Jaribu tena baadaye; ikiendelea, mwambie mmiliki.',
+  server_error: 'Hitilafu ya mfumo imetokea. Jaribu tena.',
+  no_active_contract: 'Huna mkataba unaoendelea.',
+  obligation_reserved: 'Siku ulizochagua zina malipo mengine yanayosubiri. Jaribu tena baadaye.',
+};
 
 function tzs(n: number) {
   return `TZS ${Math.round(n).toLocaleString('en-US')}`;
@@ -14,17 +27,17 @@ function tzs(n: number) {
 export function PayClient({
   options,
   phone,
-  initialPendingId,
 }: {
   options: Option[];
   phone: string;
-  initialPendingId: string | null;
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Option | null>(null);
   const [payerPhone, setPayerPhone] = useState(phone);
-  const [paymentId, setPaymentId] = useState<string | null>(initialPendingId);
-  const [status, setStatus] = useState<string>(initialPendingId ? 'pending' : 'idle');
+  // Always land on the amount + number selection screen — never auto-open the
+  // "waiting for confirmation" push screen, even if an old attempt is pending.
+  const [paymentId, setPaymentId] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>('idle');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [resendNote, setResendNote] = useState<string | null>(null);
@@ -99,34 +112,34 @@ export function PayClient({
     };
   }, [paymentId, status, poll]);
 
+  async function postInitiate(): Promise<{ ok: boolean; error?: string; paymentId?: string }> {
+    const res = await fetch('/api/payments/snippe/initiate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ count: selected!.count, payerPhone }),
+    });
+    const data = await res.json();
+    return res.ok ? { ok: true, paymentId: data.paymentId } : { ok: false, error: data.error };
+  }
+
   async function initiate() {
     if (!selected) return;
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch('/api/payments/snippe/initiate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ count: selected.count, payerPhone }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        const map: Record<string, string> = {
-          pending_exists: 'Una malipo yanayosubiri tayari.',
-          below_minimum: 'Kiasi ni kidogo mno.',
-          invalid_phone: 'Namba ya simu si sahihi.',
-          not_configured: 'Malipo bado hayajawashwa. Jaribu tena baadaye.',
-          config_error: 'Malipo bado hayajakamilika kusanidiwa. Tafadhali mwambie mmiliki.',
-          provider_error: 'Imeshindikana kuanzisha malipo kwa sasa. Jaribu tena baadaye; ikiendelea, mwambie mmiliki.',
-          server_error: 'Hitilafu ya mfumo imetokea. Jaribu tena.',
-          no_active_contract: 'Huna mkataba unaoendelea.',
-          obligation_reserved: 'Siku ulizochagua zina malipo mengine yanayosubiri. Jaribu tena baadaye.',
-        };
-        setError(map[data.error] ?? 'Imeshindikana kuanzisha malipo.');
+      let result = await postInitiate();
+      // A leftover attempt from before must never block a fresh payment — clear
+      // it automatically and retry once, so the rider isn't stranded.
+      if (!result.ok && result.error === 'pending_exists') {
+        const cleared = await cancelCurrentPendingPayment();
+        if (cleared.ok) result = await postInitiate();
+      }
+      if (!result.ok) {
+        setError(ERROR_MESSAGES[result.error ?? ''] ?? 'Imeshindikana kuanzisha malipo.');
         setConfirming(false); // back to the amount + number screen so the error is visible
         return;
       }
-      setPaymentId(data.paymentId);
+      setPaymentId(result.paymentId ?? null);
       setStatus('pending');
       setConfirming(false);
     } catch {

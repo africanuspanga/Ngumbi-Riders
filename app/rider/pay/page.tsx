@@ -31,11 +31,7 @@ export default async function PayPage() {
         )}
       </header>
 
-      <PayClient
-        options={view.options}
-        phone={view.phone}
-        initialPendingId={view.pendingPaymentId}
-      />
+      <PayClient options={view.options} phone={view.phone} />
     </div>
   );
 }

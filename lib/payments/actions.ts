@@ -237,3 +237,35 @@ export async function cancelPendingPayment(paymentId: string): Promise<ActionRes
   });
   return { ok: true };
 }
+
+/**
+ * Cancel whatever payment the current rider currently has outstanding
+ * (created/pending), if any. Used so a fresh "Lipa Sasa" is never blocked by a
+ * leftover attempt: the pay screen clears it automatically and re-initiates,
+ * instead of stranding the rider on a "pending" they'd have to cancel by hand.
+ * Returns ok even when there is nothing to cancel.
+ */
+export async function cancelCurrentPendingPayment(): Promise<ActionResult> {
+  const profile = await getSessionProfile();
+  if (!profile) return { ok: false, error: 'unauthenticated' };
+  const admin = createAdminClient();
+
+  const { data: rider } = await admin
+    .from('riders')
+    .select('id')
+    .eq('profile_id', profile.userId)
+    .maybeSingle();
+  const riderId = (rider as { id: string } | null)?.id;
+  if (!riderId) return { ok: false, error: 'not_found' };
+
+  const { data: pending } = await admin
+    .from('payments')
+    .select('id')
+    .eq('rider_id', riderId)
+    .in('status', ['created', 'pending'])
+    .order('created_at', { ascending: false })
+    .limit(1);
+  const id = (pending as { id: string }[] | null)?.[0]?.id;
+  if (!id) return { ok: true }; // nothing outstanding
+  return cancelPendingPayment(id);
+}
