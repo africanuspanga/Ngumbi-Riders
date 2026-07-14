@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { resendUssdPush, cancelPendingPayment } from '@/lib/payments/actions';
+import { Confetti } from '@/components/rider/Confetti';
 
 type Option = { key: string; label: string; count: number; amount: number };
 
@@ -78,16 +79,14 @@ export function PayClient({
     try {
       const res = await fetch(`/api/payments/${id}/status`, { cache: 'no-store' });
       const data = await res.json();
-      if (res.ok) {
-        setStatus(data.status);
-        if (data.status === 'completed' && data.receiptId) {
-          router.push(`/rider/payments/${id}`);
-        }
-      }
+      // Celebrate in place instead of redirecting straight away — a 'completed'
+      // status flips PayClient to the "Malipo yamepokelewa" + confetti screen,
+      // and the rider taps through to the receipt from there.
+      if (res.ok) setStatus(data.status);
     } catch {
       /* keep polling */
     }
-  }, [router]);
+  }, []);
 
   // Conservative polling — payment state is never optimistic (spec §6.2, §12.2).
   useEffect(() => {
@@ -136,6 +135,35 @@ export function PayClient({
     } finally {
       setBusy(false);
     }
+  }
+
+  if (status === 'completed') {
+    return (
+      <>
+        <Confetti />
+        <div className="flex flex-col items-center gap-3 rounded-[--radius-card] border border-primary bg-white p-6 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface text-3xl font-bold text-primary">
+            ✓
+          </div>
+          <p className="text-2xl font-bold text-primary-dark">Malipo yamepokelewa!</p>
+          <p className="text-sm text-muted-foreground">Asante. Malipo yako yamekamilika.</p>
+          <button
+            type="button"
+            onClick={() => router.push(paymentId ? `/rider/payments/${paymentId}` : '/rider')}
+            className="mt-1 rounded-[--radius-card] bg-primary px-6 py-3 font-semibold text-white hover:bg-primary-hover"
+          >
+            Ona risiti
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push('/rider')}
+            className="text-sm font-medium text-muted-foreground underline"
+          >
+            Rudi mwanzo
+          </button>
+        </div>
+      </>
+    );
   }
 
   if (paymentId && ['pending', 'created'].includes(status)) {
