@@ -2,6 +2,7 @@ import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { notifyRider } from '@/lib/notifications/service';
+import { getPaymentStatus } from '@/lib/snippe/client';
 
 /*
  * Shared payment settlement helpers used by the webhook and the reconciliation
@@ -66,4 +67,49 @@ export async function markPaymentFailed(
     deepLink: `/rider/payments/${paymentId}`,
     dedupeKey: `payment_${status}:${paymentId}`,
   });
+}
+
+/**
+ * Ask the provider whether a still-pending payment has resolved, then settle or
+ * fail it locally. This is the SAME server-side verification the reconcile cron
+ * performs — the completion decision comes from Snippe's authoritative API, not
+ * the browser — so it is safe to trigger from the rider's status poll. It makes
+ * a payment complete even when the webhook callback never reaches us (e.g. a
+ * misconfigured public URL / webhook secret in production), instead of the
+ * rider spinning on "waiting for confirmation" forever.
+ *
+ * Returns the resolved local status. Idempotent: record_completed_payment and
+ * the conditional failure update both no-op on an already-terminal payment.
+ */
+export async function reconcilePaymentWithProvider(paymentId: string): Promise<string> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from('payments')
+    .select('id, rider_id, amount, status, snippe_reference')
+    .eq('id', paymentId)
+    .maybeSingle();
+  const p = data as
+    | { id: string; rider_id: string; amount: number; status: string; snippe_reference: string | null }
+    | null;
+  if (!p || p.status !== 'pending' || !p.snippe_reference) return p?.status ?? 'not_found';
+
+  const provider = await getPaymentStatus(p.snippe_reference);
+  if (!provider.ok) return 'pending'; // provider unreachable — leave pending, try again next poll
+
+  if (provider.data.status === 'completed') {
+    // Block only on a POSITIVE amount disagreement; a status response that omits
+    // the amount is trusted because the reference identifies our own intent.
+    if (provider.data.amountValue !== null && provider.data.amountValue !== p.amount) {
+      return 'pending'; // needs owner reconciliation, don't auto-settle a mismatch
+    }
+    const r = await settlePaymentCompleted(p.id, p.rider_id, new Date().toISOString());
+    return r.ok ? 'completed' : 'pending';
+  }
+  if (['failed', 'expired', 'voided'].includes(provider.data.status)) {
+    const mapped =
+      provider.data.status === 'failed' ? 'failed' : provider.data.status === 'expired' ? 'expired' : 'cancelled';
+    await markPaymentFailed(p.id, p.rider_id, mapped);
+    return mapped;
+  }
+  return 'pending';
 }
