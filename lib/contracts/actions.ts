@@ -35,6 +35,38 @@ export async function createContract(
 
   const endDate = endDateFromDuration(d.startDate, d.durationMonths);
   const admin = createAdminClient();
+
+  // The motorcycle must be leasable for THIS rider (never trust the client's
+  // dropdown): available, or already assigned to this same rider — and not
+  // inactive nor already under a live (draft/active/paused) contract.
+  const { data: moto } = await admin
+    .from('motorcycles')
+    .select('status')
+    .eq('id', d.motorcycleId)
+    .maybeSingle();
+  if (!moto) return { ok: false, error: 'motorcycle_not_found' };
+  if ((moto as { status: string }).status === 'inactive') {
+    return { ok: false, error: 'motorcycle_unavailable' };
+  }
+  const { data: liveContract } = await admin
+    .from('contracts')
+    .select('id')
+    .eq('motorcycle_id', d.motorcycleId)
+    .in('status', ['draft', 'active', 'paused'])
+    .maybeSingle();
+  if (liveContract) return { ok: false, error: 'motorcycle_in_contract' };
+  if ((moto as { status: string }).status === 'assigned') {
+    const { data: activeAssign } = await admin
+      .from('motorcycle_assignments')
+      .select('rider_id')
+      .eq('motorcycle_id', d.motorcycleId)
+      .eq('is_active', true)
+      .maybeSingle();
+    if (!activeAssign || (activeAssign as { rider_id: string }).rider_id !== d.riderId) {
+      return { ok: false, error: 'motorcycle_assigned_to_other' };
+    }
+  }
+
   const { count } = await admin.from('contracts').select('*', { count: 'exact', head: true });
   const contractNumber = `NGR-C-${String((count ?? 0) + 1).padStart(4, '0')}`;
 

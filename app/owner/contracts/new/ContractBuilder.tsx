@@ -19,7 +19,22 @@ import {
 import { formatTZS } from '@/lib/money/format';
 import { TextField, SelectField, TextAreaField } from '@/components/forms/Field';
 
+// Server-side createContract rejections mapped to owner-facing copy.
+const CONTRACT_ERRORS: Record<string, string> = {
+  motorcycle_assigned_to_other:
+    'That motorcycle is assigned to a different rider. Pick the rider it is assigned to, or release the assignment on their rider page first.',
+  motorcycle_in_contract: 'That motorcycle is already under a contract.',
+  motorcycle_unavailable: 'That motorcycle is inactive and cannot be leased.',
+  motorcycle_not_found: 'That motorcycle no longer exists — reload and try again.',
+};
+
 type Option = { id: string; label: string };
+type MotoOption = {
+  id: string;
+  label: string;
+  assignedRiderId: string | null;
+  assignedRiderLabel: string | null;
+};
 
 export function ContractBuilder({
   riders,
@@ -27,7 +42,7 @@ export function ContractBuilder({
   defaultAmount,
 }: {
   riders: Option[];
-  motorcycles: Option[];
+  motorcycles: MotoOption[];
   defaultAmount: number;
 }) {
   const router = useRouter();
@@ -51,6 +66,17 @@ export function ContractBuilder({
 
   const values = useWatch({ control });
   const weekdays = values.selectedWeekdays ?? [];
+
+  // A bike already assigned to a rider can only be leased to THAT rider, so it
+  // only appears once that rider is selected. Available (unassigned) bikes
+  // always appear. Bikes assigned to a different rider are surfaced as a hint.
+  const selectedRiderId = values.riderId;
+  const visibleMotorcycles = motorcycles.filter(
+    (m) => m.assignedRiderId === null || m.assignedRiderId === selectedRiderId,
+  );
+  const assignedToOthers = motorcycles.filter(
+    (m) => m.assignedRiderId !== null && m.assignedRiderId !== selectedRiderId,
+  );
 
   function toggleWeekday(day: number) {
     const next = weekdays.includes(day)
@@ -88,7 +114,11 @@ export function ContractBuilder({
         router.push(`/owner/contracts/${res.data.id}`);
         router.refresh();
       } else {
-        setError('Could not create the contract. Check the fields.');
+        setError(
+          !res.ok
+            ? CONTRACT_ERRORS[res.error] ?? 'Could not create the contract. Check the fields.'
+            : 'Could not create the contract. Check the fields.',
+        );
       }
     } catch {
       setError('Network error — check the contract register before retrying.');
@@ -99,13 +129,13 @@ export function ContractBuilder({
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
       {motorcycles.length === 0 && (
         <p role="alert" className="rounded-[--radius-card] border border-warning bg-surface p-3 text-sm text-primary-dark">
-          No <strong>available</strong> motorcycles to lease. A motorcycle only
-          appears here while its status is <em>available</em> (not assigned to an
-          active contract or marked inactive).{' '}
+          No motorcycles are free to lease. A bike appears here when it is{' '}
+          <em>available</em>, or already assigned to a rider but not yet under a
+          contract; bikes that are inactive or under a live contract are hidden.{' '}
           <Link href="/owner/motorcycles" className="font-semibold underline">
             Check the motorcycle register
           </Link>{' '}
-          — register one at{' '}
+          — or register one at{' '}
           <Link href="/owner/motorcycles/new" className="font-semibold underline">
             Add motorcycle
           </Link>
@@ -128,8 +158,19 @@ export function ContractBuilder({
       </SelectField>
       <SelectField label="Motorcycle" required error={errors.motorcycleId?.message} defaultValue="" {...register('motorcycleId')}>
         <option value="" disabled>Select motorcycle…</option>
-        {motorcycles.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+        {visibleMotorcycles.map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.assignedRiderId ? `${m.label} — already assigned to this rider` : m.label}
+          </option>
+        ))}
       </SelectField>
+      {assignedToOthers.length > 0 && (
+        <p className="-mt-3 text-xs text-muted-foreground">
+          Hidden: {assignedToOthers.map((m) => `${m.label} (assigned to ${m.assignedRiderLabel})`).join('; ')}.
+          A bike assigned to a rider can only be leased to that rider — select
+          them, or release the assignment on their rider page first.
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <TextField label="Start date" type="date" required error={errors.startDate?.message} {...register('startDate')} />
