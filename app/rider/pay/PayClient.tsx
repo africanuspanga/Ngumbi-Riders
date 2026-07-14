@@ -156,17 +156,33 @@ export function PayClient({
         ))}
       </div>
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium">Namba ya kulipia</span>
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="payer-phone" className="text-sm font-medium">
+          Namba ya kulipia
+        </label>
         <input
+          id="payer-phone"
           className="input"
           type="tel"
           inputMode="tel"
+          autoComplete="tel"
+          placeholder="07XX XXX XXX"
           value={payerPhone}
           onChange={(e) => setPayerPhone(e.target.value)}
         />
-        <span className="text-xs text-muted-foreground">Unaweza kutumia namba ya mtu mwingine.</span>
-      </label>
+        <span className="text-xs text-muted-foreground">
+          Unaweza kulipa kwa namba yoyote ya simu — si lazima iwe namba yako.
+          {phone && payerPhone !== phone ? (
+            <button
+              type="button"
+              onClick={() => setPayerPhone(phone)}
+              className="ml-1 font-medium text-primary underline"
+            >
+              Tumia namba yangu
+            </button>
+          ) : null}
+        </span>
+      </div>
 
       {error && <p role="alert" className="text-sm font-medium text-overdue">{error}</p>}
 
