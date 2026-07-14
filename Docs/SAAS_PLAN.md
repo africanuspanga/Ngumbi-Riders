@@ -279,6 +279,31 @@ temp-PIN flow is the right trust model for this user base and stays.
   profile (name, logo, colors) → connect Snippe (or "cash-only mode" — works
   out of the box, mobile money can be connected later) → import
   motorcycles/riders (existing import wizard, now org-scoped) → invite staff.
+- **Guided first-run onboarding & empty states (real pilot learning: a fresh
+  account is confusing — users land in empty tables and don't know where to
+  start or where things live).** The signup wizard sets the org up; this is the
+  *day-2* problem of teaching a new fleet how to actually use the product. The
+  SaaS needs, as a first-class surface (not an afterthought):
+  - A **persistent step-by-step "getting started" checklist** on the dashboard
+    that stays until complete and deep-links each step to the exact screen:
+    e.g. **1.** add your first motorcycle → **2.** add or import riders → **3.**
+    create & activate a contract → **4.** connect mobile money (or stay
+    cash-only) → **5.** record/collect the first payment → **6.** invite your
+    staff. Each item **self-checks from real data** (e.g. "≥1 activated
+    contract"), never a manual flag, so it can't lie. Show a progress bar and a
+    "what this means / why it matters" line per step.
+  - **Designed empty states on every list** (motorcycles, riders, contracts,
+    payments, expenses, reports, applications): a one-line plain-language
+    explanation + a single primary CTA to the create/import action, instead of a
+    blank table. This is where most of the confusion is today.
+  - An optional, dismissible **first-run tour** that points out where the main
+    areas live (dashboard, riders, contracts, payments, reports, settings) — a
+    lightweight highlight/coach-mark pass, not a modal wall.
+  - Keep all of it **Swahili-first and low-literacy friendly** (short sentences,
+    icons, examples with real TZS amounts) — the same bar as the rider UI.
+  - The rider side gets the same treatment (a first-login "here's how you pay"
+    explainer + empty-calendar guidance), since riders are even less likely to
+    tolerate a confusing blank screen.
 - **Routing**: path-based tenancy `/{orgSlug}/…` for the public application
   form and rider login; the authenticated apps stay at `/owner` (org from
   session) and `/rider`. Subdomains (`acme.fleetapp.tz`) are a later polish —
@@ -490,7 +515,9 @@ Enough to not be caught flat-footed at tenant #2; flesh out with real usage.
   support tool.
 - **Track from day one** (mostly derivable from `usage_counters` + existing
   tables): activation (signup → first *activated contract*, the moment the
-  product is real for a fleet), weekly active fleets, per-org collection rate
+  product is real for a fleet) — the getting-started checklist (§7) is exactly
+  this funnel made visible, so instrument per-step completion and drop-off to
+  see *where* new fleets stall; weekly active fleets, per-org collection rate
   (already computed for the owner KPI — doubles as a product-health signal:
   a fleet whose riders stop paying through the app is a fleet about to churn),
   churn + stated reason, MRR.
