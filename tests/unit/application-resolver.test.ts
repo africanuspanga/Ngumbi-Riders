@@ -48,6 +48,37 @@ describe('zodResolver(applicationSchema)', () => {
     expect(dob?.message).toBe('age');
   });
 
+  // The /apply wizard keeps the drawn signature in React state and pushes it into
+  // the form; if the field is read while still unset it validates as `undefined`,
+  // whose zod message is NOT one of the apply.errors.* keys, so the UI fell back
+  // to the generic "invalid value" ("Thamani si sahihi") the owner saw on step 8.
+  // Defaulting the field to '' makes an un-drawn signature report "required".
+  describe('signature field error mapping (step 8 regression)', () => {
+    const KNOWN_KEYS = new Set([
+      'required', 'name', 'phone', 'nida', 'licence', 'age', 'date', 'email',
+      'declaration', 'signature', 'generic',
+    ]);
+    const sigError = async (signature: unknown) => {
+      const resolver = zodResolver(applicationSchema);
+      const result = await resolver({ signature } as never, undefined, resolverOptions);
+      return (result.errors as Record<string, { message?: string }>).signature?.message;
+    };
+
+    it('undefined signature yields a message that is NOT a known i18n key (the leak)', async () => {
+      const message = await sigError(undefined);
+      expect(message).toBeTruthy();
+      expect(KNOWN_KEYS.has(message as string)).toBe(false);
+    });
+
+    it("empty-string signature reports the stable 'signature' key (\"required\")", async () => {
+      expect(await sigError('')).toBe('signature');
+    });
+
+    it('a valid data URL clears the signature error', async () => {
+      expect(await sigError('data:image/png;base64,AAAA')).toBeUndefined();
+    });
+  });
+
   it('returns no errors for a fully valid application', async () => {
     const resolver = zodResolver(applicationSchema);
     const valid = {

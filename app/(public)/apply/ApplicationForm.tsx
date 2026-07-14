@@ -81,12 +81,17 @@ export function ApplicationForm() {
   } = useForm<ApplicationInput>({
     resolver: zodResolver(applicationSchema),
     mode: 'onTouched',
-    defaultValues: { gender: undefined },
+    // signature is a canvas, not a registered input — seed it so an un-drawn
+    // signature validates as '' ("required") instead of undefined (a wrong-type
+    // error that would leak through as the generic "invalid value" message).
+    defaultValues: { gender: undefined, signature: '' },
   });
 
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(DRAFT_KEY);
+      // reset() restores the form values, including the signature data URL, so
+      // validation and submit stay correct even though the canvas can't redraw.
       if (raw) reset(JSON.parse(raw));
     } catch {
       /* ignore corrupt draft */
@@ -105,12 +110,22 @@ export function ApplicationForm() {
     setFiles((prev) => ({ ...prev, [key]: file }));
   }
 
+  // Keep the drawn signature (canvas → React state) in lock-step with the form
+  // value, so validation and the final submit always see the current drawing.
+  function handleSignatureChange(dataUrl: string) {
+    setSignature(dataUrl);
+    setValue('signature', dataUrl, { shouldValidate: false });
+  }
+
   function missingDocs(): string[] {
     return REQUIRED_DOC_KEYS.filter((k) => !files[k]);
   }
 
   async function next() {
     setDocError(null);
+    // Signature is mirrored into the form value by handleSignatureChange (draw)
+    // and by reset() (restored draft), so STEP_FIELDS[7]'s trigger below sees the
+    // real value — the old code validated it before it was ever set into the form.
     const fields = STEP_FIELDS[step];
     if (fields && fields.length > 0) {
       const valid = await trigger([...fields] as (keyof ApplicationInput)[]);
@@ -119,11 +134,6 @@ export function ApplicationForm() {
     if (step === 6 && missingDocs().length > 0) {
       setDocError(t('docs.missing'));
       return;
-    }
-    if (step === 7) {
-      setValue('signature', signature, { shouldValidate: true });
-      const valid = await trigger(['declarationAccepted', 'signature']);
-      if (!valid) return;
     }
     saveDraft();
     setStep((s) => Math.min(s + 1, STEP_KEYS.length - 1));
@@ -211,7 +221,7 @@ export function ApplicationForm() {
         {step === 5 && <GuarantorStep prefix="guarantorTwo" t={t} te={te} register={register} errors={errors} />}
         {step === 6 && <DocumentsStep t={t} files={files} setFile={setFile} error={docError} />}
         {step === 7 && (
-          <DeclarationStep t={t} te={te} register={register} errors={errors} signature={signature} setSignature={setSignature} />
+          <DeclarationStep t={t} te={te} register={register} errors={errors} signature={signature} setSignature={handleSignatureChange} />
         )}
         {step === 8 && <ReviewStep t={t} values={getValues()} files={files} />}
       </div>
