@@ -112,6 +112,38 @@ is the checklist for S1.
 > canvas-input pattern applies to the contract on-screen signature
 > (`lib/contracts` / builder) — check it there too when porting.
 
+> **Carry-over fix — rider payment flow (pilot-hardened 2026-07-14).** The
+> `/rider/pay` flow accreted several must-not-regress rules while shaking out the
+> live pilot with the owner. A per-org rewrite (`/{orgSlug}/…` routing, per-org
+> Snippe) must preserve all of them:
+> 1. **Pay from ANY number.** The payer-phone box defaults to the rider's number
+>    but is fully editable — a rider may pay from a friend's/relative's line. The
+>    initiate route accepts any valid phone; it never forces the rider's
+>    registered number. (commits `f8abb8e`, `9e83ac2`)
+> 2. **Always land on amount + number selection, never the push screen.** A
+>    leftover `pending`/`created` attempt must NOT auto-open the "Inasubiri
+>    uthibitisho…" waiting screen — to the owner it looked like Lipa Sasa fired a
+>    payment on a locked number. If a stale pending blocks a fresh payment, clear
+>    it automatically (`cancelCurrentPendingPayment`) and retry once — no manual
+>    cancel step. (commit `a81e4e4`)
+> 3. **Confirm the number before the USSD request goes out.** Tapping pay opens a
+>    "Je, hii ndiyo namba unayotaka kulipia?" step; the request is sent only after
+>    the rider confirms. (commit `9e83ac2`)
+> 4. **Completion must not hang on the webhook** — the status poll reconciles
+>    with the provider directly (see §6). (commit `d018399`)
+> 5. Nice-to-have kept intentionally dependency-free for low-cost Android: a
+>    payment-received celebration (`components/rider/Confetti.tsx`) on completion.
+>    (commit `d3b07d4`)
+
+> **Carry-over fix — contract builder must offer an already-assigned bike (2026-07-14,
+> commit `4893ec4`).** Assigning a motorcycle to a rider (standalone "Assign
+> motorcycle") flips it to `status='assigned'`, and the builder listed only
+> `available` bikes — so assigning first made that rider's contract impossible to
+> create (empty select → zod's raw "Invalid UUID"). The builder must offer bikes
+> that are `available` OR assigned to the rider being contracted (and not under a
+> live contract); `createContract` re-checks this server-side. In the SaaS this
+> is org-scoped: only offer bikes of the caller's org. See §2 item 12.
+
 ## 3. Tenancy model decision
 
 **Chosen: shared database, shared schema, `org_id uuid not null` on every
@@ -269,6 +301,22 @@ temp-PIN flow is the right trust model for this user base and stays.
   the connect wizard, not at a rider's first payment. Store the verified
   scopes + `last_verified_at`; the org settings page and `/admin` show a
   per-org credential/webhook health indicator, and a cron re-verifies weekly.
+- **Completion must not depend solely on the webhook (pilot lesson,
+  2026-07-14, commit `d018399`).** At Ng'umbi's go-live the Snippe completion
+  webhook wasn't reaching production (public-URL / `SNIPPE_WEBHOOK_SECRET`
+  misconfig on Vercel), so riders sat on "Inasubiri uthibitisho…" forever after
+  entering their PIN — the money moved but the app never learned. The fix makes
+  the rider's status poll ask the provider directly
+  (`reconcilePaymentWithProvider` → the same atomic `record_completed_payment`),
+  so a payment settles within one poll even if the webhook never lands; the
+  reconcile cron is the slower backstop. **Per-org this matters MORE, not less**:
+  per-org webhook routing + per-org secrets are more failure-prone than a single
+  global endpoint, so keep the provider-poll (and the reconcile job) as the
+  authoritative completion fallback for every tenant. The completion decision
+  always comes from the provider, never the browser (spec rule 7). Also make the
+  connect wizard's live test (above) verify the webhook URL is a public HTTPS
+  origin — a `localhost`/empty `NEXT_PUBLIC_APP_URL` fallback silently poisons
+  the callback (the initiate route now guards this with a `config_error`).
 - Receipts: per-org sequence + prefix from org settings.
 - Platform fees (optional, later): bill via subscription, not by skimming
   payment flows — far simpler legally and technically.
