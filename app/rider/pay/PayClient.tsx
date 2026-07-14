@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { resendUssdPush } from '@/lib/payments/actions';
+import { resendUssdPush, cancelPendingPayment } from '@/lib/payments/actions';
 
 type Option = { key: string; label: string; count: number; amount: number };
 
@@ -35,6 +35,29 @@ export function PayClient({
       setResendNote(res.ok ? 'Ombi limetumwa tena. Angalia simu yako.' : 'Imeshindikana kutuma tena. Jaribu tena.');
     } catch {
       setResendNote('Imeshindikana kutuma tena. Angalia mtandao kisha jaribu tena.');
+    }
+  }
+
+  // Escape hatch: abandon the current (not-yet-confirmed) payment and return to
+  // the amount + number screen — so the rider can pay from a different number
+  // and is never stuck waiting on a payment that won't complete.
+  async function cancelAndRestart(id: string) {
+    setResendNote(null);
+    setBusy(true);
+    try {
+      const res = await cancelPendingPayment(id);
+      if (res.ok) {
+        setPaymentId(null);
+        setStatus('idle');
+        setSelected(null);
+        setError(null);
+      } else {
+        setResendNote('Imeshindikana kughairi. Jaribu tena.');
+      }
+    } catch {
+      setResendNote('Imeshindikana kughairi. Angalia mtandao kisha jaribu tena.');
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -115,6 +138,14 @@ export function PayClient({
           Tuma tena ombi la USSD
         </button>
         {resendNote && <p className="text-xs text-muted-foreground">{resendNote}</p>}
+        <button
+          type="button"
+          onClick={() => cancelAndRestart(paymentId)}
+          disabled={busy}
+          className="text-sm font-medium text-muted-foreground underline disabled:opacity-60"
+        >
+          Ghairi — lipa kwa namba nyingine
+        </button>
       </div>
     );
   }

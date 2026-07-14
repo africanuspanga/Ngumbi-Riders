@@ -178,3 +178,62 @@ export async function resendUssdPush(paymentId: string): Promise<ActionResult> {
   const res = await triggerPush(p.snippe_reference);
   return res.ok ? { ok: true } : { ok: false, error: res.error };
 }
+
+/**
+ * Abandon the rider's current pending payment so they can start over — e.g. to
+ * pay from a different phone number, or after a USSD prompt they never
+ * confirmed. Without this a not-yet-completed payment leaves the rider stuck on
+ * the "waiting for confirmation" screen with the number locked in.
+ *
+ * Money-safe: reservations are released and the payment is set 'cancelled' via
+ * a conditional update (so a completion that lands first still wins). If Snippe
+ * later reports this intent completed, record_completed_payment refuses to
+ * settle a non-created/pending payment and the webhook flags it to the owner
+ * for reconciliation — never a silent double-charge or lost payment.
+ */
+export async function cancelPendingPayment(paymentId: string): Promise<ActionResult> {
+  const profile = await getSessionProfile();
+  if (!profile) return { ok: false, error: 'unauthenticated' };
+  const admin = createAdminClient();
+
+  const { data: payment } = await admin
+    .from('payments')
+    .select('rider_id, status')
+    .eq('id', paymentId)
+    .maybeSingle();
+  const p = payment as { rider_id: string; status: string } | null;
+  if (!p) return { ok: false, error: 'not_found' };
+  if (!['created', 'pending'].includes(p.status)) return { ok: false, error: 'not_pending' };
+
+  // Only the payment's own rider (or the owner) may cancel it.
+  if (profile.role !== 'owner') {
+    const { data: rider } = await admin
+      .from('riders')
+      .select('id')
+      .eq('profile_id', profile.userId)
+      .maybeSingle();
+    if (!rider || (rider as { id: string }).id !== p.rider_id) {
+      return { ok: false, error: 'forbidden' };
+    }
+  }
+
+  // Conditional update: never overwrite a payment that just reached a terminal
+  // state (e.g. a completion webhook landed between the read and this write).
+  const { data: changed } = await admin
+    .from('payments')
+    .update({ status: 'cancelled' })
+    .eq('id', paymentId)
+    .in('status', ['created', 'pending'])
+    .select('id');
+  if (!changed || changed.length === 0) return { ok: false, error: 'not_pending' };
+
+  await admin.from('payment_reservations').update({ is_active: false }).eq('payment_id', paymentId);
+  await writeAudit({
+    actorId: profile.userId,
+    actorRole: profile.role === 'owner' ? 'owner' : 'rider',
+    action: 'payment.cancelled_by_user',
+    entityType: 'payment',
+    entityId: paymentId,
+  });
+  return { ok: true };
+}
