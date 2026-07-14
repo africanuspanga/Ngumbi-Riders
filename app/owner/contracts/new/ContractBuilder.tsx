@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -96,6 +97,31 @@ export function ContractBuilder({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+      {motorcycles.length === 0 && (
+        <p role="alert" className="rounded-[--radius-card] border border-warning bg-surface p-3 text-sm text-primary-dark">
+          No <strong>available</strong> motorcycles to lease. A motorcycle only
+          appears here while its status is <em>available</em> (not assigned to an
+          active contract or marked inactive).{' '}
+          <Link href="/owner/motorcycles" className="font-semibold underline">
+            Check the motorcycle register
+          </Link>{' '}
+          — register one at{' '}
+          <Link href="/owner/motorcycles/new" className="font-semibold underline">
+            Add motorcycle
+          </Link>
+          .
+        </p>
+      )}
+      {riders.length === 0 && (
+        <p role="alert" className="rounded-[--radius-card] border border-warning bg-surface p-3 text-sm text-primary-dark">
+          No eligible riders (only <em>active</em> or <em>onboarding</em> riders
+          can hold a contract).{' '}
+          <Link href="/owner/riders" className="font-semibold underline">
+            Open the rider register
+          </Link>
+          .
+        </p>
+      )}
       <SelectField label="Rider" required error={errors.riderId?.message} defaultValue="" {...register('riderId')}>
         <option value="" disabled>Select rider…</option>
         {riders.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}

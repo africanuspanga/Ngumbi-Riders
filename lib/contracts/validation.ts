@@ -7,8 +7,8 @@ import { z } from 'zod';
  */
 export const contractBuilderSchema = z
   .object({
-    riderId: z.string().uuid(),
-    motorcycleId: z.string().uuid(),
+    riderId: z.string().uuid('Select a rider'),
+    motorcycleId: z.string().uuid('Select a motorcycle'),
     ownershipTransfers: z.boolean().default(false),
     ownershipTransferNotes: z.string().trim().max(1000).optional().or(z.literal('')),
     startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid start date'),

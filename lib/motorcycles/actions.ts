@@ -54,6 +54,9 @@ export async function createMotorcycle(
     metadata: { registration: parsed.data.registrationNumber },
   });
   revalidatePath('/owner/motorcycles');
+  // The contract builder lists AVAILABLE motorcycles; refresh it so a freshly
+  // registered bike is immediately selectable there too.
+  revalidatePath('/owner/contracts/new');
   return { ok: true, data: { id } };
 }
 
@@ -90,5 +93,7 @@ export async function setMotorcycleStatus(
   });
   revalidatePath(`/owner/motorcycles/${id}`);
   revalidatePath('/owner/motorcycles');
+  // Availability changed → refresh the contract builder's motorcycle list.
+  revalidatePath('/owner/contracts/new');
   return { ok: true };
 }

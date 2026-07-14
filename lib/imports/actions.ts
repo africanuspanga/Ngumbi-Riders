@@ -273,5 +273,7 @@ export async function commitImport(batchId: string): Promise<CommitResult> {
 
   revalidatePath('/owner/imports');
   revalidatePath(b.import_type === 'riders' ? '/owner/riders' : '/owner/motorcycles');
+  // Imported riders/motorcycles feed the contract builder's dropdowns.
+  revalidatePath('/owner/contracts/new');
   return { ok: true, inserted, skipped, riderPins };
 }
