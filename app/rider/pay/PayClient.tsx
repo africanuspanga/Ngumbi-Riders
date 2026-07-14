@@ -27,6 +27,18 @@ export function PayClient({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [resendNote, setResendNote] = useState<string | null>(null);
+  // Confirm the payer number BEFORE any USSD request goes out.
+  const [confirming, setConfirming] = useState(false);
+
+  function askConfirm() {
+    if (!selected) return;
+    if (payerPhone.replace(/\D/g, '').length < 9) {
+      setError('Namba ya simu si sahihi.');
+      return;
+    }
+    setError(null);
+    setConfirming(true);
+  }
 
   async function resend(id: string) {
     setResendNote(null);
@@ -50,6 +62,7 @@ export function PayClient({
         setPaymentId(null);
         setStatus('idle');
         setSelected(null);
+        setConfirming(false);
         setError(null);
       } else {
         setResendNote('Imeshindikana kughairi. Jaribu tena.');
@@ -111,12 +124,15 @@ export function PayClient({
           obligation_reserved: 'Siku ulizochagua zina malipo mengine yanayosubiri. Jaribu tena baadaye.',
         };
         setError(map[data.error] ?? 'Imeshindikana kuanzisha malipo.');
+        setConfirming(false); // back to the amount + number screen so the error is visible
         return;
       }
       setPaymentId(data.paymentId);
       setStatus('pending');
+      setConfirming(false);
     } catch {
       setError('Hitilafu ya mtandao.');
+      setConfirming(false);
     } finally {
       setBusy(false);
     }
@@ -156,7 +172,7 @@ export function PayClient({
         <p className="font-semibold text-overdue">Malipo hayakukamilika</p>
         <button
           type="button"
-          onClick={() => { setPaymentId(null); setStatus('idle'); setSelected(null); }}
+          onClick={() => { setPaymentId(null); setStatus('idle'); setSelected(null); setConfirming(false); }}
           className="rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white"
         >
           Jaribu tena
@@ -167,6 +183,41 @@ export function PayClient({
 
   if (options.length === 0) {
     return <p className="text-muted-foreground">Huna malipo yanayohitajika kwa sasa. ✓</p>;
+  }
+
+  // Confirm the payer number before sending the USSD request.
+  if (confirming && selected) {
+    return (
+      <div className="flex flex-col gap-4 rounded-[--radius-card] border border-border bg-white p-5">
+        <p className="text-center font-semibold text-primary-dark">
+          Je, hii ndiyo namba unayotaka kulipia?
+        </p>
+        <div className="rounded-[--radius-card] bg-surface p-4 text-center">
+          <p className="text-2xl font-bold text-foreground">{payerPhone}</p>
+        </div>
+        <p className="text-center text-sm text-muted-foreground">
+          Utalipa <span className="font-semibold text-primary-dark">{tzs(selected.amount)}</span>.
+          Ombi la USSD litatumwa kwenye namba hii — utaweka PIN yako ya pesa za simu.
+        </p>
+        {error && <p role="alert" className="text-sm font-medium text-overdue">{error}</p>}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={initiate}
+          className="rounded-[--radius-card] bg-primary px-6 py-4 text-lg font-bold text-white hover:bg-primary-hover disabled:opacity-60"
+        >
+          {busy ? 'Inatuma ombi…' : 'Ndiyo, tuma ombi la malipo'}
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => setConfirming(false)}
+          className="text-sm font-medium text-primary underline disabled:opacity-60"
+        >
+          Hapana, badilisha namba
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -220,10 +271,10 @@ export function PayClient({
       <button
         type="button"
         disabled={!selected || busy}
-        onClick={initiate}
+        onClick={askConfirm}
         className="rounded-[--radius-card] bg-primary px-6 py-4 text-lg font-bold text-white hover:bg-primary-hover disabled:opacity-60"
       >
-        {busy ? 'Inaanzisha…' : selected ? `Lipa ${tzs(selected.amount)}` : 'Chagua kiasi'}
+        {selected ? `Lipa ${tzs(selected.amount)}` : 'Chagua kiasi'}
       </button>
     </div>
   );
