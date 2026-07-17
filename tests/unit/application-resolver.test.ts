@@ -36,7 +36,7 @@ describe('zodResolver(applicationSchema)', () => {
     }
     // The missing later-step fields are the ones that must be flagged.
     expect(result.errors).toHaveProperty('primaryPhone');
-    expect(result.errors).toHaveProperty('nidaNumber');
+    expect(result.errors).toHaveProperty('identityNumber');
   });
 
   it('surfaces the stable i18n message key on the failing field', async () => {
@@ -91,24 +91,16 @@ describe('zodResolver(applicationSchema)', () => {
       ward: 'Upanga',
       street: 'Mtaa wa Uhuru',
       fullAddress: 'Nyumba na. 12, Upanga, Ilala',
-      nidaNumber: '19950520123456789012',
+      identityType: 'nida',
+      identityNumber: '19950520123456789012',
       drivingLicenceNumber: 'DL-4456789',
       previousExperience: '',
       emergencyContactName: 'Asha Kileo',
       emergencyContactPhone: '0714000003',
       emergencyContactRelationship: 'Mama',
-      guarantorOne: {
+      guarantor: {
         fullName: 'John Doe',
         phone: '0712345678',
-        nidaNumber: '19900101123456789012',
-        residentialAddress: 'Kariakoo, Dar es Salaam',
-        relationship: 'Ndugu',
-        occupation: 'Mfanyabiashara',
-        employer: '',
-      },
-      guarantorTwo: {
-        fullName: 'Baraka Mushi',
-        phone: '0715000004',
         nidaNumber: '19900101123456789012',
         residentialAddress: 'Kariakoo, Dar es Salaam',
         relationship: 'Ndugu',

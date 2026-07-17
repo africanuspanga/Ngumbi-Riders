@@ -67,16 +67,16 @@ export async function setApplicationStatus(
   return { ok: true };
 }
 
-/** Deliberately decrypt and reveal NIDA + licence for the owner (§25.1). */
+/** Deliberately decrypt and reveal NIDA + licence + voter ID for owner (§25.1). */
 export async function revealApplicationSecrets(
   id: string,
-): Promise<ActionResult<{ nida: string | null; licence: string | null }>> {
+): Promise<ActionResult<{ nida: string | null; licence: string | null; voterId: string | null }>> {
   const ownerId = await assertOwner();
   const supabase = await createServerSupabase();
 
   const { data } = await supabase
     .from('rider_applications')
-    .select('nida_number_encrypted, driving_licence_encrypted')
+    .select('nida_number_encrypted, driving_licence_encrypted, voter_id_encrypted')
     .eq('id', id)
     .maybeSingle();
   if (!data) return { ok: false, error: 'not_found' };
@@ -84,6 +84,7 @@ export async function revealApplicationSecrets(
   const row = data as {
     nida_number_encrypted: string | null;
     driving_licence_encrypted: string | null;
+    voter_id_encrypted: string | null;
   };
 
   await writeAudit({
@@ -101,6 +102,7 @@ export async function revealApplicationSecrets(
       licence: row.driving_licence_encrypted
         ? decryptPII(row.driving_licence_encrypted)
         : null,
+      voterId: row.voter_id_encrypted ? decryptPII(row.voter_id_encrypted) : null,
     },
   };
 }
@@ -189,8 +191,10 @@ export async function convertToRider(
 
   const { error: piiErr } = await admin.from('rider_private_data').insert({
     rider_id: created.riderId,
+    identity_type: (a.identity_type as 'nida' | 'driving_licence' | 'voter_id' | null) ?? null,
     nida_number_encrypted: a.nida_number_encrypted,
     driving_licence_encrypted: a.driving_licence_encrypted,
+    voter_id_encrypted: a.voter_id_encrypted,
   });
 
   if (copyErr || piiErr) {

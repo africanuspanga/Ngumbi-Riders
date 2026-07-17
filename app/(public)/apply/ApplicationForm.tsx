@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   useForm,
   type UseFormRegister,
+  type UseFormSetValue,
   type FieldErrors,
   type FieldError,
 } from 'react-hook-form';
@@ -13,12 +14,15 @@ import { useTranslations } from 'next-intl';
 import {
   applicationSchema,
   STEP_FIELDS,
+  identityTypeValues,
   type ApplicationInput,
+  type IdentityType,
 } from '@/lib/validation/application';
 import {
-  APPLICANT_DOC_TYPES,
+  requiredApplicantDocTypes,
   GUARANTOR_DOC_TYPES,
 } from '@/lib/applications/documents';
+import { REGION_NAMES, districtsOf } from '@/lib/geo/tanzania';
 import { Stepper } from '@/components/forms/Stepper';
 import { TextField, TextAreaField, SelectField } from '@/components/forms/Field';
 import { SignaturePad } from '@/components/forms/SignaturePad';
@@ -32,22 +36,26 @@ type ErrorT = (e?: FieldError) => string | undefined;
 const STEP_KEYS = [
   'personal',
   'contact',
-  'nida',
+  'identity',
   'experience',
-  'guarantor1',
-  'guarantor2',
+  'guarantor',
   'documents',
   'declaration',
   'review',
 ] as const;
 
+const DOCUMENTS_STEP = STEP_KEYS.indexOf('documents');
+
 const DRAFT_KEY = 'ngr-apply-draft-v1';
 
-const REQUIRED_DOC_KEYS = [
-  ...APPLICANT_DOC_TYPES.map((t) => `applicant.${t}`),
-  ...GUARANTOR_DOC_TYPES.map((t) => `guarantorOne.${t}`),
-  ...GUARANTOR_DOC_TYPES.map((t) => `guarantorTwo.${t}`),
-];
+// The applicant's required identity documents depend on the chosen identity
+// type (build spec #3); the guarantor always uploads the same set.
+function requiredDocKeys(identityType: IdentityType): string[] {
+  return [
+    ...requiredApplicantDocTypes(identityType).map((t) => `applicant.${t}`),
+    ...GUARANTOR_DOC_TYPES.map((t) => `guarantor.${t}`),
+  ];
+}
 
 export function ApplicationForm() {
   const t = useTranslations('apply');
@@ -72,6 +80,7 @@ export function ApplicationForm() {
 
   const {
     register,
+    watch,
     trigger,
     getValues,
     setValue,
@@ -82,16 +91,16 @@ export function ApplicationForm() {
     resolver: zodResolver(applicationSchema),
     mode: 'onTouched',
     // signature is a canvas, not a registered input — seed it so an un-drawn
-    // signature validates as '' ("required") instead of undefined (a wrong-type
-    // error that would leak through as the generic "invalid value" message).
-    defaultValues: { gender: undefined, signature: '' },
+    // signature validates as '' ("required") instead of undefined.
+    defaultValues: { gender: undefined, signature: '', identityType: 'nida', region: '', district: '' },
   });
+
+  const identityType = (watch('identityType') as IdentityType) ?? 'nida';
+  const region = watch('region') ?? '';
 
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(DRAFT_KEY);
-      // reset() restores the form values, including the signature data URL, so
-      // validation and submit stay correct even though the canvas can't redraw.
       if (raw) reset(JSON.parse(raw));
     } catch {
       /* ignore corrupt draft */
@@ -110,28 +119,23 @@ export function ApplicationForm() {
     setFiles((prev) => ({ ...prev, [key]: file }));
   }
 
-  // Keep the drawn signature (canvas → React state) in lock-step with the form
-  // value, so validation and the final submit always see the current drawing.
   function handleSignatureChange(dataUrl: string) {
     setSignature(dataUrl);
     setValue('signature', dataUrl, { shouldValidate: false });
   }
 
   function missingDocs(): string[] {
-    return REQUIRED_DOC_KEYS.filter((k) => !files[k]);
+    return requiredDocKeys(identityType).filter((k) => !files[k]);
   }
 
   async function next() {
     setDocError(null);
-    // Signature is mirrored into the form value by handleSignatureChange (draw)
-    // and by reset() (restored draft), so STEP_FIELDS[7]'s trigger below sees the
-    // real value — the old code validated it before it was ever set into the form.
     const fields = STEP_FIELDS[step];
     if (fields && fields.length > 0) {
       const valid = await trigger([...fields] as (keyof ApplicationInput)[]);
       if (!valid) return;
     }
-    if (step === 6 && missingDocs().length > 0) {
+    if (step === DOCUMENTS_STEP && missingDocs().length > 0) {
       setDocError(t('docs.missing'));
       return;
     }
@@ -147,15 +151,12 @@ export function ApplicationForm() {
   async function onSubmit(data: ApplicationInput) {
     setSubmitError(null);
     if (missingDocs().length > 0) {
-      setStep(6);
+      setStep(DOCUMENTS_STEP);
       setDocError(t('docs.missing'));
       return;
     }
     setSubmitting(true);
     try {
-      // Step 1: submit the application itself (text payload + signature).
-      // On a retry after a partial failure, reuse the already-created
-      // application instead of duplicating it.
       let sub = submission;
       if (!sub) {
         const fd = new FormData();
@@ -172,10 +173,8 @@ export function ApplicationForm() {
         setSubmission(sub);
       }
 
-      // Step 2: upload each document individually — the platform caps request
-      // bodies well below the combined size of 13 documents. Uploads are
-      // idempotent server-side, so retrying the whole loop is safe.
-      for (const key of REQUIRED_DOC_KEYS) {
+      // Upload each required document individually (platform request-size cap).
+      for (const key of requiredDocKeys(data.identityType)) {
         const file = files[key];
         if (!file) continue;
         const dot = key.indexOf('.');
@@ -191,7 +190,7 @@ export function ApplicationForm() {
           const result = await res.json().catch(() => null);
           if (result?.error === 'file_rejected') {
             setSubmitError(t('errors.fileRejected'));
-            setStep(6);
+            setStep(DOCUMENTS_STEP);
           } else {
             setSubmitError(t('errors.submitFailed'));
           }
@@ -214,16 +213,19 @@ export function ApplicationForm() {
 
       <div className="flex flex-col gap-4">
         {step === 0 && <PersonalStep t={t} te={te} register={register} errors={errors} />}
-        {step === 1 && <ContactStep t={t} te={te} register={register} errors={errors} />}
-        {step === 2 && <NidaStep t={t} te={te} register={register} errors={errors} />}
+        {step === 1 && (
+          <ContactStep t={t} te={te} register={register} errors={errors} region={region} setValue={setValue} />
+        )}
+        {step === 2 && <IdentityStep t={t} te={te} register={register} errors={errors} identityType={identityType} />}
         {step === 3 && <ExperienceStep t={t} te={te} register={register} errors={errors} />}
-        {step === 4 && <GuarantorStep prefix="guarantorOne" t={t} te={te} register={register} errors={errors} />}
-        {step === 5 && <GuarantorStep prefix="guarantorTwo" t={t} te={te} register={register} errors={errors} />}
-        {step === 6 && <DocumentsStep t={t} files={files} setFile={setFile} error={docError} />}
-        {step === 7 && (
+        {step === 4 && <GuarantorStep t={t} te={te} register={register} errors={errors} />}
+        {step === 5 && (
+          <DocumentsStep t={t} files={files} setFile={setFile} error={docError} identityType={identityType} />
+        )}
+        {step === 6 && (
           <DeclarationStep t={t} te={te} register={register} errors={errors} signature={signature} setSignature={handleSignatureChange} />
         )}
-        {step === 8 && <ReviewStep t={t} values={getValues()} files={files} />}
+        {step === 7 && <ReviewStep t={t} values={getValues()} files={files} />}
       </div>
 
       {submitError && (
@@ -275,14 +277,42 @@ function PersonalStep({ t, te, register, errors }: StepProps) {
   );
 }
 
-function ContactStep({ t, te, register, errors }: StepProps) {
+function ContactStep({
+  t,
+  te,
+  register,
+  errors,
+  region,
+  setValue,
+}: StepProps & { region: string; setValue: UseFormSetValue<ApplicationInput> }) {
+  const districts = districtsOf(region);
   return (
     <>
       <TextField label={t('fields.phone')} type="tel" inputMode="tel" required hint={t('fields.phoneHint')} error={te(errors.primaryPhone)} {...register('primaryPhone')} />
       <TextField label={t('fields.altPhone')} type="tel" inputMode="tel" error={te(errors.alternativePhone)} {...register('alternativePhone')} />
       <TextField label={t('fields.email')} type="email" error={te(errors.email)} {...register('email')} />
-      <TextField label={t('fields.region')} required error={te(errors.region)} {...register('region')} />
-      <TextField label={t('fields.district')} required error={te(errors.district)} {...register('district')} />
+      {/* Region/district are dependent dropdowns (build spec #5). Changing the
+          region clears the district so a stale pairing can't be submitted. */}
+      <SelectField
+        label={t('fields.region')}
+        required
+        error={te(errors.region)}
+        defaultValue=""
+        {...register('region', {
+          onChange: () => setValue('district', '', { shouldValidate: false }),
+        })}
+      >
+        <option value="" disabled>{t('fields.regionChoose')}</option>
+        {REGION_NAMES.map((r) => (
+          <option key={r} value={r}>{r}</option>
+        ))}
+      </SelectField>
+      <SelectField label={t('fields.district')} required error={te(errors.district)} defaultValue="" disabled={!region} {...register('district')}>
+        <option value="" disabled>{region ? t('fields.districtChoose') : t('fields.districtPickRegion')}</option>
+        {districts.map((d) => (
+          <option key={d} value={d}>{d}</option>
+        ))}
+      </SelectField>
       <TextField label={t('fields.ward')} required error={te(errors.ward)} {...register('ward')} />
       <TextField label={t('fields.street')} required error={te(errors.street)} {...register('street')} />
       <TextAreaField label={t('fields.fullAddress')} required error={te(errors.fullAddress)} {...register('fullAddress')} />
@@ -290,11 +320,37 @@ function ContactStep({ t, te, register, errors }: StepProps) {
   );
 }
 
-function NidaStep({ t, te, register, errors }: StepProps) {
+function IdentityStep({
+  t,
+  te,
+  register,
+  errors,
+  identityType,
+}: StepProps & { identityType: IdentityType }) {
   return (
     <>
-      <TextField label={t('fields.nida')} inputMode="numeric" required hint={t('fields.nidaHint')} error={te(errors.nidaNumber)} {...register('nidaNumber')} />
-      <TextField label={t('fields.licence')} required error={te(errors.drivingLicenceNumber)} {...register('drivingLicenceNumber')} />
+      <SelectField label={t('fields.identityType')} required error={te(errors.identityType)} defaultValue="nida" {...register('identityType')}>
+        {identityTypeValues.map((v) => (
+          <option key={v} value={v}>{t(`fields.idType.${v}`)}</option>
+        ))}
+      </SelectField>
+      <TextField
+        label={t(`fields.identityNumber.${identityType}`)}
+        inputMode={identityType === 'nida' ? 'numeric' : 'text'}
+        required
+        hint={identityType === 'nida' ? t('fields.nidaHint') : undefined}
+        error={te(errors.identityNumber)}
+        {...register('identityNumber')}
+      />
+      {/* Driving licence is optional unless it IS the identity document. */}
+      {identityType !== 'driving_licence' && (
+        <TextField
+          label={t('fields.licenceOptional')}
+          hint={t('fields.licenceOptionalHint')}
+          error={te(errors.drivingLicenceNumber)}
+          {...register('drivingLicenceNumber')}
+        />
+      )}
     </>
   );
 }
@@ -310,24 +366,18 @@ function ExperienceStep({ t, te, register, errors }: StepProps) {
   );
 }
 
-function GuarantorStep({
-  prefix,
-  t,
-  te,
-  register,
-  errors,
-}: StepProps & { prefix: 'guarantorOne' | 'guarantorTwo' }) {
-  const e = errors[prefix];
+function GuarantorStep({ t, te, register, errors }: StepProps) {
+  const e = errors.guarantor;
   return (
     <>
       <p className="text-sm text-muted-foreground">{t('fields.guarantorIntro')}</p>
-      <TextField label={t('fields.gFullName')} required error={te(e?.fullName)} {...register(`${prefix}.fullName`)} />
-      <TextField label={t('fields.gPhone')} type="tel" inputMode="tel" required error={te(e?.phone)} {...register(`${prefix}.phone`)} />
-      <TextField label={t('fields.gNida')} inputMode="numeric" required error={te(e?.nidaNumber)} {...register(`${prefix}.nidaNumber`)} />
-      <TextField label={t('fields.gAddress')} required error={te(e?.residentialAddress)} {...register(`${prefix}.residentialAddress`)} />
-      <TextField label={t('fields.gRelationship')} required error={te(e?.relationship)} {...register(`${prefix}.relationship`)} />
-      <TextField label={t('fields.gOccupation')} required error={te(e?.occupation)} {...register(`${prefix}.occupation`)} />
-      <TextField label={t('fields.gEmployer')} error={te(e?.employer)} {...register(`${prefix}.employer`)} />
+      <TextField label={t('fields.gFullName')} required error={te(e?.fullName)} {...register('guarantor.fullName')} />
+      <TextField label={t('fields.gPhone')} type="tel" inputMode="tel" required hint={t('fields.gPhoneHint')} error={te(e?.phone)} {...register('guarantor.phone')} />
+      <TextField label={t('fields.gNida')} inputMode="numeric" required error={te(e?.nidaNumber)} {...register('guarantor.nidaNumber')} />
+      <TextField label={t('fields.gAddress')} required error={te(e?.residentialAddress)} {...register('guarantor.residentialAddress')} />
+      <TextField label={t('fields.gRelationship')} required error={te(e?.relationship)} {...register('guarantor.relationship')} />
+      <TextField label={t('fields.gOccupation')} required error={te(e?.occupation)} {...register('guarantor.occupation')} />
+      <TextField label={t('fields.gEmployer')} error={te(e?.employer)} {...register('guarantor.employer')} />
     </>
   );
 }
@@ -337,17 +387,19 @@ function DocumentsStep({
   files,
   setFile,
   error,
+  identityType,
 }: {
   t: Translate;
   files: Record<string, File | null>;
   setFile: (key: string, file: File | null) => void;
   error: string | null;
+  identityType: IdentityType;
 }) {
   return (
     <div className="flex flex-col gap-5">
       <section className="flex flex-col gap-3">
         <h3 className="font-semibold text-primary-dark">{t('docs.applicantHeading')}</h3>
-        {APPLICANT_DOC_TYPES.map((type) => (
+        {requiredApplicantDocTypes(identityType).map((type) => (
           <FileInput
             key={`applicant.${type}`}
             label={t(`docs.applicant.${type}`)}
@@ -357,22 +409,18 @@ function DocumentsStep({
           />
         ))}
       </section>
-      {(['guarantorOne', 'guarantorTwo'] as const).map((g, i) => (
-        <section key={g} className="flex flex-col gap-3">
-          <h3 className="font-semibold text-primary-dark">
-            {t('docs.guarantorHeading', { n: i + 1 })}
-          </h3>
-          {GUARANTOR_DOC_TYPES.map((type) => (
-            <FileInput
-              key={`${g}.${type}`}
-              label={t(`docs.guarantor.${type}`)}
-              required
-              file={files[`${g}.${type}`] ?? null}
-              onSelect={(f) => setFile(`${g}.${type}`, f)}
-            />
-          ))}
-        </section>
-      ))}
+      <section className="flex flex-col gap-3">
+        <h3 className="font-semibold text-primary-dark">{t('docs.guarantorHeadingSingle')}</h3>
+        {GUARANTOR_DOC_TYPES.map((type) => (
+          <FileInput
+            key={`guarantor.${type}`}
+            label={t(`docs.guarantor.${type}`)}
+            required
+            file={files[`guarantor.${type}`] ?? null}
+            onSelect={(f) => setFile(`guarantor.${type}`, f)}
+          />
+        ))}
+      </section>
       {error && (
         <p role="alert" className="text-sm font-medium text-overdue">
           {error}
@@ -432,7 +480,8 @@ function ReviewStep({
       <Row label={t('review.name')} value={`${values.firstName ?? ''} ${values.lastName ?? ''}`} />
       <Row label={t('review.phone')} value={values.primaryPhone} />
       <Row label={t('review.regionDistrict')} value={`${values.region ?? ''} / ${values.district ?? ''}`} />
-      <Row label={t('review.guarantors')} value="2" />
+      <Row label={t('review.identity')} value={values.identityType ? t(`fields.idType.${values.identityType}`) : '—'} />
+      <Row label={t('review.guarantors')} value="1" />
       <Row label={t('review.uploaded')} value={`${uploaded}`} />
       <p className="mt-2 text-muted-foreground">{t('review.note')}</p>
     </div>

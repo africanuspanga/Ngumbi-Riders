@@ -8,6 +8,7 @@ import { createUploadToken } from '@/lib/applications/upload-token';
 import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { getClientIp } from '@/lib/security/request';
 import { localDateString } from '@/lib/dates/tz';
+import { enqueueSms } from '@/lib/messaging/outbox';
 
 /*
  * Public rider application submission (spec §8, §23.3). Anonymous users have no
@@ -62,6 +63,19 @@ export async function POST(request: NextRequest) {
   const data = parsed.data;
   const primaryPhone = normalizePhone(data.primaryPhone);
 
+  // Encrypt the primary identity number into the column that matches its type,
+  // and separately store an optional driving licence (build spec #3). The
+  // driving licence is only mandatory when it IS the identity document.
+  const idNumber = data.identityNumber.replace(/[\s-]/g, '');
+  const nidaEncrypted = data.identityType === 'nida' ? encryptPII(idNumber) : null;
+  const voterEncrypted = data.identityType === 'voter_id' ? encryptPII(idNumber) : null;
+  const licenceEncrypted =
+    data.identityType === 'driving_licence'
+      ? encryptPII(idNumber)
+      : data.drivingLicenceNumber
+        ? encryptPII(data.drivingLicenceNumber.trim())
+        : null;
+
   const admin = createAdminClient();
 
   // ---- Duplicate detection (warn, never silently block — spec §8.6) ------
@@ -114,8 +128,10 @@ export async function POST(request: NextRequest) {
         ward: data.ward,
         street: data.street,
         full_address: data.fullAddress,
-        nida_number_encrypted: encryptPII(data.nidaNumber),
-        driving_licence_encrypted: encryptPII(data.drivingLicenceNumber),
+        identity_type: data.identityType,
+        nida_number_encrypted: nidaEncrypted,
+        driving_licence_encrypted: licenceEncrypted,
+        voter_id_encrypted: voterEncrypted,
         previous_experience: data.previousExperience || null,
         emergency_contact_name: data.emergencyContactName,
         emergency_contact_phone: data.emergencyContactPhone,
@@ -136,28 +152,41 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'server_error' }, { status: 500 });
   }
 
-  // ---- Guarantors ---------------------------------------------------------
-  const guarantors = [data.guarantorOne, data.guarantorTwo];
-  const guarantorIds: string[] = [];
-  for (const g of guarantors) {
-    const { data: gRow, error: gErr } = await admin
-      .from('guarantors')
-      .insert({
-        application_id: applicationId,
-        full_name: g.fullName,
-        phone: g.phone,
-        nida_number_encrypted: encryptPII(g.nidaNumber),
-        residential_address: g.residentialAddress,
-        relationship: g.relationship,
-        occupation: g.occupation,
-        employer: g.employer || null,
-      })
-      .select('id')
-      .single();
-    if (gErr || !gRow) {
-      return NextResponse.json({ error: 'server_error' }, { status: 500 });
-    }
-    guarantorIds.push((gRow as { id: string }).id);
+  // ---- Guarantor (build spec #4: exactly one) -----------------------------
+  const g = data.guarantor;
+  const { data: gRow, error: gErr } = await admin
+    .from('guarantors')
+    .insert({
+      application_id: applicationId,
+      full_name: g.fullName,
+      phone: g.phone,
+      nida_number_encrypted: encryptPII(g.nidaNumber),
+      residential_address: g.residentialAddress,
+      relationship: g.relationship,
+      occupation: g.occupation,
+      employer: g.employer || null,
+    })
+    .select('id')
+    .single();
+  if (gErr || !gRow) {
+    return NextResponse.json({ error: 'server_error' }, { status: 500 });
+  }
+
+  // Notify the guarantor by SMS that they have been listed (build spec #4).
+  // Enqueued to the outbox (delivered by the cron via Mobishastra) — a failure
+  // here must NEVER fail the application, so it is best-effort and non-blocking.
+  try {
+    const applicantName = `${data.firstName} ${data.lastName}`.trim();
+    await enqueueSms({
+      recipient: normalizePhone(g.phone),
+      subject: 'guarantor_listed',
+      text:
+        `Habari ${g.fullName}, umeorodheshwa kama mdhamini wa ${applicantName} ` +
+        `katika mfumo wa maombi ya pikipiki wa Ng'umbi Riders. Kama si sahihi, ` +
+        `tafadhali wasiliana na Ng'umbi Riders mara moja.`,
+    });
+  } catch {
+    /* outbox enqueue is best-effort; the application still succeeds */
   }
 
   // ---- Drawn signature (transparent PNG data URL) -------------------------

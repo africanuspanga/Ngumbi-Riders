@@ -21,7 +21,7 @@ import { getClientIp } from '@/lib/security/request';
  */
 export const runtime = 'nodejs';
 
-const SCOPES = ['applicant', 'guarantorOne', 'guarantorTwo'] as const;
+const SCOPES = ['applicant', 'guarantor'] as const;
 
 function extOf(name: string): string {
   const dot = name.lastIndexOf('.');
@@ -130,16 +130,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // Guarantors were inserted in order (guarantorOne first) by the submit
-  // endpoint; resolve deterministically.
+  // Build spec #4 — a single guarantor per application.
   const { data: gRows } = await admin
     .from('guarantors')
     .select('id')
     .eq('application_id', applicationId)
     .order('created_at', { ascending: true })
-    .limit(2);
-  const gIndex = scope === 'guarantorOne' ? 0 : 1;
-  const guarantorId = ((gRows ?? []) as { id: string }[])[gIndex]?.id;
+    .limit(1);
+  const guarantorId = ((gRows ?? []) as { id: string }[])[0]?.id;
   if (!guarantorId) {
     return NextResponse.json({ error: 'guarantor_not_found' }, { status: 409 });
   }

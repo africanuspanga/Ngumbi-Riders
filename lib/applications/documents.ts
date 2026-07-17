@@ -17,15 +17,37 @@ export const ACCEPTED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png'] as const;
 // then rejects with an opaque 413.
 export const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
-// Required applicant documents (spec §8.3).
+// Allowlisted applicant document types (spec §8.3, build spec #3). This is the
+// superset the upload endpoint accepts; which of these are actually REQUIRED
+// depends on the chosen identity type — see requiredApplicantDocTypes().
 export const APPLICANT_DOC_TYPES = [
   'nida_front',
   'nida_back',
+  'voter_id',
   'licence',
   'photo',
   'declaration',
 ] as const;
 export type ApplicantDocType = (typeof APPLICANT_DOC_TYPES)[number];
+
+/*
+ * Required applicant documents for a given identity type (build spec #3):
+ * NIDA needs both sides, Voter ID needs the voter card, Driving Licence needs
+ * the licence. A photo and a signed declaration are always required. The
+ * driving licence is NEVER required unless it IS the chosen identity document,
+ * so a NIDA/voter applicant is not blocked by it.
+ */
+export function requiredApplicantDocTypes(
+  identityType: 'nida' | 'driving_licence' | 'voter_id',
+): ApplicantDocType[] {
+  const identity: ApplicantDocType[] =
+    identityType === 'nida'
+      ? ['nida_front', 'nida_back']
+      : identityType === 'voter_id'
+        ? ['voter_id']
+        : ['licence'];
+  return [...identity, 'photo', 'declaration'];
+}
 
 // Required per-guarantor documents (spec §8.4).
 export const GUARANTOR_DOC_TYPES = [

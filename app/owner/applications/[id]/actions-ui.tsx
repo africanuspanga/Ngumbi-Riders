@@ -64,6 +64,7 @@ export function RevealSecrets({ id }: { id: string }) {
   const [values, setValues] = useState<{
     nida: string | null;
     licence: string | null;
+    voterId: string | null;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,7 +72,7 @@ export function RevealSecrets({ id }: { id: string }) {
     setError(null);
     start(async () => {
       const res = await revealApplicationSecrets(id);
-      if (res.ok) setValues(res.data ?? { nida: null, licence: null });
+      if (res.ok) setValues(res.data ?? { nida: null, licence: null, voterId: null });
       else setError(res.error);
     });
   }
@@ -80,6 +81,7 @@ export function RevealSecrets({ id }: { id: string }) {
     return (
       <div className="flex flex-col gap-1 text-sm">
         <Row label="NIDA" value={values.nida ?? '—'} />
+        <Row label="Voter ID" value={values.voterId ?? '—'} />
         <Row label="Licence" value={values.licence ?? '—'} />
       </div>
     );
