@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   contractBuilderSchema,
   type ContractBuilderInput,
@@ -13,7 +13,7 @@ import {
 } from '@/lib/contracts/validation';
 import { createContract } from '@/lib/contracts/actions';
 import {
-  endDateFromDuration,
+  contractEndDate,
   scheduleSummary,
 } from '@/lib/obligations/schedule';
 import { formatTZS } from '@/lib/money/format';
@@ -66,6 +66,21 @@ export function ContractBuilder({
 
   const values = useWatch({ control });
   const weekdays = values.selectedWeekdays ?? [];
+  const scheduleType = values.scheduleType ?? 'daily';
+  const monthsLabel = values.durationMonths ? String(values.durationMonths) : 'N';
+
+  // Weekly defaults its payment day to the contract's start weekday (owner can
+  // change it); prefill once weekly is chosen and a start date exists.
+  useEffect(() => {
+    if (
+      scheduleType === 'weekly' &&
+      values.startDate &&
+      (values.weeklyWeekday === undefined || (values.weeklyWeekday as unknown) === '')
+    ) {
+      const wd = new Date(`${values.startDate}T00:00:00Z`).getUTCDay();
+      setValue('weeklyWeekday', wd, { shouldValidate: true });
+    }
+  }, [scheduleType, values.startDate, values.weeklyWeekday, setValue]);
 
   // A bike already assigned to a rider can only be leased to THAT rider, so it
   // only appears once that rider is selected. Available (unassigned) bikes
@@ -85,20 +100,39 @@ export function ContractBuilder({
     setValue('selectedWeekdays', next, { shouldValidate: true });
   }
 
-  // Live preview (spec §10.3 step 3).
+  // Live preview (spec §10.3 step 3). The engine throws until the schedule is
+  // fully specified (a weekly day / monthly due day chosen) — caught → no preview.
   let preview: { count: number; total: number; endDate: string } | null = null;
   try {
-    if (values.startDate && values.durationMonths && values.installmentAmount) {
-      const endDate = endDateFromDuration(values.startDate, Number(values.durationMonths));
+    const months = Number(values.durationMonths);
+    const amount = Number(values.installmentAmount);
+    if (values.startDate && months && amount) {
+      const deadline = values.paymentDeadlineTime || '18:00';
+      const dueDay = scheduleType === 'monthly' ? Number(values.dueDayOfMonth) : undefined;
+      const scheduleWeekdays =
+        scheduleType === 'weekly'
+          ? values.weeklyWeekday === undefined || (values.weeklyWeekday as unknown) === ''
+            ? []
+            : [Number(values.weeklyWeekday)]
+          : weekdays;
+      const endDate = contractEndDate({
+        scheduleType,
+        startDate: values.startDate,
+        durationMonths: months,
+        dueDayOfMonth: dueDay,
+        deadlineTime: deadline,
+      });
       const { count, total } = scheduleSummary(
         {
           startDate: values.startDate,
           endDate,
-          scheduleType: values.scheduleType ?? 'daily',
-          selectedWeekdays: weekdays,
-          deadlineTime: values.paymentDeadlineTime || '18:00',
+          scheduleType,
+          selectedWeekdays: scheduleWeekdays,
+          dueDayOfMonth: dueDay,
+          monthlyCount: scheduleType === 'monthly' ? months : undefined,
+          deadlineTime: deadline,
         },
-        Number(values.installmentAmount),
+        amount,
       );
       preview = { count, total, endDate };
     }
@@ -179,10 +213,12 @@ export function ContractBuilder({
 
       <SelectField label="Schedule" required error={errors.scheduleType?.message} {...register('scheduleType')}>
         <option value="daily">Every day</option>
+        <option value="weekly">Weekly (one day a week)</option>
         <option value="selected_weekdays">Selected weekdays</option>
+        <option value="monthly">Monthly (one payment a month)</option>
       </SelectField>
 
-      {values.scheduleType === 'selected_weekdays' && (
+      {scheduleType === 'selected_weekdays' && (
         <div className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-foreground">Weekdays</span>
           <div className="flex flex-wrap gap-2">
@@ -202,6 +238,32 @@ export function ContractBuilder({
           {errors.selectedWeekdays && (
             <span className="text-xs text-overdue">{errors.selectedWeekdays.message}</span>
           )}
+        </div>
+      )}
+
+      {scheduleType === 'weekly' && (
+        <SelectField label="Payment day (weekly)" required error={errors.weeklyWeekday?.message} {...register('weeklyWeekday')}>
+          {WEEKDAY_LABELS.map((label, day) => (
+            <option key={day} value={day}>{label}</option>
+          ))}
+        </SelectField>
+      )}
+
+      {scheduleType === 'monthly' && (
+        <div className="flex flex-col gap-1.5">
+          <TextField
+            label="Monthly due day"
+            type="number"
+            min={1}
+            max={31}
+            required
+            error={errors.dueDayOfMonth?.message}
+            {...register('dueDayOfMonth')}
+          />
+          <span className="text-xs text-muted-foreground">
+            Day of the month the payment is due (1–31). Enter <strong>31</strong> for the last day of the month.
+            One obligation per month; a {monthsLabel}-month contract makes {monthsLabel} monthly payments.
+          </span>
         </div>
       )}
 

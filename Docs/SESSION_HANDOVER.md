@@ -7,8 +7,8 @@
 > `Docs/HANDOVER.md`. This file tracks the live execution state.
 
 Everything below is **committed on `main`** and the working tree is clean.
-DB migrations `0019`, `0020`, `0021` are **applied to the live database** and
-recorded in `supabase_migrations.schema_migrations`.
+DB migrations `0019`, `0020`, `0021`, `0022` are **applied to the live database**
+and recorded in `supabase_migrations.schema_migrations`.
 
 ---
 
@@ -77,16 +77,22 @@ Verification at handover: `npm run verify` → **189 unit tests pass**, typechec
 The user is working through the 21-item spec in their **priority order**
 (spec §21). Do ONE tested chunk per pass; commit each.
 
-- **NEXT: #8/#13 monthly + weekly instalments + monthly cash recording.**
-  HIGHEST money-risk — it changes the obligation/settlement engine
-  (`lib/obligations/schedule`). **Decision already made** (memory
-  `monthly-instalment-due-day-decision`): *the platform owner sets a fixed due
-  date per monthly contract; the obligation is NOT overdue until that day
-  passes; owner records one cash payment per month (select rider → month →
-  amount).* Build with DB-level tests (the settlement bug shipped precisely
-  because the PL/pgSQL money functions were never executed by any test — unit
-  tests are node-only, no local Postgres).
-- **#10 accountant role + RBAC/RLS** → unblocks **#11** motorcycle procurement
+- **✅ DONE #8/#13 monthly + weekly instalments (migration `0022`, applied
+  live).** `schedule_type` gained `weekly` + `monthly`; `contracts` gained a
+  nullable `due_day_of_month`. The obligation/settlement engine was NOT
+  touched — it's schedule-agnostic, so a monthly obligation is just an
+  obligation whose amount is the month's instalment and **one obligation = one
+  month**, meaning the existing cash page already does "select rider → month →
+  record". Weekly = one obligation/week on an owner-chosen weekday (default =
+  start weekday). Monthly = exactly `duration_months` obligations on the
+  owner-set due day; first payment on the first occurrence of that day within
+  the lease; `31` = last day of month (see [D-032] + memory
+  `monthly-instalment-due-day-decision`). Verified: `npm run verify` (204 unit
+  tests, +16 schedule), `npm run build`, AND a live rollback-only settlement
+  **dry-run** proving a monthly obligation settles → `paid_in_advance` +
+  receipt (the DB-level money test 0019 lacked). Throwaway Management-API SQL
+  helper for such dry-runs: `/tmp/ngr-sql.mjs`.
+- **NEXT: #10 accountant role + RBAC/RLS** → unblocks **#11** motorcycle procurement
   workflow (owner approve → accountant invoice → owner pays + proof → accountant
   receipt → contract-ready). #11 needs a `motorcycle_requests`-style concept and
   the accountant role first.

@@ -9,7 +9,8 @@ import {
   renderToBuffer,
 } from '@react-pdf/renderer';
 import { formatTZS } from '@/lib/money/format';
-import { WEEKDAY_LABELS } from './validation';
+import { scheduleLabel } from './validation';
+import type { ScheduleType } from '@/lib/supabase/types';
 
 /*
  * Server-side contract PDF generation (spec §10.4, §10.5). Renders the
@@ -29,8 +30,9 @@ export type ContractPdfData = {
   paymentDeadlineTime: string;
   startDate: string | null;
   endDate: string | null;
-  scheduleType: 'daily' | 'selected_weekdays';
+  scheduleType: ScheduleType;
   selectedWeekdays: number[];
+  dueDayOfMonth: number | null;
   ownershipTransfers: boolean;
   ownershipTransferNotes: string | null;
   specialTerms: string | null;
@@ -51,10 +53,7 @@ const s = StyleSheet.create({
 });
 
 function ContractDoc({ d }: { d: ContractPdfData }) {
-  const schedule =
-    d.scheduleType === 'daily'
-      ? 'Every day'
-      : d.selectedWeekdays.map((w) => WEEKDAY_LABELS[w]).join(', ');
+  const schedule = scheduleLabel(d.scheduleType, d.selectedWeekdays, d.dueDayOfMonth);
   return (
     <Document>
       <Page size="A4" style={s.page}>

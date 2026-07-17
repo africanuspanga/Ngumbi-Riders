@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { createServerSupabase } from '@/lib/supabase/server';
-import type { ContractStatus } from '@/lib/supabase/types';
+import type { ContractStatus, ScheduleType } from '@/lib/supabase/types';
 
 export type ContractListItem = {
   id: string;
@@ -33,8 +33,9 @@ export type ContractDetail = {
   start_date: string | null;
   end_date: string | null;
   duration_months: number | null;
-  schedule_type: 'daily' | 'selected_weekdays';
+  schedule_type: ScheduleType;
   selected_weekdays: number[];
+  due_day_of_month: number | null;
   installment_amount: number;
   payment_deadline_time: string;
   special_terms: string | null;
@@ -125,8 +126,9 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
     start_date: (raw.start_date as string) ?? null,
     end_date: (raw.end_date as string) ?? null,
     duration_months: (raw.duration_months as number) ?? null,
-    schedule_type: raw.schedule_type as 'daily' | 'selected_weekdays',
+    schedule_type: raw.schedule_type as ScheduleType,
     selected_weekdays: (raw.selected_weekdays as number[]) ?? [],
+    due_day_of_month: (raw.due_day_of_month as number | null) ?? null,
     installment_amount: raw.installment_amount as number,
     payment_deadline_time: String(raw.payment_deadline_time ?? '18:00:00').slice(0, 5),
     special_terms: (raw.special_terms as string) ?? null,

@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireOwner } from '@/lib/auth/session';
 import { getContract } from '@/lib/contracts/queries';
 import { formatTZS } from '@/lib/money/format';
-import { WEEKDAY_LABELS } from '@/lib/contracts/validation';
+import { scheduleLabel } from '@/lib/contracts/validation';
 import {
   SignatureCapture,
   PhysicalUpload,
@@ -60,7 +60,7 @@ export default async function ContractDetailPage({
           <Info label="Duration" value={c.duration_months ? `${c.duration_months} months` : null} />
           <Info
             label="Schedule"
-            value={c.schedule_type === 'daily' ? 'Every day' : c.selected_weekdays.map((d) => WEEKDAY_LABELS[d]).join(', ')}
+            value={scheduleLabel(c.schedule_type, c.selected_weekdays, c.due_day_of_month)}
           />
           <Info label="Ownership transfers" value={c.ownership_transfers ? 'Yes' : 'No'} />
         </Grid>

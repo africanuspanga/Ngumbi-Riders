@@ -9,11 +9,11 @@ import { writeAudit } from '@/lib/audit/audit';
 import { localDateString, formatLocalDateTime } from '@/lib/dates/tz';
 import {
   generateSchedule,
-  endDateFromDuration,
+  contractEndDate,
 } from '@/lib/obligations/schedule';
 import { renderContractPdf } from './pdf';
 import { contractBuilderSchema } from './validation';
-import type { ContractStatus } from '@/lib/supabase/types';
+import type { ContractStatus, ScheduleType } from '@/lib/supabase/types';
 
 async function assertOwner(): Promise<string> {
   const profile = await getSessionProfile();
@@ -33,7 +33,24 @@ export async function createContract(
   if (!parsed.success) return { ok: false, error: 'validation' };
   const d = parsed.data;
 
-  const endDate = endDateFromDuration(d.startDate, d.durationMonths);
+  // Weekly stores its single payment weekday in selected_weekdays; monthly
+  // stores the owner-set due day in due_day_of_month. Normalise here so the
+  // stored row is unambiguous regardless of which schedule fields the form sent.
+  const selectedWeekdays =
+    d.scheduleType === 'weekly'
+      ? [d.weeklyWeekday!]
+      : d.scheduleType === 'selected_weekdays'
+        ? d.selectedWeekdays
+        : [];
+  const dueDayOfMonth = d.scheduleType === 'monthly' ? d.dueDayOfMonth! : null;
+
+  const endDate = contractEndDate({
+    scheduleType: d.scheduleType,
+    startDate: d.startDate,
+    durationMonths: d.durationMonths,
+    dueDayOfMonth: dueDayOfMonth ?? undefined,
+    deadlineTime: d.paymentDeadlineTime,
+  });
   const admin = createAdminClient();
 
   // The motorcycle must be leasable for THIS rider (never trust the client's
@@ -83,7 +100,8 @@ export async function createContract(
       end_date: endDate,
       duration_months: d.durationMonths,
       schedule_type: d.scheduleType,
-      selected_weekdays: d.selectedWeekdays,
+      selected_weekdays: selectedWeekdays,
+      due_day_of_month: dueDayOfMonth,
       installment_amount: d.installmentAmount,
       payment_deadline_time: d.paymentDeadlineTime,
       special_terms: d.specialTerms || null,
@@ -201,7 +219,7 @@ export async function activateContract(
 
   const { data: c } = await supabase
     .from('contracts')
-    .select('id, rider_id, motorcycle_id, start_date, end_date, schedule_type, selected_weekdays, payment_deadline_time, installment_amount, assignment_id')
+    .select('id, rider_id, motorcycle_id, start_date, end_date, schedule_type, selected_weekdays, due_day_of_month, duration_months, payment_deadline_time, installment_amount, assignment_id')
     .eq('id', contractId)
     .maybeSingle();
   if (!c) return { ok: false, error: 'not_found' };
@@ -210,13 +228,18 @@ export async function activateContract(
     motorcycle_id: string;
     start_date: string | null;
     end_date: string | null;
-    schedule_type: 'daily' | 'selected_weekdays';
+    schedule_type: ScheduleType;
     selected_weekdays: number[];
+    due_day_of_month: number | null;
+    duration_months: number | null;
     payment_deadline_time: string;
     installment_amount: number;
     assignment_id: string | null;
   };
   if (!row.start_date || !row.end_date) return { ok: false, error: 'missing_dates' };
+  if (row.schedule_type === 'monthly' && !row.duration_months) {
+    return { ok: false, error: 'invalid_schedule' };
+  }
 
   let obligations;
   try {
@@ -225,6 +248,8 @@ export async function activateContract(
       endDate: row.end_date,
       scheduleType: row.schedule_type,
       selectedWeekdays: row.selected_weekdays,
+      dueDayOfMonth: row.due_day_of_month ?? undefined,
+      monthlyCount: row.duration_months ?? undefined,
       deadlineTime: String(row.payment_deadline_time).slice(0, 5),
     }).map((o) => ({
       dueDate: o.dueDate,
@@ -314,8 +339,9 @@ export async function generateContractPdf(
       paymentDeadlineTime: String(row.payment_deadline_time ?? '18:00').slice(0, 5),
       startDate: (row.start_date as string) ?? null,
       endDate: (row.end_date as string) ?? null,
-      scheduleType: row.schedule_type as 'daily' | 'selected_weekdays',
+      scheduleType: row.schedule_type as ScheduleType,
       selectedWeekdays: (row.selected_weekdays as number[]) ?? [],
+      dueDayOfMonth: (row.due_day_of_month as number | null) ?? null,
       ownershipTransfers: Boolean(row.ownership_transfers),
       ownershipTransferNotes: (row.ownership_transfer_notes as string) ?? null,
       specialTerms: (row.special_terms as string) ?? null,

@@ -45,7 +45,7 @@ export type ContractStatus =
   | 'terminated'
   | 'cancelled';
 
-export type ScheduleType = 'daily' | 'selected_weekdays';
+export type ScheduleType = 'daily' | 'selected_weekdays' | 'weekly' | 'monthly';
 
 export type ObligationStatus =
   | 'scheduled'

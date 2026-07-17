@@ -10,13 +10,20 @@
  * immune to the host machine's timezone.
  */
 
-export type ScheduleType = 'daily' | 'selected_weekdays';
+export type ScheduleType = 'daily' | 'selected_weekdays' | 'weekly' | 'monthly';
 
 export type ScheduleInput = {
   startDate: string; // YYYY-MM-DD (local Dar es Salaam calendar date)
-  endDate: string; // YYYY-MM-DD, inclusive
+  endDate: string; // YYYY-MM-DD, inclusive (ignored for monthly — see monthlyCount)
   scheduleType: ScheduleType;
-  selectedWeekdays?: number[]; // 0=Sun .. 6=Sat (required for selected_weekdays)
+  // 0=Sun .. 6=Sat. Required for selected_weekdays (1..N days) and for weekly
+  // (exactly ONE day — one obligation per week on that weekday).
+  selectedWeekdays?: number[];
+  // Monthly only: the owner-set day-of-month the instalment is due (1..31; 31 =
+  // last day of month, clamped per month) and how many monthly obligations to
+  // emit (= the contract's duration in months).
+  dueDayOfMonth?: number;
+  monthlyCount?: number;
   deadlineTime: string; // HH:MM local (24h)
 };
 
@@ -72,20 +79,79 @@ export function endDateFromDuration(startDate: string, months: number): string {
 
 export class ScheduleError extends Error {}
 
+const weekdayOf = (dateStr: string): number =>
+  new Date(toUtcMidnight(dateStr)).getUTCDay();
+
+/**
+ * Monthly schedule (spec #8/#13, owner decision 2026-07-17): exactly `count`
+ * obligations, one per month, each due on `dueDay` (clamped to the month's
+ * length, so 31 = last day of month). The FIRST obligation falls on the first
+ * occurrence of the due day within the lease — i.e. this month if the due day
+ * has not already passed on the start date, otherwise next month — and the rest
+ * follow one calendar month apart. This guarantees N obligations for an N-month
+ * contract regardless of the exact start/due days.
+ */
+function generateMonthly(input: ScheduleInput): GeneratedObligation[] {
+  const dueDay = input.dueDayOfMonth;
+  const count = input.monthlyCount;
+  if (!dueDay || !Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) {
+    throw new ScheduleError('Invalid monthly due day');
+  }
+  if (!count || !Number.isInteger(count) || count < 1) {
+    throw new ScheduleError('Invalid monthly count');
+  }
+  if (count > MAX_OBLIGATIONS) {
+    throw new ScheduleError('Schedule exceeds the maximum obligation count');
+  }
+
+  const [sy, sm, sd] = input.startDate.split('-').map(Number);
+  const startMonthIdx0 = sm! - 1;
+  // Does the (clamped) due day still lie on/after the start day this month?
+  const startMonthDueDay = Math.min(dueDay, daysInMonth(sy!, startMonthIdx0));
+  const firstOffset = startMonthDueDay >= sd! ? 0 : 1;
+
+  const out: GeneratedObligation[] = [];
+  for (let i = 0; i < count; i++) {
+    const total = startMonthIdx0 + firstOffset + i;
+    const y = sy! + Math.floor(total / 12);
+    const mIdx = ((total % 12) + 12) % 12;
+    const day = Math.min(dueDay, daysInMonth(y, mIdx));
+    const dueDate = `${y}-${String(mIdx + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    out.push({
+      dueDate,
+      dueAtUtc: dueTimestampUtc(dueDate, input.deadlineTime),
+      localDueTime: input.deadlineTime,
+      weekday: weekdayOf(dueDate),
+    });
+  }
+  return out;
+}
+
 export function generateSchedule(input: ScheduleInput): GeneratedObligation[] {
-  if (!DATE_RE.test(input.startDate) || !DATE_RE.test(input.endDate)) {
+  if (!DATE_RE.test(input.startDate)) {
     throw new ScheduleError('Invalid date format');
   }
   if (!TIME_RE.test(input.deadlineTime)) {
     throw new ScheduleError('Invalid deadline time');
   }
 
+  // Monthly is count-driven, not range-driven: it ignores endDate entirely.
+  if (input.scheduleType === 'monthly') {
+    return generateMonthly(input);
+  }
+
+  if (!DATE_RE.test(input.endDate)) {
+    throw new ScheduleError('Invalid date format');
+  }
   const startMs = toUtcMidnight(input.startDate);
   const endMs = toUtcMidnight(input.endDate);
   if (endMs < startMs) throw new ScheduleError('End date is before start date');
 
+  // Weekly = one obligation per week on a single chosen weekday; it reuses the
+  // same weekday-filter loop as selected_weekdays (the difference is enforced at
+  // validation: weekly carries exactly one weekday).
   const weekdays =
-    input.scheduleType === 'selected_weekdays'
+    input.scheduleType === 'selected_weekdays' || input.scheduleType === 'weekly'
       ? new Set(input.selectedWeekdays ?? [])
       : null;
   if (weekdays && weekdays.size === 0) {
@@ -108,6 +174,33 @@ export function generateSchedule(input: ScheduleInput): GeneratedObligation[] {
     }
   }
   return out;
+}
+
+/**
+ * The inclusive end date to STORE on the contract. For range-based schedules
+ * (daily / weekly / selected_weekdays) it is start + N months − 1 day. For
+ * monthly the term ends when the last monthly instalment is due, so it is the
+ * date of the final generated obligation.
+ */
+export function contractEndDate(opts: {
+  scheduleType: ScheduleType;
+  startDate: string;
+  durationMonths: number;
+  dueDayOfMonth?: number;
+  deadlineTime: string;
+}): string {
+  if (opts.scheduleType === 'monthly') {
+    const rows = generateMonthly({
+      startDate: opts.startDate,
+      endDate: opts.startDate,
+      scheduleType: 'monthly',
+      dueDayOfMonth: opts.dueDayOfMonth,
+      monthlyCount: opts.durationMonths,
+      deadlineTime: opts.deadlineTime,
+    });
+    return rows[rows.length - 1]!.dueDate;
+  }
+  return endDateFromDuration(opts.startDate, opts.durationMonths);
 }
 
 /** Preview: obligation count and total contract value for an amount. */

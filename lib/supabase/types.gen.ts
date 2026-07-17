@@ -412,6 +412,7 @@ export type Database = {
           created_at: string
           currency: string
           current_version: number
+          due_day_of_month: number | null
           duration_months: number | null
           end_date: string | null
           id: string
@@ -436,6 +437,7 @@ export type Database = {
           created_at?: string
           currency?: string
           current_version?: number
+          due_day_of_month?: number | null
           duration_months?: number | null
           end_date?: string | null
           id?: string
@@ -460,6 +462,7 @@ export type Database = {
           created_at?: string
           currency?: string
           current_version?: number
+          due_day_of_month?: number | null
           duration_months?: number | null
           end_date?: string | null
           id?: string
@@ -1877,7 +1880,7 @@ export type Database = {
         | "terminated"
         | "inactive"
       risk_level: "low" | "medium" | "high" | "critical"
-      schedule_type: "daily" | "selected_weekdays"
+      schedule_type: "daily" | "selected_weekdays" | "weekly" | "monthly"
       user_role: "owner" | "rider"
     }
     CompositeTypes: {
@@ -2083,7 +2086,7 @@ export const Constants = {
         "inactive",
       ],
       risk_level: ["low", "medium", "high", "critical"],
-      schedule_type: ["daily", "selected_weekdays"],
+      schedule_type: ["daily", "selected_weekdays", "weekly", "monthly"],
       user_role: ["owner", "rider"],
     },
   },

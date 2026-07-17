@@ -5,6 +5,27 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-032 · Monthly + weekly instalments reuse the schedule-agnostic money path (migration 0022)
+Spec #8/#13. The obligation calendar is still computed in the tested TS engine
+(`lib/obligations/schedule.ts`) and committed by the schedule-type-agnostic
+`activate_contract_and_generate_obligations`; `record_completed_payment` settles
+per-obligation regardless of cadence, so **no money function changed** — a
+monthly obligation is just an obligation whose amount is the month's instalment,
+and one obligation = one month, so the existing cash flow already gives "select
+rider → month → record". Migration 0022 is additive only: two new
+`schedule_type` labels (`weekly`, `monthly`) and a nullable
+`contracts.due_day_of_month`. **Weekly** = one obligation per week on an
+owner-chosen weekday (default = the start weekday), stored as a one-element
+`selected_weekdays` array. **Monthly** = exactly `duration_months` obligations on
+the owner-set `due_day_of_month`; the first falls on the *first occurrence of the
+due day within the lease* (this month if the due day hasn't passed on the start
+date, else next month), and `31` means "last day of month" (clamped per month).
+Owner decisions captured 2026-07-17 (memory `monthly-instalment-due-day-decision`
++ this session's two confirmations). The monthly money path was proven live with
+a rollback-only settlement dry-run (obligation → `paid_in_advance`, payment →
+`completed`, receipt issued) — the DB-level test the settlement bug
+([D-031]/0019) lacked.
+
 ## D-031 · Settlement is self-defending at the DB chokepoint (migration 0018)
 The 2026-07-10 deep-dive found that nothing enforced "an obligation being
 settled must still be outstanding and owned by this payment": a cash payment

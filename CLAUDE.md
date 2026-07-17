@@ -79,11 +79,20 @@ live site):
   internal code is auto-generated `NGR-{REGION}-{DIST}-M-{SEQ4}` from the geo
   codes (XXX fallback). Code is now the primary identifier in the UI.
 
-Remaining build-spec items (priority order, not yet started): monthly/weekly
-instalments + monthly cash recording (#8/#13 — highest money-risk, touches the
-settlement engine; due-day decision captured in memory
-`monthly-instalment-due-day-decision`: owner sets a fixed due date, not overdue
-until it passes), accountant role + RLS (#10), motorcycle procurement workflow
+**Monthly + weekly instalments (migration 0022, applied live; spec #8/#13,
+D-032):** `schedule_type` gained `weekly` + `monthly`; `contracts` gained a
+nullable `due_day_of_month`. The obligation/settlement engine was NOT changed —
+it's schedule-agnostic, so a monthly obligation is just an obligation whose
+amount is the month's instalment and one obligation = one month (the existing
+cash page already does "select rider → month → record"). Weekly = one
+obligation/week on an owner-chosen weekday (default = start weekday). Monthly =
+exactly `duration_months` obligations on the owner-set due day; first payment on
+the first occurrence of that day within the lease; `31` = last day of month.
+Proven live with a rollback-only settlement dry-run (monthly obligation →
+`paid_in_advance` + receipt — the DB-level money test 0019 lacked).
+
+Remaining build-spec items (priority order, not yet started): accountant role +
+RLS (#10), motorcycle procurement workflow
 (#11, needs the accountant role), contract storage/download + template (#9/#18),
 phone financing (#14), duration units (#15), PWA polish (#17), data import
 (#19). Pilot money reconciliation is owner-driven in-app (see memory
