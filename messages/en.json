@@ -45,7 +45,10 @@
     "weak": "That PIN is too easy to guess. Choose another.",
     "mismatch": "New PINs do not match.",
     "mustChange": "Please change your temporary PIN before continuing.",
-    "network": "Connection failed. Check your network and try again."
+    "network": "Connection failed. Check your network and try again.",
+    "wrongCurrent": "The current PIN is not correct. If it is a temporary PIN, enter it exactly as given.",
+    "locked": "Too many attempts. Wait 30 minutes and try again.",
+    "failed": "Could not change the PIN. Try again."
   },
   "apply": {
     "header": {
@@ -138,7 +141,11 @@
         "nida_front": "NIDA (front)",
         "nida_back": "NIDA (back)",
         "declaration": "Guarantor declaration"
-      }
+      },
+      "fileType": "File type not allowed. Use PDF, JPG or PNG.",
+      "fileExtension": "The file extension is not valid.",
+      "fileSize": "The file is too large (4MB limit).",
+      "fileEmpty": "The file is empty."
     },
     "declaration": {
       "text": "I confirm that the information I have provided is true and correct. I understand that false information may lead to my application being rejected.",
@@ -174,7 +181,8 @@
       "fileRejected": "One or more files were rejected. Check your documents.",
       "submitFailed": "Could not submit the application. Please try again.",
       "network": "Network error. Please try again.",
-      "duplicate": "An application with these details already exists."
+      "duplicate": "An application with these details already exists.",
+      "alreadySubmitted": "Your application has already been received — only the document uploads are being finished. Press Submit again if an upload was interrupted."
     },
     "success": {
       "title": "Application received",

@@ -33,6 +33,11 @@ export function ManualRiderForm({ motorcycles }: { motorcycles: MotoOption[] }) 
     try {
       const res = await createRiderManually(values);
       if (res.ok && res.data) {
+        if (res.data.warnings?.length) {
+          // The rider + login exist, but part of the record failed to save —
+          // land on the rider page with a visible flag instead of a silent gap.
+          alert(`Rider created, but these need re-entry on their page: ${res.data.warnings.join(', ')}.`);
+        }
         router.push(`/owner/riders/${res.data.riderId}`);
         router.refresh();
       } else if (!res.ok) {

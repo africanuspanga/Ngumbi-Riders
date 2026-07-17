@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { markNotificationRead, markAllNotificationsRead } from '@/lib/notifications/actions';
+import { formatLocalDateTime } from '@/lib/dates/tz';
 import type { NotificationRow } from '@/lib/notifications/queries';
 
 export function NotificationList({ notifications }: { notifications: NotificationRow[] }) {
@@ -34,7 +35,9 @@ export function NotificationList({ notifications }: { notifications: Notificatio
                 <div className="flex flex-col">
                   <span className={`font-semibold ${n.read_at ? 'text-muted-foreground' : 'text-foreground'}`}>{n.title}</span>
                   {n.body && <span className="text-sm text-muted-foreground">{n.body}</span>}
-                  <span className="text-xs text-muted-foreground">{n.created_at.slice(0, 16).replace('T', ' ')}</span>
+                  {/* EAT wall-clock, not a UTC slice: the nightly cron writes
+                      these 21:00–24:00 UTC, which is already the NEXT EAT day. */}
+                  <span className="text-xs text-muted-foreground">{formatLocalDateTime(new Date(n.created_at))}</span>
                 </div>
               </div>
             );

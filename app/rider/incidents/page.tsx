@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireRider } from '@/lib/auth/session';
 import { listRiderIncidents } from '@/lib/incidents/queries';
 import { INCIDENT_LABELS, INCIDENT_STATUS_LABELS_SW } from '@/lib/incidents/validation';
+import { formatLocalDateTime } from '@/lib/dates/tz';
 
 export const metadata = { title: 'Matukio' };
 
@@ -27,7 +28,7 @@ export default async function RiderIncidentsPage() {
                 <span className="font-semibold">{INCIDENT_LABELS[i.category as keyof typeof INCIDENT_LABELS] ?? i.category}</span>
                 <span className="text-xs text-muted-foreground">{INCIDENT_STATUS_LABELS_SW[i.status] ?? i.status}</span>
               </div>
-              <span className="text-xs text-muted-foreground">{i.occurred_at.slice(0, 16).replace('T', ' ')}</span>
+              <span className="text-xs text-muted-foreground">{formatLocalDateTime(new Date(i.occurred_at))}</span>
               <p className="text-sm text-foreground">{i.description}</p>
             </li>
           ))}

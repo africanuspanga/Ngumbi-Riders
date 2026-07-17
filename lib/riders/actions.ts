@@ -27,7 +27,7 @@ export type ActionResult<T = undefined> =
 
 export async function createRiderManually(
   input: unknown,
-): Promise<ActionResult<{ riderId: string; riderNumber: string }>> {
+): Promise<ActionResult<{ riderId: string; riderNumber: string; warnings?: string[] }>> {
   const ownerId = await assertOwner();
   const parsed = manualRiderSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'validation' };
@@ -61,7 +61,12 @@ export async function createRiderManually(
     };
   }
 
-  await admin
+  // Partial failures must SURFACE (same guard convertToRider has): the rider
+  // login exists at this point, so silently dropping demographics / encrypted
+  // PII / the assignment would read as success while the record is incomplete.
+  const partialFailures: string[] = [];
+
+  const { error: demoErr } = await admin
     .from('riders')
     .update({
       email: d.email || null,
@@ -74,13 +79,15 @@ export async function createRiderManually(
       full_address: d.fullAddress || null,
     })
     .eq('id', created.riderId);
+  if (demoErr) partialFailures.push('demographics');
 
   if (d.nidaNumber || d.drivingLicenceNumber) {
-    await admin.from('rider_private_data').insert({
+    const { error: piiErr } = await admin.from('rider_private_data').insert({
       rider_id: created.riderId,
       nida_number_encrypted: encryptOptionalPII(d.nidaNumber || null),
       driving_licence_encrypted: encryptOptionalPII(d.drivingLicenceNumber || null),
     });
+    if (piiErr) partialFailures.push('identity documents');
   }
 
   await writeAudit({
@@ -89,20 +96,30 @@ export async function createRiderManually(
     action: 'rider.created_manually',
     entityType: 'rider',
     entityId: created.riderId,
-    metadata: { riderNumber },
+    metadata: { riderNumber, partialFailures },
   });
 
   // Optional immediate motorcycle assignment.
   if (d.motorcycleId) {
-    await assignMotorcycle(
+    const assignRes = await assignMotorcycle(
       created.riderId,
       d.motorcycleId,
       d.assignmentStartDate || localDateString(),
     );
+    if (!assignRes.ok) partialFailures.push('motorcycle assignment');
   }
 
   revalidatePath('/owner/riders');
-  return { ok: true, data: { riderId: created.riderId, riderNumber } };
+  // Rider + login WERE created even if a sub-write failed — succeed (so the
+  // owner isn't tempted into a duplicate retry) but carry the warnings.
+  return {
+    ok: true,
+    data: {
+      riderId: created.riderId,
+      riderNumber,
+      warnings: partialFailures.length > 0 ? partialFailures : undefined,
+    },
+  };
 }
 
 /**
@@ -154,8 +171,29 @@ export async function setRiderStatus(
 ): Promise<ActionResult> {
   const ownerId = await assertOwner();
   const admin = createAdminClient();
-  const { error } = await admin.from('riders').update({ status }).eq('id', id);
-  if (error) return { ok: false, error: 'update_failed' };
+  const { data: riderRow, error } = await admin
+    .from('riders')
+    .update({ status })
+    .eq('id', id)
+    .select('profile_id')
+    .maybeSingle();
+  if (error || !riderRow) return { ok: false, error: 'update_failed' };
+
+  // Disabling must also revoke the LOGIN, not just flip a column: the login
+  // route and rider layout check riders.status, and banning the auth user
+  // additionally invalidates credential use at the auth layer (belt +
+  // braces — the demo riders' PINs are public in the repo).
+  const profileId = (riderRow as { profile_id: string }).profile_id;
+  const active = status === 'active' || status === 'onboarding';
+  const { error: banErr } = await admin.auth.admin.updateUserById(profileId, {
+    ban_duration: active ? 'none' : '876000h', // ~100 years
+  });
+  if (banErr) {
+    // The column changed but the auth ban didn't — surface it; the status
+    // gates still hold, but the owner should retry.
+    return { ok: false, error: 'auth_ban_failed' };
+  }
+
   await writeAudit({
     actorId: ownerId,
     actorRole: 'owner',
@@ -171,19 +209,21 @@ export async function setRiderStatus(
 
 export async function revealRiderSecrets(
   id: string,
-): Promise<ActionResult<{ nida: string | null; licence: string | null }>> {
+): Promise<ActionResult<{ nida: string | null; licence: string | null; voterId: string | null; identityType: string | null }>> {
   const ownerId = await assertOwner();
   const admin = createAdminClient();
   const { data } = await admin
     .from('rider_private_data')
-    .select('nida_number_encrypted, driving_licence_encrypted')
+    .select('nida_number_encrypted, driving_licence_encrypted, voter_id_encrypted, identity_type')
     .eq('rider_id', id)
     .maybeSingle();
-  if (!data) return { ok: true, data: { nida: null, licence: null } };
+  if (!data) return { ok: true, data: { nida: null, licence: null, voterId: null, identityType: null } };
 
   const row = data as {
     nida_number_encrypted: string | null;
     driving_licence_encrypted: string | null;
+    voter_id_encrypted: string | null;
+    identity_type: string | null;
   };
   await writeAudit({
     actorId: ownerId,
@@ -199,6 +239,10 @@ export async function revealRiderSecrets(
       licence: row.driving_licence_encrypted
         ? decryptPII(row.driving_licence_encrypted)
         : null,
+      // A voter-ID rider's only identity document lives here — omitting it made
+      // the owner reveal show "NIDA — / Licence —" forever after conversion.
+      voterId: row.voter_id_encrypted ? decryptPII(row.voter_id_encrypted) : null,
+      identityType: row.identity_type,
     },
   };
 }

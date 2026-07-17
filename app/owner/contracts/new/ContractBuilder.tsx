@@ -159,8 +159,16 @@ export function ContractBuilder({
     }
   }
 
+  // Safety net: if validation fails on a field that is not currently rendered
+  // (e.g. a stale value left behind after switching schedule types), the field
+  // error would be invisible and the button would appear dead. Always surface
+  // SOMETHING at the form level.
+  function onInvalid() {
+    setError('Some fields are invalid — check the highlighted fields (including the schedule settings).');
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+    <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="flex flex-col gap-5">
       {motorcycles.length === 0 && (
         <p role="alert" className="rounded-[--radius-card] border border-warning bg-surface p-3 text-sm text-primary-dark">
           No motorcycles are free to lease. A bike appears here when it is{' '}
@@ -208,7 +216,7 @@ export function ContractBuilder({
 
       <div className="grid grid-cols-2 gap-4">
         <TextField label="Start date" type="date" required error={errors.startDate?.message} {...register('startDate')} />
-        <TextField label="Duration (months)" type="number" min={1} required error={errors.durationMonths?.message} {...register('durationMonths')} />
+        <TextField label="Duration (months)" type="number" min={1} max={60} required error={errors.durationMonths?.message} {...register('durationMonths')} />
       </div>
 
       <SelectField label="Schedule" required error={errors.scheduleType?.message} {...register('scheduleType')}>

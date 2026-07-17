@@ -8,6 +8,19 @@ import {
   postponeExemption,
   rejectExemption,
 } from '@/lib/exemptions/actions';
+import { localDateString } from '@/lib/dates/tz';
+
+// Server error codes → owner-facing copy (raw snake_case codes are cryptic at
+// the exact moment the owner is deciding money).
+const DECISION_ERRORS: Record<string, string> = {
+  date_conflict: 'Tarehe hiyo tayari ina malipo — chagua tarehe nyingine.',
+  past_date: 'Tarehe lazima iwe ya baadaye.',
+  bad_date: 'Tarehe si sahihi.',
+  invalid_status: 'Ombi hili tayari limeamuliwa — onyesha upya ukurasa.',
+  reserved: 'Siku hii ina malipo yanayosubiri — subiri yakamilike kwanza.',
+  postpone_failed: 'Imeshindikana kuahirisha. Jaribu tena.',
+  update_failed: 'Imeshindikana. Jaribu tena.',
+};
 
 export function ExemptionDecision({ id, status }: { id: string; status: string }) {
   const router = useRouter();
@@ -43,12 +56,12 @@ export function ExemptionDecision({ id, status }: { id: string; status: string }
         </button>
       </div>
       <div className="flex items-center gap-2">
-        <input type="date" className="input max-w-[10rem]" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+        <input type="date" className="input max-w-[10rem]" min={localDateString()} value={newDate} onChange={(e) => setNewDate(e.target.value)} />
         <button type="button" disabled={pending || !newDate} onClick={() => run(() => postponeExemption(id, newDate))} className="rounded-[--radius-card] border border-primary bg-white px-3 py-1.5 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60">
           Ahirisha
         </button>
       </div>
-      {error && <p className="text-xs text-overdue">{error === 'date_conflict' ? 'Tarehe hiyo tayari ina malipo.' : error}</p>}
+      {error && <p role="alert" className="text-xs text-overdue">{DECISION_ERRORS[error] ?? 'Imeshindikana. Jaribu tena.'}</p>}
     </div>
   );
 }

@@ -33,7 +33,10 @@ export const manualRiderSchema = z.object({
     .refine((v) => v === '' || !Number.isNaN(Date.parse(v)), { message: 'Invalid date' })
     .optional()
     .or(z.literal('')),
-  gender: z.enum(['male', 'female']).optional(),
+  // '' must be accepted: the form's "—" option submits an empty string, and a
+  // bare .optional() enum rejects it with raw English zod text under a field
+  // explicitly labelled optional (the createRiderManually action maps '' → null).
+  gender: z.enum(['male', 'female']).optional().or(z.literal('')),
   region: optionalText,
   district: optionalText,
   ward: optionalText,

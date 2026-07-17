@@ -156,13 +156,30 @@ export function RiderStatusActions({ id, current }: { id: string; current: Rider
   );
 }
 
+const IDENTITY_TYPE_LABELS: Record<string, string> = {
+  nida: 'NIDA',
+  driving_licence: 'Driving licence',
+  voter_id: 'Voter ID',
+};
+
 export function RiderRevealSecrets({ id }: { id: string }) {
   const [pending, start] = useTransition();
-  const [values, setValues] = useState<{ nida: string | null; licence: string | null } | null>(null);
+  const [values, setValues] = useState<{
+    nida: string | null;
+    licence: string | null;
+    voterId: string | null;
+    identityType: string | null;
+  } | null>(null);
 
   if (values) {
     return (
       <div className="flex flex-col gap-1 text-sm">
+        {values.identityType && (
+          <div className="flex justify-between border-b border-border py-1">
+            <span className="text-muted-foreground">Identity document</span>
+            <span className="font-medium">{IDENTITY_TYPE_LABELS[values.identityType] ?? values.identityType}</span>
+          </div>
+        )}
         <div className="flex justify-between border-b border-border py-1">
           <span className="text-muted-foreground">NIDA</span>
           <span className="font-mono font-medium">{values.nida ?? '—'}</span>
@@ -170,6 +187,10 @@ export function RiderRevealSecrets({ id }: { id: string }) {
         <div className="flex justify-between border-b border-border py-1">
           <span className="text-muted-foreground">Licence</span>
           <span className="font-mono font-medium">{values.licence ?? '—'}</span>
+        </div>
+        <div className="flex justify-between border-b border-border py-1">
+          <span className="text-muted-foreground">Voter ID</span>
+          <span className="font-mono font-medium">{values.voterId ?? '—'}</span>
         </div>
       </div>
     );
@@ -180,11 +201,11 @@ export function RiderRevealSecrets({ id }: { id: string }) {
       disabled={pending}
       onClick={() => start(async () => {
         const res = await revealRiderSecrets(id);
-        if (res.ok) setValues(res.data ?? { nida: null, licence: null });
+        if (res.ok) setValues(res.data ?? { nida: null, licence: null, voterId: null, identityType: null });
       })}
       className="self-start rounded-[--radius-card] border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-surface disabled:opacity-60"
     >
-      {pending ? '…' : 'Reveal NIDA & licence'}
+      {pending ? '…' : 'Reveal identity documents'}
     </button>
   );
 }

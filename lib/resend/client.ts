@@ -26,6 +26,9 @@ export async function sendEmail(input: {
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
+      // Timeout: runs inside the 300s nightly dispatcher — a hung socket must
+      // not starve the remaining tasks.
+      signal: AbortSignal.timeout(10_000),
       headers: {
         Authorization: `Bearer ${env.RESEND_API_KEY}`,
         'Content-Type': 'application/json',

@@ -2,6 +2,7 @@ import { requireOwner } from '@/lib/auth/session';
 import { listOwnerIncidents } from '@/lib/incidents/queries';
 import { INCIDENT_LABELS } from '@/lib/incidents/validation';
 import { IncidentStatus } from './IncidentStatus';
+import { formatLocalDateTime } from '@/lib/dates/tz';
 
 export const metadata = { title: 'Incidents' };
 
@@ -28,7 +29,7 @@ export default async function OwnerIncidentsPage() {
                     {INCIDENT_LABELS[i.category as keyof typeof INCIDENT_LABELS] ?? i.category} · {i.rider_name}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {i.occurred_at.slice(0, 16).replace('T', ' ')}{i.location_text ? ` · ${i.location_text}` : ''}
+                    {formatLocalDateTime(new Date(i.occurred_at))}{i.location_text ? ` · ${i.location_text}` : ''}
                   </p>
                 </div>
                 <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">{i.status}</span>

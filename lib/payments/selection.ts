@@ -73,10 +73,23 @@ export type PaymentOption = {
   amount: number;
 };
 
+export type PaymentCadence = 'daily' | 'selected_weekdays' | 'weekly' | 'monthly';
+
+// One obligation = one day / week / month depending on the contract cadence.
+// Labels and bundle sizes MUST match: "Lipa siku 7" on a monthly contract would
+// read as "pay 7 days" while actually charging SEVEN MONTHS oldest-first.
+const CADENCE_PRESETS: Record<PaymentCadence, { counts: number[]; unit: (n: number) => string }> = {
+  daily: { counts: [3, 7, 14], unit: (n) => `Lipa siku ${n}` },
+  selected_weekdays: { counts: [3, 7, 14], unit: (n) => `Lipa siku ${n}` },
+  weekly: { counts: [1, 2, 4], unit: (n) => (n === 1 ? 'Lipa wiki 1' : `Lipa wiki ${n}`) },
+  monthly: { counts: [1, 2, 3], unit: (n) => (n === 1 ? 'Lipa mwezi 1' : `Lipa miezi ${n}`) },
+};
+
 /** Preset options shown to the rider (spec §3.1). All allocate oldest-first. */
 export function presetOptions(
   obs: SelectableObligation[],
   today: string,
+  cadence: PaymentCadence = 'daily',
 ): PaymentOption[] {
   const list = outstanding(obs);
   const overdue = list.filter((o) => o.dueDate < today);
@@ -97,13 +110,21 @@ export function presetOptions(
       amount: amountForCount(overdue.length),
     });
     if (todayObs.length > 0) {
-      const c = overdue.length + 1;
+      // Every obligation due today, not a hardcoded one — a postponement
+      // replacement can land on a regular due day, giving today two.
+      const c = overdue.length + todayObs.length;
       options.push({ key: 'arrears_plus_today', label: 'Madeni + leo', count: c, amount: amountForCount(c) });
     }
   }
-  for (const n of [3, 7, 14]) {
+  const preset = CADENCE_PRESETS[cadence];
+  for (const n of preset.counts) {
     if (list.length >= n) {
-      options.push({ key: `next_${n}`, label: `Lipa siku ${n}`, count: n, amount: amountForCount(n) });
+      const key = `next_${n}`;
+      // Skip presets that duplicate an option already offered (e.g. a monthly
+      // rider's "Lipa mwezi 1" when "Lipa leo" already covers the same single
+      // obligation).
+      if (options.some((o) => o.count === n)) continue;
+      options.push({ key, label: preset.unit(n), count: n, amount: amountForCount(n) });
     }
   }
   return options;

@@ -6,6 +6,7 @@ import { createServerSupabase } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit/audit';
 import { dueTimestampUtc } from '@/lib/obligations/schedule';
+import { localDateString } from '@/lib/dates/tz';
 import { exemptionRequestSchema } from './validation';
 
 export type ActionResult<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
@@ -99,6 +100,10 @@ export async function waiveExemption(id: string): Promise<ActionResult> {
 export async function postponeExemption(id: string, newDate: string): Promise<ActionResult> {
   const ownerId = await assertOwner();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) return { ok: false, error: 'bad_date' };
+  // A postponement moves the obligation FORWARD. A fat-fingered past date
+  // would create a replacement obligation that the nightly job immediately
+  // flips overdue — penalising the exact rider the waiver was meant to help.
+  if (newDate <= localDateString()) return { ok: false, error: 'past_date' };
   const supabase = await createServerSupabase();
 
   // Look up the original obligation's local deadline to compute the new UTC due.

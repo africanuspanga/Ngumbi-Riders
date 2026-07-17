@@ -7,6 +7,8 @@ import {
   type FileRejection,
 } from '@/lib/applications/documents';
 
+// Default (Swahili) copy; the bilingual /apply form passes translated
+// messages so an English-locale applicant is not rejected in Swahili.
 const REJECTION_MESSAGE: Record<FileRejection, string> = {
   type: 'Aina ya faili hairuhusiwi. Tumia PDF, JPG au PNG.',
   extension: 'Kiendelezi cha faili si sahihi.',
@@ -24,11 +26,13 @@ export function FileInput({
   file,
   onSelect,
   required,
+  rejectionMessages,
 }: {
   label: string;
   file: File | null;
   onSelect: (file: File | null) => void;
   required?: boolean;
+  rejectionMessages?: Partial<Record<FileRejection, string>>;
 }) {
   const [error, setError] = useState<string | null>(null);
 
@@ -45,7 +49,7 @@ export function FileInput({
       size: selected.size,
     });
     if (!check.ok) {
-      setError(REJECTION_MESSAGE[check.reason]);
+      setError(rejectionMessages?.[check.reason] ?? REJECTION_MESSAGE[check.reason]);
       onSelect(null);
       e.target.value = '';
       return;

@@ -45,7 +45,10 @@
     "weak": "PIN hii ni rahisi mno. Chagua nyingine.",
     "mismatch": "PIN mpya hazilingani.",
     "mustChange": "Tafadhali badilisha PIN yako ya muda kabla ya kuendelea.",
-    "network": "Imeshindikana kuunganisha. Angalia mtandao kisha jaribu tena."
+    "network": "Imeshindikana kuunganisha. Angalia mtandao kisha jaribu tena.",
+    "wrongCurrent": "PIN ya sasa si sahihi. Kama ni PIN ya muda, iandike kama ulivyopewa.",
+    "locked": "Umejaribu mara nyingi mno. Subiri dakika 30 kisha jaribu tena.",
+    "failed": "Imeshindikana kubadilisha PIN. Jaribu tena."
   },
   "apply": {
     "header": {
@@ -138,7 +141,11 @@
         "nida_front": "NIDA (mbele)",
         "nida_back": "NIDA (nyuma)",
         "declaration": "Tamko la mdhamini"
-      }
+      },
+      "fileType": "Aina ya faili hairuhusiwi. Tumia PDF, JPG au PNG.",
+      "fileExtension": "Kiendelezi cha faili si sahihi.",
+      "fileSize": "Faili ni kubwa mno (kikomo 4MB).",
+      "fileEmpty": "Faili ni tupu."
     },
     "declaration": {
       "text": "Ninathibitisha kuwa taarifa nilizotoa ni za kweli na sahihi. Natambua kuwa taarifa za uongo zinaweza kusababisha maombi yangu kukataliwa.",
@@ -174,7 +181,8 @@
       "fileRejected": "Faili moja au zaidi halikubaliki. Kagua nyaraka zako.",
       "submitFailed": "Imeshindikana kutuma maombi. Jaribu tena.",
       "network": "Hitilafu ya mtandao. Jaribu tena.",
-      "duplicate": "Maombi yenye taarifa hizi tayari yapo."
+      "duplicate": "Maombi yenye taarifa hizi tayari yapo.",
+      "alreadySubmitted": "Maombi yako yameshapokelewa — tunamalizia kupakia nyaraka tu. Bonyeza Tuma tena kama kupakia kulikatika."
     },
     "success": {
       "title": "Maombi yamepokelewa",

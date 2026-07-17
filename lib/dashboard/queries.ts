@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { createServerSupabase } from '@/lib/supabase/server';
+import { fetchAllPages } from '@/lib/supabase/fetch-all';
 import { isSnippeConfigured } from '@/lib/snippe/client';
 import { localDateString } from '@/lib/dates/tz';
 import {
@@ -46,17 +47,25 @@ export async function getOwnerDashboard(): Promise<OwnerDashboard> {
     .toISOString()
     .slice(0, 10);
 
-  const [obRes, payRes, ridersActive, motosActive, endingRes, appsRes, riskRes, pendingRes] =
+  const [obRows, payRes, ridersActive, motosActive, endingRes, appsRes, riskRes, pendingRes] =
     await Promise.all([
       // Only rows the KPI math uses: still-unpaid history (arrears/aging) and
-      // everything due today. Fetching ALL paid history would exceed the row
-      // cap within months and, with no ORDER BY, silently corrupt every KPI.
-      supabase
-        .from('payment_obligations')
-        .select('rider_id, due_date, amount_due, status')
-        .lte('due_date', today)
-        .or(`status.in.(scheduled,due,overdue),due_date.eq.${today}`)
-        .limit(10000),
+      // everything due today. Paginated with a stable order: PostgREST caps
+      // ANY single select at 1000 rows regardless of .limit(), and the unpaid
+      // backlog alone can exceed that (it did in the pilot) — a capped fetch
+      // silently corrupts every number on this dashboard.
+      fetchAllPages<{ rider_id: string; due_date: string; amount_due: number; status: string }>(
+        (from, to) =>
+          supabase
+            .from('payment_obligations')
+            .select('rider_id, due_date, amount_due, status')
+            .lte('due_date', today)
+            .or(`status.in.(scheduled,due,overdue),due_date.eq.${today}`)
+            .order('due_date', { ascending: true })
+            .order('id', { ascending: true })
+            .range(from, to),
+        { label: 'owner KPI obligations' },
+      ),
       supabase
         .from('payments')
         .select('amount, status, method')
@@ -84,9 +93,12 @@ export async function getOwnerDashboard(): Promise<OwnerDashboard> {
       supabase.from('payments').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     ]);
 
-  const obligations: KpiObligation[] = (
-    (obRes.data ?? []) as { rider_id: string; due_date: string; amount_due: number; status: string }[]
-  ).map((o) => ({ riderId: o.rider_id, dueDate: o.due_date, amountDue: o.amount_due, status: o.status }));
+  const obligations: KpiObligation[] = obRows.map((o) => ({
+    riderId: o.rider_id,
+    dueDate: o.due_date,
+    amountDue: o.amount_due,
+    status: o.status,
+  }));
   const payments = ((payRes.data ?? []) as { amount: number; status: string; method: string }[]).map(
     (p) => ({ amount: p.amount, status: p.status, method: p.method, completedDate: today }),
   );
@@ -173,15 +185,20 @@ export async function getRiderHome(): Promise<RiderHome | null> {
 
   let obligations: RiderObligation[] = [];
   if (contract) {
-    const { data: obs } = await supabase
-      .from('payment_obligations')
-      .select('due_date, amount_due, status')
-      .eq('contract_id', (contract as { id: string }).id);
-    obligations = ((obs ?? []) as { due_date: string; amount_due: number; status: string }[]).map((o) => ({
-      dueDate: o.due_date,
-      amountDue: o.amount_due,
-      status: o.status,
-    }));
+    // Paginated: a full-length daily contract exceeds the 1000-row cap and a
+    // truncated set would understate the rider's own arrears/progress.
+    const obs = await fetchAllPages<{ due_date: string; amount_due: number; status: string }>(
+      (from, to) =>
+        supabase
+          .from('payment_obligations')
+          .select('due_date, amount_due, status')
+          .eq('contract_id', (contract as { id: string }).id)
+          .order('due_date', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to),
+      { label: 'rider home obligations' },
+    );
+    obligations = obs.map((o) => ({ dueDate: o.due_date, amountDue: o.amount_due, status: o.status }));
   }
 
   const { data: assignment } = await supabase
@@ -230,18 +247,18 @@ export async function getRiderCalendar(): Promise<CalendarDay[]> {
     .eq('status', 'active')
     .maybeSingle();
   if (!contract) return [];
-  const { data: obs } = await supabase
-    .from('payment_obligations')
-    .select('due_date, amount_due, status')
-    .eq('contract_id', (contract as { id: string }).id)
-    .order('due_date', { ascending: true });
-  return riderCalendar(
-    ((obs ?? []) as { due_date: string; amount_due: number; status: string }[]).map((o) => ({
-      dueDate: o.due_date,
-      amountDue: o.amount_due,
-      status: o.status,
-    })),
+  const obs = await fetchAllPages<{ due_date: string; amount_due: number; status: string }>(
+    (from, to) =>
+      supabase
+        .from('payment_obligations')
+        .select('due_date, amount_due, status')
+        .eq('contract_id', (contract as { id: string }).id)
+        .order('due_date', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    { label: 'rider calendar' },
   );
+  return riderCalendar(obs.map((o) => ({ dueDate: o.due_date, amountDue: o.amount_due, status: o.status })));
 }
 
 // ---- Collections chart (owner dashboard) -----------------------------------
@@ -261,15 +278,20 @@ export async function getCollectionsSeries(days = 14): Promise<CollectionsPoint[
   }
   const startUtc = new Date(Date.parse(`${dates[0]}T00:00:00+03:00`)).toISOString();
 
-  const { data } = await supabase
-    .from('payments')
-    .select('amount, completed_at')
-    .eq('status', 'completed')
-    .gte('completed_at', startUtc)
-    .limit(10000);
+  const data = await fetchAllPages<{ amount: number; completed_at: string | null }>(
+    (from, to) =>
+      supabase
+        .from('payments')
+        .select('amount, completed_at')
+        .eq('status', 'completed')
+        .gte('completed_at', startUtc)
+        .order('completed_at', { ascending: true })
+        .range(from, to),
+    { label: 'collections series' },
+  );
 
   const byDay = new Map<string, number>(dates.map((d) => [d, 0]));
-  for (const p of (data ?? []) as { amount: number; completed_at: string | null }[]) {
+  for (const p of data) {
     if (!p.completed_at) continue;
     const day = localDateString(new Date(p.completed_at));
     if (byDay.has(day)) byDay.set(day, (byDay.get(day) ?? 0) + p.amount);

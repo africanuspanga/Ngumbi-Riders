@@ -8,6 +8,8 @@ import { decryptPII } from '@/lib/security/crypto';
 import { canTransition } from './status';
 import { createRiderUser } from '@/lib/auth/provision';
 import { generateTempPin } from '@/lib/auth/temp-pin';
+import { normalizePhone } from '@/lib/auth/phone';
+import { derivePassword } from '@/lib/auth/pin-derive';
 import { writeAudit } from '@/lib/audit/audit';
 import type { ApplicationStatus } from '@/lib/supabase/types';
 
@@ -149,27 +151,61 @@ export async function convertToRider(
   if (!a.primary_phone) return { ok: false, error: 'missing_phone' };
 
   const admin = createAdminClient();
-
-  // Allocate the next rider number (race-tolerant; unique constraint guards).
-  const { count } = await admin
-    .from('riders')
-    .select('*', { count: 'exact', head: true });
-  const riderNumber = `NGR-R-${String((count ?? 0) + 1).padStart(4, '0')}`;
-  const tempPin = generateTempPin(a.primary_phone);
-
-  let created;
+  let canonicalPhone: string;
   try {
-    created = await createRiderUser({
-      phone: a.primary_phone,
-      pin: tempPin,
-      riderNumber,
-      firstName: a.first_name ?? '',
-      middleName: a.middle_name ?? undefined,
-      lastName: a.last_name ?? '',
-      mustChangePin: true,
-    });
+    canonicalPhone = normalizePhone(a.primary_phone);
   } catch {
-    return { ok: false, error: 'create_rider_failed' };
+    return { ok: false, error: 'missing_phone' };
+  }
+
+  // RESUME support: a previous convert may have created the auth user + rider
+  // row and then failed mid-copy — retrying used to dead-end forever on
+  // "phone already exists". If a rider with this phone exists and the
+  // application is still unconverted, finish the copy against THAT rider and
+  // issue a fresh temp PIN (the original was only shown once, likely lost in
+  // the failure confusion).
+  const { data: existingRider } = await admin
+    .from('riders')
+    .select('id, rider_number, profile_id')
+    .eq('phone', canonicalPhone)
+    .maybeSingle();
+
+  let riderId: string;
+  let riderNumber: string;
+  let tempPin: string;
+
+  if (existingRider) {
+    const ex = existingRider as { id: string; rider_number: string; profile_id: string };
+    riderId = ex.id;
+    riderNumber = ex.rider_number;
+    tempPin = generateTempPin(canonicalPhone);
+    const { error: pinErr } = await admin.auth.admin.updateUserById(ex.profile_id, {
+      password: derivePassword(canonicalPhone, tempPin),
+    });
+    if (pinErr) return { ok: false, error: 'create_rider_failed' };
+    await admin.from('profiles').update({ must_change_pin: true }).eq('id', ex.profile_id);
+  } else {
+    // Allocate the next rider number (race-tolerant; unique constraint guards).
+    const { count } = await admin
+      .from('riders')
+      .select('*', { count: 'exact', head: true });
+    riderNumber = `NGR-R-${String((count ?? 0) + 1).padStart(4, '0')}`;
+    tempPin = generateTempPin(canonicalPhone);
+
+    try {
+      const created = await createRiderUser({
+        phone: canonicalPhone,
+        pin: tempPin,
+        riderNumber,
+        firstName: a.first_name ?? '',
+        middleName: a.middle_name ?? undefined,
+        lastName: a.last_name ?? '',
+        mustChangePin: true,
+      });
+      riderId = created.riderId;
+    } catch {
+      return { ok: false, error: 'create_rider_failed' };
+    }
   }
 
   // Copy address/profile fields and the encrypted identifiers onto the rider.
@@ -187,15 +223,19 @@ export async function convertToRider(
       street: a.street,
       full_address: a.full_address,
     })
-    .eq('id', created.riderId);
+    .eq('id', riderId);
 
-  const { error: piiErr } = await admin.from('rider_private_data').insert({
-    rider_id: created.riderId,
-    identity_type: (a.identity_type as 'nida' | 'driving_licence' | 'voter_id' | null) ?? null,
-    nida_number_encrypted: a.nida_number_encrypted,
-    driving_licence_encrypted: a.driving_licence_encrypted,
-    voter_id_encrypted: a.voter_id_encrypted,
-  });
+  // Upsert, not insert: a resumed convert may have written this row already.
+  const { error: piiErr } = await admin.from('rider_private_data').upsert(
+    {
+      rider_id: riderId,
+      identity_type: (a.identity_type as 'nida' | 'driving_licence' | 'voter_id' | null) ?? null,
+      nida_number_encrypted: a.nida_number_encrypted,
+      driving_licence_encrypted: a.driving_licence_encrypted,
+      voter_id_encrypted: a.voter_id_encrypted,
+    },
+    { onConflict: 'rider_id' },
+  );
 
   if (copyErr || piiErr) {
     await writeAudit({
@@ -205,21 +245,26 @@ export async function convertToRider(
       entityType: 'rider_application',
       entityId: id,
       metadata: {
-        riderId: created.riderId,
+        riderId,
         profileCopyError: copyErr?.message ?? null,
         piiCopyError: piiErr?.message ?? null,
       },
     });
     // The auth user + rider row exist, but the application is NOT marked
-    // converted — surface the failure so the owner resolves it instead of
-    // silently losing the identity data.
+    // converted — surface the failure; pressing Convert again RESUMES against
+    // the existing rider instead of dead-ending on a duplicate phone.
     return { ok: false, error: 'copy_failed' };
   }
 
-  await supabase
+  const { error: statusErr } = await supabase
     .from('rider_applications')
-    .update({ status: 'converted_to_rider', converted_rider_id: created.riderId })
+    .update({ status: 'converted_to_rider', converted_rider_id: riderId })
     .eq('id', id);
+  if (statusErr) {
+    // Everything copied but the application still reads unconverted — the
+    // owner must retry (which resumes) rather than believe it finished.
+    return { ok: false, error: 'copy_failed' };
+  }
 
   await writeAudit({
     actorId: ownerId,
@@ -227,10 +272,10 @@ export async function convertToRider(
     action: 'application.converted_to_rider',
     entityType: 'rider_application',
     entityId: id,
-    metadata: { riderId: created.riderId, riderNumber },
+    metadata: { riderId, riderNumber, resumed: Boolean(existingRider) },
   });
 
   revalidatePath(`/owner/applications/${id}`);
   revalidatePath('/owner/applications');
-  return { ok: true, data: { riderId: created.riderId, riderNumber, tempPin } };
+  return { ok: true, data: { riderId, riderNumber, tempPin } };
 }

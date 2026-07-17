@@ -177,10 +177,13 @@ export function generateSchedule(input: ScheduleInput): GeneratedObligation[] {
 }
 
 /**
- * The inclusive end date to STORE on the contract. For range-based schedules
- * (daily / weekly / selected_weekdays) it is start + N months − 1 day. For
- * monthly the term ends when the last monthly instalment is due, so it is the
- * date of the final generated obligation.
+ * The inclusive end date to STORE on the contract: start + N months − 1 day for
+ * every schedule type. For monthly this is deliberately the POSSESSION end of
+ * the lease, NOT the last instalment's due date — a "12-month" contract signed
+ * Jan 1 with due day 1 must read "Jan 1 → Dec 31" on the legal PDF, not
+ * "Jan 1 → Dec 1" (and a 1-month contract starting Jan 15 with due day 20 must
+ * not read as a 5-day lease). Monthly obligation GENERATION ignores the end
+ * date entirely (it is count-driven), so this affects only the stored term.
  */
 export function contractEndDate(opts: {
   scheduleType: ScheduleType;
@@ -189,17 +192,6 @@ export function contractEndDate(opts: {
   dueDayOfMonth?: number;
   deadlineTime: string;
 }): string {
-  if (opts.scheduleType === 'monthly') {
-    const rows = generateMonthly({
-      startDate: opts.startDate,
-      endDate: opts.startDate,
-      scheduleType: 'monthly',
-      dueDayOfMonth: opts.dueDayOfMonth,
-      monthlyCount: opts.durationMonths,
-      deadlineTime: opts.deadlineTime,
-    });
-    return rows[rows.length - 1]!.dueDate;
-  }
   return endDateFromDuration(opts.startDate, opts.durationMonths);
 }
 

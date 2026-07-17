@@ -188,10 +188,17 @@ export async function POST(request: NextRequest) {
     // The reservation rows are the immutable record of which obligations this
     // payment covers — read them regardless of is_active, so an out-of-order
     // failure event or an expiry sweep can't destroy the settlement inputs.
-    const { data: reservations } = await admin
+    // A FAILED read must be retryable (500), not fed onward: an
+    // empty-because-errored list reaches record_completed_payment as zero
+    // obligations → allocation_mismatch → misclassified as a permanent
+    // invariant → 200 kills provider retries for a payment that WOULD settle.
+    const { data: reservations, error: resReadErr } = await admin
       .from('payment_reservations')
       .select('obligation_id')
       .eq('payment_id', p.id);
+    if (resReadErr) {
+      return NextResponse.json({ error: 'reservations_read_failed' }, { status: 500 });
+    }
     const obligationIds = ((reservations ?? []) as { obligation_id: string }[]).map((r) => r.obligation_id);
 
     // The provider timestamp is provider-controlled input: a malformed value

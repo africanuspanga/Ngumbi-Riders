@@ -2,6 +2,7 @@ import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { serverEnv, clientEnv } from '@/lib/env';
+import { fetchAllPages, chunkIds } from '@/lib/supabase/fetch-all';
 import { localDateString } from '@/lib/dates/tz';
 import { computeObligationTransitions, type TransitionObligation } from '@/lib/obligations/transitions';
 import { notifyRider, notifyOwner } from '@/lib/notifications/service';
@@ -28,17 +29,28 @@ export const obligationStatusTask: CronTask = async () => {
   const nowMs = Date.now();
 
   // Transitions only ever touch obligations whose due date has arrived —
-  // without the due_date filter this query pulls the ENTIRE future calendar
-  // and the row cap silently drops an arbitrary subset (including today's
-  // actionable rows) once contracts × days exceed it.
-  const { data } = await admin
-    .from('payment_obligations')
-    .select('id, rider_id, due_date, due_at, status')
-    .in('status', ['scheduled', 'due'])
-    .lte('due_date', today)
-    .order('due_date', { ascending: true })
-    .limit(10000);
-  const rows = (data ?? []) as { id: string; rider_id: string; due_date: string; due_at: string; status: string }[];
+  // without the due_date filter this query pulls the ENTIRE future calendar.
+  // Paginated with a stable order: PostgREST's server-side row cap (1000)
+  // silently truncates ANY single select regardless of .limit(), which is how
+  // this job "succeeded" nightly while transitioning nothing (D-033).
+  const rows = await fetchAllPages<{
+    id: string;
+    rider_id: string;
+    due_date: string;
+    due_at: string;
+    status: string;
+  }>(
+    (from, to) =>
+      admin
+        .from('payment_obligations')
+        .select('id, rider_id, due_date, due_at, status')
+        .in('status', ['scheduled', 'due'])
+        .lte('due_date', today)
+        .order('due_date', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    { label: 'obligation-status select' },
+  );
 
   const obligations: TransitionObligation[] = rows.map((o) => ({
     id: o.id,
@@ -48,40 +60,50 @@ export const obligationStatusTask: CronTask = async () => {
   }));
   const { toDue: toDueCandidates, toOverdue: toOverdueCandidates } =
     computeObligationTransitions(obligations, nowMs, today);
-  const riderOf = new Map(rows.map((o) => [o.id, o.rider_id]));
+  const byId = new Map(rows.map((o) => [o.id, o]));
 
   // Status predicates guard against the select→update race: a payment can
   // settle an obligation between our read and this write, and a blanket
-  // update would flip a PAID obligation back to due/overdue.
-  let toDue: string[] = [];
-  let toOverdue: string[] = [];
-  if (toDueCandidates.length) {
-    const { data: updated } = await admin
+  // update would flip a PAID obligation back to due/overdue. Updates are
+  // CHUNKED (an .in() with ~1000 ids builds a querystring upstream proxies
+  // reject outright) and every chunk's error THROWS — a failed update must
+  // fail the run, never read as "0 rows updated".
+  const toDue: string[] = [];
+  const toOverdue: string[] = [];
+  for (const ids of chunkIds(toDueCandidates)) {
+    const { data: updated, error } = await admin
       .from('payment_obligations')
       .update({ status: 'due' })
-      .in('id', toDueCandidates)
+      .in('id', ids)
       .eq('status', 'scheduled')
       .select('id');
-    toDue = ((updated ?? []) as { id: string }[]).map((o) => o.id);
+    if (error) throw new Error(`toDue update failed: ${error.message}`);
+    for (const o of (updated ?? []) as { id: string }[]) toDue.push(o.id);
   }
-  if (toOverdueCandidates.length) {
-    const { data: updated } = await admin
+  for (const ids of chunkIds(toOverdueCandidates)) {
+    const { data: updated, error } = await admin
       .from('payment_obligations')
       .update({ status: 'overdue' })
-      .in('id', toOverdueCandidates)
+      .in('id', ids)
       .in('status', ['scheduled', 'due'])
       .select('id');
-    toOverdue = ((updated ?? []) as { id: string }[]).map((o) => o.id);
+    if (error) throw new Error(`toOverdue update failed: ${error.message}`);
+    for (const o of (updated ?? []) as { id: string }[]) toOverdue.push(o.id);
   }
 
   // Rider reminders (deduped so repeated runs don't spam). Best-effort: the
   // status flips above are already committed, so a notify failure mid-loop
   // must not abort the job — the remaining riders would never be notified
-  // (re-runs re-select zero updated rows).
+  // (re-runs re-select zero updated rows). Only RECENT transitions notify:
+  // backdated contracts can flip months of history in one run (the pilot's
+  // backlog was ~1,150 rows) and a notification per ancient obligation would
+  // bury every rider's inbox — old rows flip silently.
+  const recentCutoff = localDateString(new Date(nowMs - 2 * 86_400_000));
+  const isRecent = (id: string) => (byId.get(id)?.due_date ?? '') >= recentCutoff;
   let notifyErrors = 0;
-  for (const id of toDue) {
+  for (const id of toDue.filter(isRecent)) {
     try {
-      await notifyRider(riderOf.get(id)!, {
+      await notifyRider(byId.get(id)!.rider_id, {
         type: 'payment_due',
         title: 'Malipo ya leo',
         body: 'Kumbuka kulipa malipo ya leo kabla ya muda.',
@@ -92,9 +114,9 @@ export const obligationStatusTask: CronTask = async () => {
       notifyErrors++;
     }
   }
-  for (const id of toOverdue) {
+  for (const id of toOverdue.filter(isRecent)) {
     try {
-      await notifyRider(riderOf.get(id)!, {
+      await notifyRider(byId.get(id)!.rider_id, {
         type: 'payment_overdue',
         title: 'Una deni',
         body: 'Malipo yako yamechelewa. Tafadhali lipa haraka.',
@@ -125,13 +147,15 @@ export const reconcilePendingTask: CronTask = async () => {
   const admin = createAdminClient();
   const cutoff = new Date(Date.now() - 30 * 60_000).toISOString(); // > 30 min old
 
-  const { data } = await admin
+  const { data, error } = await admin
     .from('payments')
     .select('id, rider_id, amount, snippe_reference')
     .eq('status', 'pending')
     .not('snippe_reference', 'is', null)
     .lt('created_at', cutoff)
+    .order('created_at', { ascending: true })
     .limit(50);
+  if (error) throw new Error(`reconcile select failed: ${error.message}`);
 
   let settled = 0;
   let failed = 0;
@@ -172,35 +196,43 @@ export const reservationCleanupTask: CronTask = async () => {
 
   // First fail stale 'created' payments that never reached the provider, so
   // their reservations become releasable below.
-  const { data: failed } = await admin
+  const { data: failed, error: failErr } = await admin
     .from('payments')
     .update({ status: 'failed' })
     .eq('status', 'created')
     .lt('created_at', staleCutoff)
     .select('id');
+  if (failErr) throw new Error(`stale-created update failed: ${failErr.message}`);
 
   // Release expired reservations ONLY for payments in a terminal state. A
   // still-pending payment keeps its reservations: they are the record of
   // which obligations it covers, and freeing them early would let another
   // payment settle the same obligations while the first can still complete.
-  const { data: expired } = await admin
-    .from('payment_reservations')
-    .select('id, payments!inner(status)')
-    .eq('is_active', true)
-    .lt('expires_at', now)
-    .limit(1000);
+  const expired = await fetchAllPages<{ id: string; payments: { status: string } }>(
+    (from, to) =>
+      admin
+        .from('payment_reservations')
+        .select('id, payments!inner(status)')
+        .eq('is_active', true)
+        .lt('expires_at', now)
+        .order('id', { ascending: true })
+        .range(from, to) as unknown as PromiseLike<{
+        data: { id: string; payments: { status: string } }[] | null;
+        error: { message: string } | null;
+      }>,
+    { label: 'reservation-cleanup select' },
+  );
   const terminal = new Set(['failed', 'expired', 'cancelled', 'completed', 'reversed']);
-  const releasable = ((expired ?? []) as unknown as { id: string; payments: { status: string } }[])
-    .filter((r) => terminal.has(r.payments.status))
-    .map((r) => r.id);
+  const releasable = expired.filter((r) => terminal.has(r.payments.status)).map((r) => r.id);
   let released = 0;
-  if (releasable.length) {
-    const { data: rel } = await admin
+  for (const ids of chunkIds(releasable)) {
+    const { data: rel, error } = await admin
       .from('payment_reservations')
       .update({ is_active: false })
-      .in('id', releasable)
+      .in('id', ids)
       .select('id');
-    released = (rel ?? []).length;
+    if (error) throw new Error(`reservation release failed: ${error.message}`);
+    released += (rel ?? []).length;
   }
 
   return { reservationsReleased: released, paymentsFailed: (failed ?? []).length };
@@ -212,9 +244,13 @@ export const outboxTask: CronTask = async () => processOutbox();
 /** Daily risk recalculation for active riders (spec §20). */
 export const riskRecalcTask: CronTask = async () => {
   const admin = createAdminClient();
-  const { data } = await admin.from('riders').select('id').eq('status', 'active').limit(2000);
+  const riders = await fetchAllPages<{ id: string }>(
+    (from, to) =>
+      admin.from('riders').select('id').eq('status', 'active').order('id', { ascending: true }).range(from, to),
+    { label: 'risk-recalc riders' },
+  );
   let count = 0;
-  for (const r of (data ?? []) as { id: string }[]) {
+  for (const r of riders) {
     await recomputeRiskForRider(r.id);
     count++;
   }
@@ -225,42 +261,67 @@ export const riskRecalcTask: CronTask = async () => {
 export const dataQualityTask: CronTask = async () => {
   const admin = createAdminClient();
 
-  // Fetch allocations once (payment + obligation links + amount).
-  const { data: allocs } = await admin
-    .from('payment_allocations')
-    .select('payment_id, obligation_id, amount')
-    .limit(50000);
-  const allocations = (allocs ?? []) as { payment_id: string; obligation_id: string; amount: number }[];
+  // Every set here is cross-referenced against the others, so ALL of them must
+  // be COMPLETE — a capped/arbitrary subset produces false alerts (an
+  // allocation outside the fetched window reads as "settled without
+  // allocation") and hides real corruption. Paginated with stable order.
+  const allocations = await fetchAllPages<{ payment_id: string; obligation_id: string; amount: number }>(
+    (from, to) =>
+      admin
+        .from('payment_allocations')
+        .select('payment_id, obligation_id, amount')
+        .order('payment_id', { ascending: true })
+        .order('obligation_id', { ascending: true })
+        .range(from, to),
+    { label: 'data-quality allocations' },
+  );
 
   // 1. Completed payments whose allocations don't sum to the amount.
-  const { data: completed } = await admin.from('payments').select('id, amount').eq('status', 'completed').limit(10000);
+  const completed = await fetchAllPages<{ id: string; amount: number }>(
+    (from, to) =>
+      admin.from('payments').select('id, amount').eq('status', 'completed').order('id', { ascending: true }).range(from, to),
+    { label: 'data-quality completed payments' },
+  );
   const sumByPayment = new Map<string, number>();
   for (const a of allocations) sumByPayment.set(a.payment_id, (sumByPayment.get(a.payment_id) ?? 0) + a.amount);
   let allocationMismatch = 0;
-  for (const p of (completed ?? []) as { id: string; amount: number }[]) {
+  for (const p of completed) {
     if ((sumByPayment.get(p.id) ?? 0) !== p.amount) allocationMismatch++;
   }
 
   // 2. Active assignments whose motorcycle isn't marked assigned.
-  const { data: activeAssignments } = await admin
-    .from('motorcycle_assignments')
-    .select('motorcycle_id, motorcycles(status)')
-    .eq('is_active', true)
-    .limit(5000);
+  const activeAssignments = await fetchAllPages<{ motorcycle_id: string; motorcycles: { status: string } | null }>(
+    (from, to) =>
+      admin
+        .from('motorcycle_assignments')
+        .select('motorcycle_id, motorcycles(status)')
+        .eq('is_active', true)
+        .order('motorcycle_id', { ascending: true })
+        .range(from, to) as unknown as PromiseLike<{
+        data: { motorcycle_id: string; motorcycles: { status: string } | null }[] | null;
+        error: { message: string } | null;
+      }>,
+    { label: 'data-quality assignments' },
+  );
   let orphanedAssignments = 0;
-  for (const a of (activeAssignments ?? []) as unknown as { motorcycles: { status: string } | null }[]) {
+  for (const a of activeAssignments) {
     if (a.motorcycles?.status !== 'assigned') orphanedAssignments++;
   }
 
   // 3. Settled obligations with no allocation.
-  const { data: settled } = await admin
-    .from('payment_obligations')
-    .select('id')
-    .in('status', ['paid', 'paid_in_advance'])
-    .limit(50000);
+  const settled = await fetchAllPages<{ id: string }>(
+    (from, to) =>
+      admin
+        .from('payment_obligations')
+        .select('id')
+        .in('status', ['paid', 'paid_in_advance'])
+        .order('id', { ascending: true })
+        .range(from, to),
+    { label: 'data-quality settled obligations' },
+  );
   const allocatedObligationIds = new Set(allocations.map((a) => a.obligation_id));
   let settledWithoutAllocation = 0;
-  for (const o of (settled ?? []) as { id: string }[]) {
+  for (const o of settled) {
     if (!allocatedObligationIds.has(o.id)) settledWithoutAllocation++;
   }
 
@@ -288,24 +349,38 @@ export const dailySummaryTask: CronTask = async (): Promise<Record<string, numbe
   const dayStartUtc = new Date(`${summaryDate}T00:00:00+03:00`).toISOString();
   const dayEndUtc = new Date(Date.parse(`${summaryDate}T00:00:00+03:00`) + 86_400_000).toISOString();
 
-  const [{ data: obs }, { data: pays }, { data: pendingRows }, { data: appsRows }] = await Promise.all([
-    // Only rows the KPI math actually uses: still-unpaid history (arrears) and
-    // everything due on the summary day — NOT all paid history, which would
-    // blow past the row cap within months and silently skew every number.
-    admin
-      .from('payment_obligations')
-      .select('rider_id, due_date, amount_due, status')
-      .lte('due_date', summaryDate)
-      .or(`status.in.(scheduled,due,overdue),due_date.eq.${summaryDate}`)
-      .limit(10000),
+  // Only rows the KPI math actually uses: still-unpaid history (arrears) and
+  // everything due on the summary day — NOT all paid history. Paginated: the
+  // unpaid backlog alone can exceed the 1000-row PostgREST cap (it did in the
+  // pilot), and a capped fetch silently skews every number in the email.
+  const [obsRows, { data: pays, error: paysErr }, pendingRes, appsRes] = await Promise.all([
+    fetchAllPages<{ rider_id: string; due_date: string; amount_due: number; status: string }>(
+      (from, to) =>
+        admin
+          .from('payment_obligations')
+          .select('rider_id, due_date, amount_due, status')
+          .lte('due_date', summaryDate)
+          .or(`status.in.(scheduled,due,overdue),due_date.eq.${summaryDate}`)
+          .order('due_date', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to),
+      { label: 'daily-summary obligations' },
+    ),
     admin.from('payments').select('amount, status, method').eq('status', 'completed').gte('completed_at', dayStartUtc).lt('completed_at', dayEndUtc),
-    admin.from('payments').select('id').eq('status', 'pending'),
-    admin.from('rider_applications').select('id').in('status', ['submitted', 'under_review', 'interview', 'verification']),
+    admin.from('payments').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    admin
+      .from('rider_applications')
+      .select('id', { count: 'exact', head: true })
+      .in('status', ['submitted', 'under_review', 'interview', 'verification']),
   ]);
+  if (paysErr) throw new Error(`daily-summary payments failed: ${paysErr.message}`);
 
-  const obligations: KpiObligation[] = (
-    (obs ?? []) as { rider_id: string; due_date: string; amount_due: number; status: string }[]
-  ).map((o) => ({ riderId: o.rider_id, dueDate: o.due_date, amountDue: o.amount_due, status: o.status }));
+  const obligations: KpiObligation[] = obsRows.map((o) => ({
+    riderId: o.rider_id,
+    dueDate: o.due_date,
+    amountDue: o.amount_due,
+    status: o.status,
+  }));
   const paymentsToday = ((pays ?? []) as { amount: number; status: string; method: string }[]).map((p) => ({
     amount: p.amount,
     status: p.status,
@@ -328,8 +403,8 @@ export const dailySummaryTask: CronTask = async (): Promise<Record<string, numbe
     totalArrears: kpis.totalArrears,
     paidRiders: kpis.paidRiders,
     unpaidRiders: kpis.unpaidRiders,
-    pendingPayments: (pendingRows ?? []).length,
-    applicationsAwaiting: (appsRows ?? []).length,
+    pendingPayments: (pendingRes as { count: number | null }).count ?? 0,
+    applicationsAwaiting: (appsRes as { count: number | null }).count ?? 0,
     appUrl: clientEnv.NEXT_PUBLIC_APP_URL,
   };
 

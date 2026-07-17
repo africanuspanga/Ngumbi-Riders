@@ -9,6 +9,8 @@ import { getCollectionReport, getArrearsReport, getExpenseReport } from '@/lib/r
 // is the report page itself; PDF export is a tracked follow-up.
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// XLSX generation over a long date range needs more than the short default.
+export const maxDuration = 120;
 
 type Table = { title: string; headers: string[]; rows: CsvCell[][] };
 

@@ -11,6 +11,20 @@ import {
 import { allowedTransitions, STATUS_META } from '@/lib/applications/status';
 import type { ApplicationStatus } from '@/lib/supabase/types';
 
+// Server error codes → owner-facing copy (raw snake_case reads as gibberish).
+const APP_ERRORS: Record<string, string> = {
+  not_found: 'This application no longer exists — go back to the list.',
+  illegal_transition: 'That status change is not allowed from the current status — refresh the page.',
+  update_failed: 'Could not update the status. Try again.',
+  not_approved: 'Approve the application before converting to a rider.',
+  missing_phone: 'The application has no phone number — it cannot become a login.',
+  create_rider_failed: 'Could not create the rider login. If this applicant was partly converted before, try Convert again — it resumes.',
+  copy_failed: 'The rider was created but copying their details failed. Press Convert again to resume the copy.',
+  sign_failed: 'Could not open the document. Try again.',
+  forbidden_bucket: 'That document cannot be opened from here.',
+};
+const appError = (code: string) => APP_ERRORS[code] ?? 'Something failed. Refresh and try again.';
+
 export function StatusActions({
   id,
   current,
@@ -33,7 +47,7 @@ export function StatusActions({
     setError(null);
     start(async () => {
       const res = await setApplicationStatus(id, to);
-      if (!res.ok) setError(res.error);
+      if (!res.ok) setError(appError(res.error));
       else router.refresh();
     });
   }
@@ -73,7 +87,7 @@ export function RevealSecrets({ id }: { id: string }) {
     start(async () => {
       const res = await revealApplicationSecrets(id);
       if (res.ok) setValues(res.data ?? { nida: null, licence: null, voterId: null });
-      else setError(res.error);
+      else setError(appError(res.error));
     });
   }
 
@@ -154,7 +168,7 @@ export function ConvertButton({ id }: { id: string }) {
         setResult({ riderNumber: res.data.riderNumber, tempPin: res.data.tempPin });
         router.refresh();
       } else {
-        setError(res.ok ? 'unknown' : res.error);
+        setError(res.ok ? appError('unknown') : appError(res.error));
       }
     });
   }

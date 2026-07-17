@@ -11,11 +11,13 @@ export function AnnouncementForm() {
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function submit() {
     if (!title.trim() || !body.trim()) return;
     setBusy(true);
     setMsg(null);
+    setError(null);
     try {
       const res = await sendAnnouncement({ audience, title, body });
       if (res.ok) {
@@ -24,10 +26,12 @@ export function AnnouncementForm() {
         setBody('');
         router.refresh();
       } else {
-        setMsg('Could not send.');
+        // Failure must not be styled like success — the owner glances, sees
+        // grey text, and assumes the broadcast went out.
+        setError('Could not send the announcement. Try again.');
       }
     } catch {
-      setMsg('Could not send (network error). Try again.');
+      setError('Could not send (network error). Try again.');
     } finally {
       setBusy(false);
     }
@@ -45,6 +49,7 @@ export function AnnouncementForm() {
       <input className="input" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
       <textarea className="input min-h-24" placeholder="Message" value={body} onChange={(e) => setBody(e.target.value)} />
       {msg && <p className="text-sm text-muted-foreground">{msg}</p>}
+      {error && <p role="alert" className="text-sm font-medium text-overdue">{error}</p>}
       <button
         type="button"
         disabled={busy || !title.trim() || !body.trim()}

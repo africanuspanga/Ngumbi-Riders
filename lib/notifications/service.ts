@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sendPushToProfile } from '@/lib/push/webpush';
 
 /*
  * In-app notifications (spec §17.1) — the SOURCE OF TRUTH for notifications;
@@ -38,7 +39,21 @@ export async function notifyRider(riderId: string, n: Omit<NotificationInput, 'p
   const admin = createAdminClient();
   const { data: rider } = await admin.from('riders').select('profile_id').eq('id', riderId).maybeSingle();
   const profileId = (rider as { profile_id: string } | null)?.profile_id;
-  if (profileId) await createNotification({ ...n, profileId });
+  if (!profileId) return;
+  await createNotification({ ...n, profileId });
+  // Push is supplementary (spec §17.2) and BEST-EFFORT — the highest-value
+  // messages (payment due/overdue/completed) previously never reached push at
+  // all: a rider had to open the app to learn they owed. No-ops until VAPID is
+  // configured; a push failure never fails the in-app notification.
+  try {
+    await sendPushToProfile(profileId, {
+      title: n.title,
+      body: n.body ?? '',
+      url: n.deepLink ?? '/rider/notifications',
+    });
+  } catch {
+    /* push is never load-bearing */
+  }
 }
 
 /** Notify the owner account(s). */

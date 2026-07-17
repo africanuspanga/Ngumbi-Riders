@@ -211,8 +211,9 @@ describe('contractEndDate', () => {
     ).toBe('2026-03-31');
   });
 
-  it('monthly terms end on the final monthly due date', () => {
-    // Start Jan 15, due day 20, 3 months -> last obligation 2026-03-20.
+  it('monthly terms end at the possession end (start + N months − 1 day), not the last due date', () => {
+    // Start Jan 15, due day 20, 3 months -> lease runs to 2026-04-14 even
+    // though the last instalment is due 2026-03-20.
     expect(
       contractEndDate({
         scheduleType: 'monthly',
@@ -221,7 +222,7 @@ describe('contractEndDate', () => {
         dueDayOfMonth: 20,
         deadlineTime: '18:00',
       }),
-    ).toBe('2026-03-20');
+    ).toBe('2026-04-14');
   });
 });
 

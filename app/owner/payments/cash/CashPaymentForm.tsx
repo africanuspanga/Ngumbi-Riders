@@ -9,6 +9,25 @@ function tzs(n: number) {
   return `TZS ${Math.round(n).toLocaleString('en-US')}`;
 }
 
+// Server error codes → owner-facing copy. These guards fire in NORMAL use
+// (ticking a later day without the earlier one, cash during an in-flight
+// mobile payment) — raw snake_case codes are cryptic at the moment the owner
+// is holding physical money.
+const CASH_ERRORS: Record<string, string> = {
+  not_oldest_first: 'Payments must cover the OLDEST outstanding days first — tick the days from the top without gaps.',
+  reserved_by_pending_payment:
+    'One of those days has a mobile payment in progress. Wait for it to complete or fail (stale attempts clear within the hour), then record the cash.',
+  future_date: 'The payment date cannot be in the future.',
+  invalid_date: 'The payment date is not valid.',
+  not_outstanding: 'One of those days is no longer owed (already paid, waived or postponed) — reload the page.',
+  invalid_obligations: 'The selected days no longer match this rider — reload the page.',
+  contract_rider_mismatch: 'Those days do not belong to this rider — reload the page.',
+  settlement_failed: 'Recording failed at the settlement step. Nothing was recorded — check the payments list, then retry.',
+  no_obligations: 'Select at least one day.',
+  invalid_amount: 'The selected days have no amount due.',
+  server_error: 'A server error occurred. Check the payments list before retrying so the payment is not recorded twice.',
+};
+
 export function CashPaymentForm({ candidates, today }: { candidates: CashCandidate[]; today: string }) {
   const router = useRouter();
   const [riderId, setRiderId] = useState('');
@@ -48,7 +67,7 @@ export function CashPaymentForm({ candidates, today }: { candidates: CashCandida
         router.push('/owner/payments');
         router.refresh();
       } else {
-        setError(res.error);
+        setError(CASH_ERRORS[res.error] ?? 'Could not record the payment. Reload the page and try again.');
       }
     } catch {
       // Money mutation: the request may or may not have reached the server.

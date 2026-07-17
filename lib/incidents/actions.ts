@@ -19,12 +19,18 @@ export async function createIncident(input: unknown): Promise<ActionResult<{ id:
   if (!parsed.success) return { ok: false, error: 'validation' };
 
   const supabase = await createServerSupabase();
+  // datetime-local values are ZONELESS ("2026-07-17T14:30"): the rider means
+  // EAT wall-clock time. `new Date(zoneless)` parses in the SERVER's zone (UTC
+  // on Vercel), storing an instant 3h late — evening incidents would land on
+  // the wrong EAT day. Pin the offset explicitly (EAT has no DST).
+  const occurredAtUtc = new Date(`${parsed.data.occurredAt}:00+03:00`);
+  if (Number.isNaN(occurredAtUtc.getTime())) return { ok: false, error: 'validation' };
   const { data, error } = await supabase
     .from('incident_reports')
     .insert({
       rider_id: profile.riderId,
       category: parsed.data.category,
-      occurred_at: new Date(parsed.data.occurredAt).toISOString(),
+      occurred_at: occurredAtUtc.toISOString(),
       description: parsed.data.description,
       location_text: parsed.data.locationText || null,
       status: 'open',

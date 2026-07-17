@@ -79,6 +79,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(GENERIC_401, { status: 401 });
   }
 
+  // ---- Rider status gate --------------------------------------------------
+  // Credentials alone are not enough: a rider the owner disabled (inactive /
+  // suspended / terminated) must not get a session. Without this check,
+  // "disable" only changed a column while the login kept working — and the
+  // seeded demo riders' PINs are public in scripts/seed.ts. Sign the fresh
+  // session out and return the same generic 401 (no status oracle).
+  const { data: riderRow } = await supabase
+    .from('riders')
+    .select('status')
+    .eq('profile_id', data.user.id)
+    .maybeSingle();
+  const riderStatus = (riderRow as { status: string } | null)?.status ?? null;
+  if (riderStatus !== 'active' && riderStatus !== 'onboarding') {
+    await supabase.auth.signOut();
+    await writeAudit({
+      actorId: data.user.id,
+      actorRole: 'rider',
+      action: 'rider.login_blocked_status',
+      metadata: { status: riderStatus },
+      ip,
+    });
+    return NextResponse.json(GENERIC_401, { status: 401 });
+  }
+
   // ---- Success -----------------------------------------------------------
   await recordLoginAttempt({ phone: canonicalPhone, ip, outcome: 'success', userAgent });
   await writeAudit({

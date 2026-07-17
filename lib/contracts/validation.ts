@@ -26,9 +26,21 @@ export const contractBuilderSchema = z
     scheduleType: z.enum(['daily', 'selected_weekdays', 'weekly', 'monthly']),
     selectedWeekdays: z.array(z.number().int().min(0).max(6)).default([]),
     // Weekly only: the single weekday (0=Sun..6=Sat) the payment is due.
-    weeklyWeekday: z.coerce.number().int().min(0).max(6).optional(),
+    // Empty string MUST become undefined, not a coerced number: RHF keeps the
+    // values of unmounted conditional fields, so after switching schedule types
+    // a leftover '' would otherwise coerce to 0 (Sunday) — or, for the monthly
+    // due day, FAIL min(1) with the error attached to a field that is no longer
+    // rendered, silently blocking submit with no visible message (the exact
+    // silent-failure class this app shipped once already).
+    weeklyWeekday: z.preprocess(
+      (v) => (v === '' || v === null ? undefined : v),
+      z.coerce.number().int().min(0).max(6).optional(),
+    ),
     // Monthly only: the day-of-month the payment is due (1..31; 31 = last day).
-    dueDayOfMonth: z.coerce.number().int().min(1).max(31).optional(),
+    dueDayOfMonth: z.preprocess(
+      (v) => (v === '' || v === null ? undefined : v),
+      z.coerce.number().int().min(1).max(31).optional(),
+    ),
     installmentAmount: z.coerce.number().int().positive('Amount must be greater than 0'),
     paymentDeadlineTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Invalid time'),
     specialTerms: z.string().trim().max(2000).optional().or(z.literal('')),

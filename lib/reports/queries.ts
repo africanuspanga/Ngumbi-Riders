@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { createServerSupabase } from '@/lib/supabase/server';
+import { fetchAllPages } from '@/lib/supabase/fetch-all';
 import { localDateString } from '@/lib/dates/tz';
 import {
   collectionReport,
@@ -21,12 +22,26 @@ export async function getCollectionReport(from: string, to: string): Promise<Col
   const supabase = await createServerSupabase();
   const { start, end } = dayRangeUtc(from, to);
 
-  const [{ data: obs }, { data: pays }] = await Promise.all([
-    supabase.from('payment_obligations').select('due_date, amount_due, status, settled_at').lte('due_date', to).limit(20000),
+  // Paginated: report math cross-sums whole ranges of history; PostgREST caps
+  // any single select at 1000 rows regardless of .limit(), which would silently
+  // truncate the report the fleet's owner hands to their accountant.
+  const [obs, { data: pays, error: paysErr }] = await Promise.all([
+    fetchAllPages<{ due_date: string; amount_due: number; status: string; settled_at: string | null }>(
+      (from, to2) =>
+        supabase
+          .from('payment_obligations')
+          .select('due_date, amount_due, status, settled_at')
+          .lte('due_date', to)
+          .order('due_date', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to2),
+      { label: 'collection report obligations' },
+    ),
     supabase.from('payments').select('amount, method, status, completed_at').eq('status', 'completed').gte('completed_at', start).lt('completed_at', end),
   ]);
+  if (paysErr) throw new Error(`collection report payments failed: ${paysErr.message}`);
 
-  const obligations: ReportObligation[] = ((obs ?? []) as { due_date: string; amount_due: number; status: string; settled_at: string | null }[]).map((o) => ({
+  const obligations: ReportObligation[] = obs.map((o) => ({
     dueDate: o.due_date,
     amountDue: o.amount_due,
     status: o.status,
@@ -48,14 +63,20 @@ export type ArrearsReportRow = ArrearsRow & { riderName: string; riderNumber: st
 
 export async function getArrearsReport(today = localDateString()): Promise<{ rows: ArrearsReportRow[]; totalAmount: number; totalCount: number }> {
   const supabase = await createServerSupabase();
-  const { data: obs } = await supabase
-    .from('payment_obligations')
-    .select('rider_id, due_date, amount_due, status')
-    .in('status', ['scheduled', 'due', 'overdue'])
-    .lt('due_date', today)
-    .limit(20000);
+  const obs = await fetchAllPages<{ rider_id: string; due_date: string; amount_due: number; status: string }>(
+    (from, to) =>
+      supabase
+        .from('payment_obligations')
+        .select('rider_id, due_date, amount_due, status')
+        .in('status', ['scheduled', 'due', 'overdue'])
+        .lt('due_date', today)
+        .order('due_date', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    { label: 'arrears report obligations' },
+  );
 
-  const obligations: ReportObligation[] = ((obs ?? []) as { rider_id: string; due_date: string; amount_due: number; status: string }[]).map((o) => ({
+  const obligations: ReportObligation[] = obs.map((o) => ({
     riderId: o.rider_id,
     dueDate: o.due_date,
     amountDue: o.amount_due,

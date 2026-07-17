@@ -48,6 +48,10 @@ export async function createMobilePayment(input: {
   try {
     res = await fetch(`${base}/v1/payments`, {
       method: 'POST',
+      // Timeouts on every provider call: the reconcile cron makes these calls
+      // serially inside the 300s dispatcher — one hung socket must not starve
+      // the remaining nightly tasks. The idempotency key makes retries safe.
+      signal: AbortSignal.timeout(15_000),
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
@@ -95,6 +99,7 @@ export async function getPaymentStatus(
   let res: Response;
   try {
     res = await fetch(`${base}/v1/payments/${encodeURIComponent(reference)}`, {
+      signal: AbortSignal.timeout(15_000),
       headers: { Authorization: `Bearer ${apiKey}` },
     });
   } catch {
@@ -117,6 +122,7 @@ export async function triggerPush(reference: string): Promise<SnippeResult<true>
   try {
     res = await fetch(`${base}/v1/payments/${encodeURIComponent(reference)}/push`, {
       method: 'POST',
+      signal: AbortSignal.timeout(15_000),
       headers: { Authorization: `Bearer ${apiKey}` },
     });
   } catch {

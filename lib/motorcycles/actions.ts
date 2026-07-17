@@ -146,16 +146,23 @@ export async function setMotorcycleRegistration(
   const ownerId = await assertOwner();
   const value = registration.trim();
   if (!value) return { ok: false, error: 'required' };
+  // Same cap as the create path — this later-entry path previously accepted
+  // unbounded input.
+  if (value.length > 60) return { ok: false, error: 'too_long' };
   const normalized = normalizeRegistration(value);
 
   const admin = createAdminClient();
-  const { error } = await admin
+  const { data: updated, error } = await admin
     .from('motorcycles')
     .update({ registration_number: normalized })
-    .eq('id', id);
+    .eq('id', id)
+    .select('id');
   if (error) {
     return { ok: false, error: /duplicate key/i.test(error.message) ? 'duplicate_registration' : 'update_failed' };
   }
+  // Zero rows matched = the motorcycle does not exist; reporting success would
+  // also write a misleading audit row.
+  if (!updated || updated.length === 0) return { ok: false, error: 'not_found' };
 
   await writeAudit({
     actorId: ownerId,

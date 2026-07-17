@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireOwner } from '@/lib/auth/session';
 import { getAuditLog } from '@/lib/system/queries';
+import { formatLocalDateTime } from '@/lib/dates/tz';
 
 export const metadata = { title: 'Audit log' };
 
@@ -27,7 +28,7 @@ export default async function AuditPage() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="border-t border-border">
-                  <td className="px-3 py-2 text-muted-foreground">{r.created_at.slice(0, 16).replace('T', ' ')}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{formatLocalDateTime(new Date(r.created_at))}</td>
                   <td className="px-3 py-2 capitalize">{r.actor_role}</td>
                   <td className="px-3 py-2 font-medium">{r.action}</td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">{r.entity_type ?? ''}{r.entity_id ? ` · ${r.entity_id.slice(0, 8)}` : ''}</td>

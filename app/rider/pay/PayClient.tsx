@@ -128,11 +128,21 @@ export function PayClient({
     setError(null);
     try {
       let result = await postInitiate();
-      // A leftover attempt from before must never block a fresh payment — clear
-      // it automatically and retry once, so the rider isn't stranded.
+      // A STALE leftover attempt must never block a fresh payment — clear it
+      // automatically and retry once, so the rider isn't stranded. But a FRESH
+      // pending very likely has a live USSD prompt on the payer's phone:
+      // cancelling it + firing a second push risks a double charge, so resume
+      // its waiting screen instead (it has explicit cancel/resend buttons).
       if (!result.ok && result.error === 'pending_exists') {
         const cleared = await cancelCurrentPendingPayment();
-        if (cleared.ok) result = await postInitiate();
+        if (cleared.ok) {
+          result = await postInitiate();
+        } else if (cleared.error === 'pending_fresh' && 'paymentId' in cleared) {
+          setPaymentId(cleared.paymentId);
+          setStatus('pending');
+          setConfirming(false);
+          return;
+        }
       }
       if (!result.ok) {
         setError(ERROR_MESSAGES[result.error ?? ''] ?? 'Imeshindikana kuanzisha malipo.');

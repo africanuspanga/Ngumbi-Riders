@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse, after, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { applicationSchema } from '@/lib/validation/application';
 import { encryptPII } from '@/lib/security/crypto';
@@ -8,7 +8,7 @@ import { createUploadToken } from '@/lib/applications/upload-token';
 import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { getClientIp } from '@/lib/security/request';
 import { localDateString } from '@/lib/dates/tz';
-import { enqueueSms } from '@/lib/messaging/outbox';
+import { enqueueSms, processOutbox } from '@/lib/messaging/outbox';
 import { notifyOwner } from '@/lib/notifications/service';
 import { serverEnv } from '@/lib/env';
 
@@ -233,6 +233,18 @@ export async function POST(request: NextRequest) {
   } catch {
     /* best-effort owner alert; the application still succeeds */
   }
+
+  // The enqueued SMS (guarantor confirmation + owner alert) would otherwise
+  // wait for the ONCE-DAILY midnight outbox run — up to 24h late for messages
+  // that are the point of spec #4/#6. Drain the outbox after the response is
+  // sent; the outbox remains the durable retry path if this attempt fails.
+  after(async () => {
+    try {
+      await processOutbox();
+    } catch {
+      /* the nightly outbox run retries anything left */
+    }
+  });
 
   // Documents are uploaded one-by-one via /api/applications/documents using
   // this short-lived capability token (Vercel request-size cap).

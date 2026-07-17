@@ -29,6 +29,22 @@ export const DEFAULT_THRESHOLDS: RiskThresholds = {
   prolongedArrears: 200_000,
 };
 
+/**
+ * Scale the TZS arrears thresholds to the rider's instalment size. The fixed
+ * defaults were calibrated for ~10k daily instalments (5 / 20 missed days); a
+ * monthly rider owing one 250k instalment would otherwise be flagged CRITICAL
+ * the day after their very first due date. The floor keeps the daily behavior
+ * identical (max(default, N × instalment) == default at 10k instalments).
+ */
+export function scaleThresholdsForInstalment(instalmentAmount: number): RiskThresholds {
+  const amount = Math.max(0, Math.trunc(instalmentAmount));
+  return {
+    ...DEFAULT_THRESHOLDS,
+    significantArrears: Math.max(DEFAULT_THRESHOLDS.significantArrears, 2 * amount),
+    prolongedArrears: Math.max(DEFAULT_THRESHOLDS.prolongedArrears, 4 * amount),
+  };
+}
+
 export type RiskInput = {
   overdueLast30: number; // overdue obligations in the last 30 days
   consecutiveMisses: number; // trailing run of missed obligations

@@ -33,12 +33,15 @@ export async function sendAnnouncement(input: {
   }
   if (riderIds.length === 0) return { ok: true, sent: 0 };
 
-  const { data: announcement } = await admin
+  const { data: announcement, error: annErr } = await admin
     .from('announcements')
     .insert({ created_by: profile.userId, title: input.title, body: input.body, audience: input.audience })
     .select('id')
     .single();
-  const announcementId = (announcement as { id: string } | null)?.id;
+  // Without the row there is no announcement id → the per-rider dedupe key
+  // would be undefined and a retry would double-notify EVERY rider. Abort.
+  if (annErr || !announcement) return { ok: false, error: 'insert_failed' };
+  const announcementId = (announcement as { id: string }).id;
 
   // Map riders -> profile ids for notification + push.
   const { data: riders } = await admin.from('riders').select('id, profile_id').in('id', riderIds);

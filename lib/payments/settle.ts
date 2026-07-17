@@ -18,11 +18,15 @@ export async function settlePaymentCompleted(
   const admin = createAdminClient();
   // Reservations are the immutable record of the selected obligations — read
   // them regardless of is_active so an expiry sweep or out-of-order failure
-  // event cannot destroy the settlement inputs.
-  const { data: reservations } = await admin
+  // event cannot destroy the settlement inputs. A FAILED read must abort: an
+  // empty-because-errored list would reach record_completed_payment as zero
+  // obligations and throw allocation_mismatch — misread as a permanent
+  // invariant violation when it was a transient read failure.
+  const { data: reservations, error: resErr } = await admin
     .from('payment_reservations')
     .select('obligation_id')
     .eq('payment_id', paymentId);
+  if (resErr) return { ok: false, error: `reservations_read_failed: ${resErr.message}` };
   const obligationIds = ((reservations ?? []) as { obligation_id: string }[]).map((r) => r.obligation_id);
 
   const { error } = await admin.rpc('record_completed_payment', {

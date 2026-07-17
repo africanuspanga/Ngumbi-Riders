@@ -116,11 +116,15 @@ export default async function CalendarPage() {
                       </div>
                     );
                   }
+                  // Light backgrounds (future 'neutral', grey 'exempted') need
+                  // dark text — white-on-#dde6df is ~1.3:1 contrast, making
+                  // most of the calendar (the future) unreadable.
+                  const darkText = d.color === 'neutral' || d.color === 'grey';
                   return (
                     <div
                       key={date}
                       title={`${d.date} · ${STATUS_LABEL[d.status] ?? d.status}`}
-                      className={`flex aspect-square items-center justify-center rounded text-[10px] font-medium text-white ${DOT[d.color]}`}
+                      className={`flex aspect-square items-center justify-center rounded text-[10px] font-medium ${darkText ? 'text-foreground' : 'text-white'} ${DOT[d.color]}`}
                     >
                       {i + 1}
                     </div>

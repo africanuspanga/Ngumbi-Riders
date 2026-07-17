@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireOwner } from '@/lib/auth/session';
 import { getApplication } from '@/lib/applications/queries';
+import { requiredApplicantDocTypes } from '@/lib/applications/documents';
 import { StatusBadge } from '@/components/applications/StatusBadge';
 import {
   StatusActions,
@@ -21,6 +22,21 @@ export default async function ApplicationDetailPage({
   const { id } = await params;
   const app = await getApplication(id);
   if (!app) notFound();
+
+  // Which identity document the applicant chose (0020) drives which uploads
+  // are REQUIRED — surface both, so the owner can see at a glance whether
+  // anything is missing (uploads are best-effort and can die mid-way on
+  // mobile connections; the submit endpoint deliberately accepts that).
+  const identityType =
+    ((app as { identity_type?: string | null }).identity_type as 'nida' | 'driving_licence' | 'voter_id' | null) ??
+    'nida';
+  const IDENTITY_LABELS: Record<string, string> = {
+    nida: 'NIDA',
+    driving_licence: 'Driving licence',
+    voter_id: 'Voter ID',
+  };
+  const uploadedDocTypes = new Set(app.documents.map((d) => d.doc_type));
+  const missingDocs = requiredApplicantDocTypes(identityType).filter((t) => !uploadedDocTypes.has(t));
 
   return (
     <div className="flex flex-col gap-6">
@@ -60,6 +76,7 @@ export default async function ApplicationDetailPage({
 
       <Section title="Applicant">
         <Grid>
+          <Info label="Identity document" value={IDENTITY_LABELS[identityType] ?? identityType} />
           <Info label="Date of birth" value={app.date_of_birth} />
           <Info label="Gender" value={app.gender} />
           <Info label="Email" value={app.email} />
@@ -88,6 +105,13 @@ export default async function ApplicationDetailPage({
       </Section>
 
       <Section title="Applicant documents">
+        {missingDocs.length > 0 && (
+          <p className="rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 p-3 text-sm text-[color:var(--color-warning)]">
+            ⚠ Missing required documents for a {IDENTITY_LABELS[identityType] ?? identityType} applicant:{' '}
+            {missingDocs.join(', ')}. Their upload may have been interrupted — ask
+            them to re-apply or bring the documents physically before approving.
+          </p>
+        )}
         {app.documents.length === 0 ? (
           <p className="text-sm text-muted-foreground">No documents uploaded.</p>
         ) : (

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { isValidPhone, tryNormalizePhone } from '@/lib/auth/phone';
-import { normalizeRegistration, normalizeMotorcycleNumber } from '@/lib/motorcycles/validation';
+import { normalizeRegistration, normalizeSerial } from '@/lib/motorcycles/validation';
+import { regionByName } from '@/lib/geo/tanzania';
 
 /*
  * Import type registry (spec §21). Phase 3 supports the two types needed to
@@ -37,30 +38,67 @@ function collectErrors(err: z.ZodError): string[] {
 }
 
 // ---- Motorcycles ---------------------------------------------------------
+// Mirrors the manual-registration rules after migration 0021 (build spec #16):
+// chassis/engine/colour/make/model are MANDATORY, the registration plate is
+// OPTIONAL (issued after purchase), and the internal code (motorcycle_number)
+// is AUTO-GENERATED from region/district at commit — never typed into a sheet.
 export type MotorcycleRow = {
-  motorcycle_number: string;
-  registration_number: string;
-  make: string | null;
-  model: string | null;
+  chassis_number: string;
+  engine_number: string;
+  colour: string;
+  make: string;
+  model: string;
+  registration_number: string | null;
+  region: string | null;
+  district: string | null;
 };
 
-const motorcycleRowSchema = z.object({
-  motorcycle_number: z.string().trim().min(1, 'required').transform(normalizeMotorcycleNumber),
-  registration_number: z.string().trim().min(1, 'required').transform(normalizeRegistration),
-  make: z.string().trim().optional().transform((v) => v || null),
-  model: z.string().trim().optional().transform((v) => v || null),
-});
+const motorcycleRowSchema = z
+  .object({
+    chassis_number: z.string().trim().min(1, 'required').max(60).transform(normalizeSerial),
+    engine_number: z.string().trim().min(1, 'required').max(60).transform(normalizeSerial),
+    colour: z.string().trim().min(1, 'required').max(60),
+    make: z.string().trim().min(1, 'required').max(60),
+    model: z.string().trim().min(1, 'required').max(60),
+    registration_number: z
+      .string()
+      .trim()
+      .max(60)
+      .optional()
+      .transform((v) => (v ? normalizeRegistration(v) : null)),
+    region: z.string().trim().max(60).optional().transform((v) => v || null),
+    district: z.string().trim().max(60).optional().transform((v) => v || null),
+  })
+  .superRefine((val, ctx) => {
+    // Same rule as the manual form: a given region must exist and a given
+    // district must belong to it — a wrong pairing would generate a
+    // misleading motorcycle code.
+    if (val.region) {
+      const region = regionByName(val.region);
+      if (!region) {
+        ctx.addIssue({ code: 'custom', message: 'unknown region', path: ['region'] });
+      } else if (val.district && !region.districts.some((d) => d.toLowerCase() === val.district!.toLowerCase())) {
+        ctx.addIssue({ code: 'custom', message: 'district not in region', path: ['district'] });
+      }
+    } else if (val.district) {
+      ctx.addIssue({ code: 'custom', message: 'district given without region', path: ['district'] });
+    }
+  });
 
 const motorcyclesDef: ImportDef<MotorcycleRow> = {
   type: 'motorcycles',
   label: 'Motorcycles',
   dupTable: 'motorcycles',
-  dupField: 'registration_number',
+  dupField: 'chassis_number',
   columns: [
-    { key: 'motorcycle_number', header: 'motorcycle_number', required: true, example: 'NGR-M-0001' },
-    { key: 'registration_number', header: 'registration_number', required: true, example: 'MC 123 ABC' },
-    { key: 'make', header: 'make', required: false, example: 'Bajaj' },
-    { key: 'model', header: 'model', required: false, example: 'Boxer' },
+    { key: 'chassis_number', header: 'chassis_number', required: true, example: 'MD2A18AZXJWC12345' },
+    { key: 'engine_number', header: 'engine_number', required: true, example: 'AZWJC1234567' },
+    { key: 'colour', header: 'colour', required: true, example: 'Red' },
+    { key: 'make', header: 'make', required: true, example: 'Bajaj' },
+    { key: 'model', header: 'model', required: true, example: 'Boxer' },
+    { key: 'registration_number', header: 'registration_number', required: false, example: 'MC 123 ABC' },
+    { key: 'region', header: 'region', required: false, example: 'Dar es Salaam' },
+    { key: 'district', header: 'district', required: false, example: 'Kinondoni' },
   ],
   validateRow(raw) {
     const res = motorcycleRowSchema.safeParse(raw);
@@ -68,7 +106,7 @@ const motorcyclesDef: ImportDef<MotorcycleRow> = {
       ? { ok: true, data: res.data }
       : { ok: false, errors: collectErrors(res.error) };
   },
-  dupValue: (d) => d.registration_number,
+  dupValue: (d) => d.chassis_number,
 };
 
 // ---- Riders --------------------------------------------------------------

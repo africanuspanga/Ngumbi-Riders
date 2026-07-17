@@ -57,7 +57,9 @@ export async function sendSms(input: {
 
   let res: Response;
   try {
-    res = await fetch(url.toString(), { method: 'GET' });
+    // Timeout: this runs inside the 300s nightly dispatcher — one hung socket
+    // must not eat the remaining tasks' budget (summary email, outbox).
+    res = await fetch(url.toString(), { method: 'GET', signal: AbortSignal.timeout(10_000) });
   } catch {
     return { ok: false, error: 'network_error' };
   }

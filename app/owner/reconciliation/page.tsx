@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { requireOwner } from '@/lib/auth/session';
 import { reconciliationSummary } from '@/lib/payments/queries';
 import { formatTZS } from '@/lib/money/format';
+import { formatLocalDateTime } from '@/lib/dates/tz';
+import { CancelStuckButton } from './CancelStuckButton';
 
 export const metadata = { title: 'Reconciliation' };
 
@@ -32,13 +34,20 @@ export default async function ReconciliationPage() {
         ) : (
           <ul className="flex flex-col divide-y divide-border text-sm">
             {s.stalePending.map((p) => (
-              <li key={p.id} className="flex justify-between py-2">
+              <li key={p.id} className="flex items-center justify-between gap-3 py-2">
                 <span>{formatTZS(p.amount)}</span>
-                <span className="text-muted-foreground">{p.created_at.slice(0, 16).replace('T', ' ')}</span>
+                <span className="text-muted-foreground">{formatLocalDateTime(new Date(p.created_at))}</span>
+                <CancelStuckButton paymentId={p.id} />
               </li>
             ))}
           </ul>
         )}
+        <p className="text-xs text-muted-foreground">
+          A stuck pending payment keeps its days reserved, which blocks recording
+          cash for them. Cancelling releases the reservation; if the provider
+          later reports it paid after all, the system refuses to settle a
+          cancelled payment and alerts you here instead.
+        </p>
       </section>
     </div>
   );

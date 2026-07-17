@@ -1,12 +1,14 @@
 import Link from 'next/link';
 import { requireOwner } from '@/lib/auth/session';
 import { getSystemHealth } from '@/lib/system/queries';
+import { formatLocalDateTime } from '@/lib/dates/tz';
 
 export const metadata = { title: 'System health' };
 
 function ago(iso: string | null): string {
   if (!iso) return 'never';
-  return iso.slice(0, 16).replace('T', ' ');
+  // EAT wall-clock — the nightly jobs run 21:00-24:00 UTC, already the next EAT day.
+  return formatLocalDateTime(new Date(iso));
 }
 
 export default async function SystemPage() {

@@ -31,9 +31,14 @@ export function ChangePinForm({ forced }: { forced: boolean }) {
       });
       const data = await res.json();
       if (!res.ok) {
+        // Every failure used to display "weak PIN" — a rider mistyping their
+        // TEMP pin was told their NEW pin was weak, invented new PINs, burned
+        // the lockout, and dead-ended on first login. Map each cause.
         if (data.error === 'weak_pin') setError(t('weak'));
         else if (data.error === 'mismatch') setError(t('mismatch'));
-        else setError(t('weak'));
+        else if (data.error === 'invalid_current_pin') setError(t('wrongCurrent'));
+        else if (data.error === 'locked') setError(t('locked'));
+        else setError(t('failed'));
         return;
       }
       router.push(data.redirectTo || '/rider');

@@ -5,7 +5,9 @@
  *   receipts, signed contracts, reports or Snippe responses (§26.2).
  * - Handles web-push notifications and notification clicks.
  */
-const SHELL_CACHE = 'ngr-shell-v1';
+// Bump the version WHENEVER the precached shell (offline page, icons,
+// manifest) changes — sw.js bytes must change for browsers to reinstall.
+const SHELL_CACHE = 'ngr-shell-v2';
 const SHELL_ASSETS = ['/offline', '/icons/logo.png', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
@@ -17,11 +19,22 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== SHELL_CACHE).map((k) => caches.delete(k))),
-    ),
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k !== SHELL_CACHE).map((k) => caches.delete(k)));
+      // Re-fetch the shell on every activation: the precache otherwise
+      // freezes at first install (the offline page would keep referencing
+      // that deploy's hashed CSS/JS forever). Best-effort — offline
+      // activation keeps the existing entries.
+      try {
+        const cache = await caches.open(SHELL_CACHE);
+        await cache.addAll(SHELL_ASSETS);
+      } catch {
+        /* offline during activate — keep the previous shell */
+      }
+      await self.clients.claim();
+    })(),
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {

@@ -16,8 +16,23 @@ export default async function RiderLayout({
   if (!profile) redirect('/login?next=/rider');
   if (profile.role !== 'rider') redirect('/owner');
 
-  // Unread badge for the bottom nav (RLS scopes to the rider's own rows).
   const supabase = await createServerSupabase();
+
+  // Status gate: a rider the owner disabled (inactive/suspended/terminated)
+  // loses access on their NEXT navigation, not just at the next login — the
+  // login-route check alone would leave an existing session working until it
+  // expires.
+  const { data: riderRow } = await supabase
+    .from('riders')
+    .select('status')
+    .eq('profile_id', profile.userId)
+    .maybeSingle();
+  const riderStatus = (riderRow as { status: string } | null)?.status ?? null;
+  if (riderStatus !== 'active' && riderStatus !== 'onboarding') {
+    redirect('/login');
+  }
+
+  // Unread badge for the bottom nav (RLS scopes to the rider's own rows).
   const { count } = await supabase
     .from('notifications')
     .select('id', { count: 'exact', head: true })

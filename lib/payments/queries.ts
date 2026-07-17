@@ -1,7 +1,8 @@
 import 'server-only';
 
 import { createServerSupabase } from '@/lib/supabase/server';
-import { presetOptions, outstanding, type SelectableObligation, type PaymentOption } from './selection';
+import { fetchAllPages } from '@/lib/supabase/fetch-all';
+import { presetOptions, outstanding, type SelectableObligation, type PaymentOption, type PaymentCadence } from './selection';
 import { localDateString } from '@/lib/dates/tz';
 import type { PaymentStatus } from '@/lib/supabase/types';
 
@@ -34,7 +35,7 @@ export async function getRiderPayView(): Promise<RiderPayView | null> {
 
   const { data: contract } = await supabase
     .from('contracts')
-    .select('id')
+    .select('id, schedule_type')
     .eq('rider_id', r.id)
     .eq('status', 'active')
     .maybeSingle();
@@ -51,13 +52,23 @@ export async function getRiderPayView(): Promise<RiderPayView | null> {
     };
   }
   const contractId = (contract as { id: string }).id;
+  const cadence = (contract as { schedule_type: PaymentCadence }).schedule_type;
 
-  const { data: obs } = await supabase
-    .from('payment_obligations')
-    .select('id, due_date, amount_due, status')
-    .eq('contract_id', contractId)
-    .in('status', ['scheduled', 'due', 'overdue']);
-  const obligations: SelectableObligation[] = ((obs ?? []) as { id: string; due_date: string; amount_due: number; status: string }[]).map(
+  // Ordered + paginated (PostgREST caps any select at 1000 rows): a truncated
+  // set would show the rider wrong arrears and mis-price the preset bundles.
+  const obs = await fetchAllPages<{ id: string; due_date: string; amount_due: number; status: string }>(
+    (from, to) =>
+      supabase
+        .from('payment_obligations')
+        .select('id, due_date, amount_due, status')
+        .eq('contract_id', contractId)
+        .in('status', ['scheduled', 'due', 'overdue'])
+        .order('due_date', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    { label: 'rider pay view' },
+  );
+  const obligations: SelectableObligation[] = obs.map(
     (o) => ({ id: o.id, dueDate: o.due_date, amountDue: o.amount_due, status: o.status }),
   );
 
@@ -79,7 +90,7 @@ export async function getRiderPayView(): Promise<RiderPayView | null> {
     outstandingCount: list.length,
     arrearsCount: arrears.length,
     arrearsAmount: arrears.reduce((s, o) => s + o.amountDue, 0),
-    options: presetOptions(obligations, today),
+    options: presetOptions(obligations, today, cadence),
     pendingPaymentId: (pending as { id: string }[] | null)?.[0]?.id ?? null,
   };
 }
@@ -206,12 +217,21 @@ export async function listCashCandidates(): Promise<CashCandidate[]> {
   const rows = (contracts ?? []) as unknown as CRow[];
   if (rows.length === 0) return [];
 
-  const { data: obs } = await supabase
-    .from('payment_obligations')
-    .select('id, contract_id, due_date, amount_due, status')
-    .in('contract_id', rows.map((c) => c.id))
-    .in('status', ['scheduled', 'due', 'overdue']);
-  const obRows = (obs ?? []) as { id: string; contract_id: string; due_date: string; amount_due: number; status: string }[];
+  // Aggregated across ALL active contracts — this crosses the 1000-row cap
+  // far sooner than any per-rider query (e.g. 4 riders × 300 remaining days),
+  // and a truncated list makes the owner's cash form show wrong obligations.
+  const obRows = await fetchAllPages<{ id: string; contract_id: string; due_date: string; amount_due: number; status: string }>(
+    (from, to) =>
+      supabase
+        .from('payment_obligations')
+        .select('id, contract_id, due_date, amount_due, status')
+        .in('contract_id', rows.map((c) => c.id))
+        .in('status', ['scheduled', 'due', 'overdue'])
+        .order('due_date', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    { label: 'cash candidates' },
+  );
 
   return rows.map((c) => ({
     riderId: c.rider_id,
@@ -232,19 +252,22 @@ export async function reconciliationSummary(): Promise<{
 }> {
   const supabase = await createServerSupabase();
   const cutoff = new Date(Date.now() - 60 * 60_000).toISOString(); // > 1h old
-  const [{ data: pend }, { data: fail }, { data: stale }] = await Promise.all([
-    supabase.from('payments').select('id', { count: 'exact', head: false }).eq('status', 'pending'),
-    supabase.from('payments').select('id', { count: 'exact', head: false }).eq('status', 'failed'),
+  // head:true counts — reading rows and taking .length caps at 1000 (failed
+  // payments accumulate forever, so that stat would eventually pin at 1000).
+  const [pendRes, failRes, { data: stale }] = await Promise.all([
+    supabase.from('payments').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabase.from('payments').select('id', { count: 'exact', head: true }).eq('status', 'failed'),
     supabase
       .from('payments')
       .select('id, amount, method, status, created_at, completed_at')
       .eq('status', 'pending')
       .lt('created_at', cutoff)
+      .order('created_at', { ascending: true })
       .limit(50),
   ]);
   return {
-    pending: (pend ?? []).length,
-    failed: (fail ?? []).length,
+    pending: (pendRes as { count: number | null }).count ?? 0,
+    failed: (failRes as { count: number | null }).count ?? 0,
     completedToday: 0,
     stalePending: (stale ?? []) as unknown as PaymentListItem[],
   };

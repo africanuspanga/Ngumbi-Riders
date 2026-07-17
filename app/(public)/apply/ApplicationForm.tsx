@@ -101,7 +101,15 @@ export function ApplicationForm() {
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(DRAFT_KEY);
-      if (raw) reset(JSON.parse(raw));
+      if (raw) {
+        const draft = JSON.parse(raw) as Record<string, unknown>;
+        // The signature canvas cannot be re-hydrated from a draft: restoring
+        // the saved dataURL into form state would let the applicant submit a
+        // signature they cannot SEE (the pad renders blank from its own
+        // state). Drop it — they must re-draw, and validation asks them to.
+        draft.signature = '';
+        reset(draft as Parameters<typeof reset>[0]);
+      }
     } catch {
       /* ignore corrupt draft */
     }
@@ -234,8 +242,18 @@ export function ApplicationForm() {
         </p>
       )}
 
+      {submission && (
+        // The application row already exists server-side; a resubmit only
+        // retries the document uploads. Edits made by walking back would be
+        // silently discarded (and could desync docs from the stored identity
+        // type) — so once submitted, navigation locks and we say so.
+        <p className="rounded-[--radius-card] border border-border bg-surface p-3 text-sm text-primary-dark">
+          {t('errors.alreadySubmitted')}
+        </p>
+      )}
+
       <div className="flex gap-3">
-        {step > 0 && (
+        {step > 0 && !submission && (
           <button type="button" onClick={back} className="flex-1 rounded-[--radius-card] border border-border bg-white px-4 py-3 font-semibold text-primary-dark">
             {t('nav.back')}
           </button>
@@ -395,6 +413,14 @@ function DocumentsStep({
   error: string | null;
   identityType: IdentityType;
 }) {
+  // Translated (sw/en) file-rejection copy — FileInput's built-in defaults are
+  // Swahili-only, which mistranslated rejections for English-locale applicants.
+  const rejectionMessages = {
+    type: t('docs.fileType'),
+    extension: t('docs.fileExtension'),
+    size: t('docs.fileSize'),
+    empty: t('docs.fileEmpty'),
+  };
   return (
     <div className="flex flex-col gap-5">
       <section className="flex flex-col gap-3">
@@ -406,6 +432,7 @@ function DocumentsStep({
             required
             file={files[`applicant.${type}`] ?? null}
             onSelect={(f) => setFile(`applicant.${type}`, f)}
+            rejectionMessages={rejectionMessages}
           />
         ))}
       </section>
@@ -418,6 +445,7 @@ function DocumentsStep({
             required
             file={files[`guarantor.${type}`] ?? null}
             onSelect={(f) => setFile(`guarantor.${type}`, f)}
+            rejectionMessages={rejectionMessages}
           />
         ))}
       </section>

@@ -9,9 +9,17 @@ const withNextIntl = createNextIntlPlugin('./lib/i18n/request.ts');
 // Content-Security-Policy. script/style allow inline for Next's hydration
 // bootstrap (nonce-based CSP is a tracked hardening follow-up). connect-src is
 // limited to same-origin + Supabase (https + realtime wss) + Snippe.
+// 'unsafe-eval' is only needed by next dev (React Refresh); in production it
+// would neuter what little XSS mitigation script-src provides on an app that
+// renders rider-supplied free text.
+const scriptSrc =
+  process.env.NODE_ENV === 'production'
+    ? "script-src 'self' 'unsafe-inline'"
+    : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
+
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  scriptSrc,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self'",

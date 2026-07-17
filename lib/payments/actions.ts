@@ -241,11 +241,24 @@ export async function cancelPendingPayment(paymentId: string): Promise<ActionRes
 /**
  * Cancel whatever payment the current rider currently has outstanding
  * (created/pending), if any. Used so a fresh "Lipa Sasa" is never blocked by a
- * leftover attempt: the pay screen clears it automatically and re-initiates,
- * instead of stranding the rider on a "pending" they'd have to cancel by hand.
- * Returns ok even when there is nothing to cancel.
+ * leftover attempt: the pay screen clears STALE attempts automatically and
+ * re-initiates, instead of stranding the rider on a "pending" they'd have to
+ * cancel by hand. Returns ok even when there is nothing to cancel.
+ *
+ * SAFETY: a FRESH 'pending' (minutes old) very likely has a live USSD prompt on
+ * the payer's phone — auto-cancelling it and firing a second push manufactures
+ * the double-pay incident the pilot already hit (payer confirms the first
+ * prompt → provider completes a locally-cancelled payment → manual
+ * reconciliation; confirms both → double charge). Fresh pendings are returned
+ * as `pending_fresh` so the UI resumes their waiting screen (which has explicit
+ * resend/cancel buttons) instead of silently killing them. 'created' payments
+ * (no USSD ever sent) are always safe to clear.
  */
-export async function cancelCurrentPendingPayment(): Promise<ActionResult> {
+const FRESH_PENDING_MS = 10 * 60_000;
+
+export async function cancelCurrentPendingPayment(): Promise<
+  ActionResult | { ok: false; error: 'pending_fresh'; paymentId: string }
+> {
   const profile = await getSessionProfile();
   if (!profile) return { ok: false, error: 'unauthenticated' };
   const admin = createAdminClient();
@@ -260,12 +273,16 @@ export async function cancelCurrentPendingPayment(): Promise<ActionResult> {
 
   const { data: pending } = await admin
     .from('payments')
-    .select('id')
+    .select('id, status, created_at')
     .eq('rider_id', riderId)
     .in('status', ['created', 'pending'])
     .order('created_at', { ascending: false })
     .limit(1);
-  const id = (pending as { id: string }[] | null)?.[0]?.id;
-  if (!id) return { ok: true }; // nothing outstanding
-  return cancelPendingPayment(id);
+  const row = (pending as { id: string; status: string; created_at: string }[] | null)?.[0];
+  if (!row) return { ok: true }; // nothing outstanding
+
+  if (row.status === 'pending' && Date.now() - Date.parse(row.created_at) < FRESH_PENDING_MS) {
+    return { ok: false, error: 'pending_fresh', paymentId: row.id };
+  }
+  return cancelPendingPayment(row.id);
 }

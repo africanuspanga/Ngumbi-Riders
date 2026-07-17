@@ -28,15 +28,23 @@ export async function enqueueMessage(input: {
   recipient: string;
   subject?: string;
   payload: Record<string, unknown>;
-}): Promise<void> {
+}): Promise<{ ok: boolean }> {
   const admin = createAdminClient();
-  await admin.from('message_outbox').insert({
+  const { error } = await admin.from('message_outbox').insert({
     channel: input.channel,
     recipient: input.recipient,
     subject: input.subject ?? null,
     payload: input.payload as Json,
     status: 'pending',
   });
+  if (error) {
+    // A silently-lost enqueue is indistinguishable from "sent" — at minimum it
+    // must leave a server-side trace (the guarantor-confirmation SMS is a
+    // fraud-prevention control; vanishing without record defeats it).
+    console.error('[outbox] enqueue failed:', input.channel, error.message);
+    return { ok: false };
+  }
+  return { ok: true };
 }
 
 const MAX_ATTEMPTS = 5;
@@ -44,12 +52,16 @@ const MAX_ATTEMPTS = 5;
 export async function processOutbox(limit = 50): Promise<{ sent: number; failed: number; skipped: number }> {
   const admin = createAdminClient();
   // Failed messages are retried until MAX_ATTEMPTS — a single transient send
-  // error must not permanently strand a message ("nothing is lost").
-  const { data } = await admin
+  // error must not permanently strand a message ("nothing is lost"). Oldest
+  // first: under a backlog larger than `limit`, an unordered select would let
+  // an arbitrary subset jump the queue while old messages rot.
+  const { data, error: selErr } = await admin
     .from('message_outbox')
     .select('id, channel, recipient, subject, payload, attempts')
     .or(`status.eq.pending,and(status.eq.failed,attempts.lt.${MAX_ATTEMPTS})`)
+    .order('created_at', { ascending: true })
     .limit(limit);
+  if (selErr) throw new Error(`outbox select failed: ${selErr.message}`);
 
   let sent = 0;
   let failed = 0;
@@ -81,7 +93,11 @@ export async function processOutbox(limit = 50): Promise<{ sent: number; failed:
           : ({ ok: false as const, error: 'unsupported_channel' });
 
     if (res.ok) {
-      await admin.from('message_outbox').update({ status: 'sent' }).eq('id', m.id);
+      // If marking 'sent' fails, the next run re-sends the message (duplicate
+      // SMS/email). Record the failure loudly; the row keeps its pending state
+      // so at worst the recipient gets a duplicate, never a silent loss.
+      const { error: sentErr } = await admin.from('message_outbox').update({ status: 'sent' }).eq('id', m.id);
+      if (sentErr) console.error('[outbox] sent-status update failed (message may re-send):', m.id, sentErr.message);
       sent++;
     } else if (res.error === 'not_configured') {
       await admin.from('message_outbox').update({ last_error: 'not_configured' }).eq('id', m.id);

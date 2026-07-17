@@ -20,6 +20,8 @@ import { getClientIp } from '@/lib/security/request';
  * Uploads are idempotent (upsert) so the client can safely retry.
  */
 export const runtime = 'nodejs';
+// A 4 MiB upload on a slow mobile link + magic-byte scan needs headroom.
+export const maxDuration = 60;
 
 const SCOPES = ['applicant', 'guarantor'] as const;
 

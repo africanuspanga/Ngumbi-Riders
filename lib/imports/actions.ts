@@ -8,9 +8,10 @@ import { generateTempPin } from '@/lib/auth/temp-pin';
 import { validatePin } from '@/lib/auth/pin';
 import { encryptOptionalPII } from '@/lib/security/crypto';
 import { writeAudit } from '@/lib/audit/audit';
+import { buildMotorcycleCode } from '@/lib/motorcycles/code';
 import { parseImportFile } from './parse';
 import { validateRows } from './validate';
-import { IMPORT_DEFS, isImportType, type ImportType } from './definitions';
+import { IMPORT_DEFS, isImportType, type ImportType, type MotorcycleRow } from './definitions';
 
 /*
  * CSV/XLSX import (spec §21). dryRunImport parses + validates + detects
@@ -183,6 +184,24 @@ export async function commitImport(batchId: string): Promise<CommitResult> {
     riderSeq = count ?? 0;
   }
 
+  // Motorcycle codes sequence within a region+district bucket (spec #7), same
+  // as manual registration. Cache each bucket's next sequence across the batch
+  // so 50 imported Kinondoni bikes get -0001…-0050 without 50 count queries.
+  const bucketSeq = new Map<string, number>();
+  async function nextBucketSeq(region: string | null, district: string | null): Promise<number> {
+    const key = `${region ?? ''}|${district ?? ''}`;
+    if (!bucketSeq.has(key)) {
+      let q = admin.from('motorcycles').select('*', { count: 'exact', head: true });
+      q = region ? q.eq('region', region) : q.is('region', null);
+      q = district ? q.eq('district', district) : q.is('district', null);
+      const { count } = await q;
+      bucketSeq.set(key, count ?? 0);
+    }
+    const next = (bucketSeq.get(key) ?? 0) + 1;
+    bucketSeq.set(key, next);
+    return next;
+  }
+
   for (const row of validRows) {
     const result = def.validateRow(row.raw);
     if (!result.ok) {
@@ -191,15 +210,38 @@ export async function commitImport(batchId: string): Promise<CommitResult> {
     }
 
     if (b.import_type === 'motorcycles') {
-      const d = result.data;
-      const { error } = await admin.from('motorcycles').insert({
-        motorcycle_number: d.motorcycle_number,
-        registration_number: d.registration_number,
-        make: d.make,
-        model: d.model,
-        status: 'available',
-      });
-      if (error) {
+      const d = result.data as MotorcycleRow;
+      // Auto-generated internal code with retry on a code collision — the
+      // chassis/engine/registration uniques are REAL duplicates and skip.
+      let insertedRow = false;
+      let seq = await nextBucketSeq(d.region, d.district);
+      for (let attempt = 0; attempt < 5 && !insertedRow; attempt++) {
+        const code = buildMotorcycleCode({
+          regionName: d.region,
+          districtName: d.district,
+          sequence: seq,
+        });
+        const { error } = await admin.from('motorcycles').insert({
+          motorcycle_number: code,
+          registration_number: d.registration_number,
+          chassis_number: d.chassis_number,
+          engine_number: d.engine_number,
+          colour: d.colour,
+          make: d.make,
+          model: d.model,
+          region: d.region,
+          district: d.district,
+          status: 'available',
+        });
+        if (!error) {
+          insertedRow = true;
+        } else if (/duplicate key/i.test(error.message) && /motorcycle_number/i.test(error.message)) {
+          seq = await nextBucketSeq(d.region, d.district); // code clash → next in bucket
+        } else {
+          break; // real duplicate (chassis/engine/registration) or other error
+        }
+      }
+      if (!insertedRow) {
         skipped++;
         continue;
       }
@@ -228,7 +270,7 @@ export async function commitImport(batchId: string): Promise<CommitResult> {
         skipped++;
         continue;
       }
-      await admin
+      const { error: demoErr } = await admin
         .from('riders')
         .update({
           email: d.email,
@@ -241,14 +283,16 @@ export async function commitImport(batchId: string): Promise<CommitResult> {
           full_address: d.full_address,
         })
         .eq('id', created.riderId);
+      if (demoErr) console.error('[import] rider demographics update failed:', created.riderId, demoErr.message);
       if (d.nida_number || d.driving_licence_number) {
-        await admin.from('rider_private_data').insert({
+        const { error: piiErr } = await admin.from('rider_private_data').insert({
           rider_id: created.riderId,
           nida_number_encrypted: encryptOptionalPII(
             d.nida_number ? d.nida_number.replace(/[\s-]/g, '') : null,
           ),
           driving_licence_encrypted: encryptOptionalPII(d.driving_licence_number),
         });
+        if (piiErr) console.error('[import] rider PII insert failed:', created.riderId, piiErr.message);
       }
       riderPins.push({ riderNumber, phone: d.phone, tempPin });
     }

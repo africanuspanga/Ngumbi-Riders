@@ -30,6 +30,16 @@ export function ImportWizard() {
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const IMPORT_ERRORS: Record<string, string> = {
+    bad_type: 'Unknown import type — reload the page.',
+    no_file: 'Choose a CSV or XLSX file first.',
+    parse_failed: 'The file could not be read. Save it as CSV or XLSX and try again.',
+    batch_failed: 'Could not start the import. Try again.',
+    not_found: 'This import batch no longer exists — start again.',
+    already_committed: 'This batch was already committed — check the registers.',
+  };
+  const importError = (code: string) => IMPORT_ERRORS[code] ?? 'Import failed. Try again.';
   const [dry, setDry] = useState<Extract<DryRunResult, { ok: true }> | null>(null);
   const [report, setReport] = useState<Extract<CommitResult, { ok: true }> | null>(null);
 
@@ -46,7 +56,7 @@ export function ImportWizard() {
         setDry(res);
         setPhase('preview');
       } else {
-        setError(res.error);
+        setError(importError(res.error));
       }
     } catch {
       setError('Upload failed — network error or the file is too large. Try again.');
@@ -66,7 +76,7 @@ export function ImportWizard() {
         setPhase('report');
         router.refresh();
       } else {
-        setError(res.error);
+        setError(importError(res.error));
       }
     } catch {
       setError('Commit failed to reach the server. Re-run the dry run and check the registers before retrying.');

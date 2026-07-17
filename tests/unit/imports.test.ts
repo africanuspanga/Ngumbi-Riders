@@ -4,18 +4,57 @@ import { validateRows } from '@/lib/imports/validate';
 import { buildTemplateCsv } from '@/lib/imports/template';
 
 describe('import definitions', () => {
-  it('validates + normalizes a motorcycle row', () => {
+  it('validates + normalizes a motorcycle row (0021 shape)', () => {
     const res = IMPORT_DEFS.motorcycles.validateRow({
-      motorcycle_number: 'ngr-m-0001',
-      registration_number: 'mc 123 abc',
+      chassis_number: 'md2a18az xjwc12345',
+      engine_number: 'azwjc 1234567',
+      colour: 'Red',
       make: 'Bajaj',
-      model: '',
+      model: 'Boxer',
+      registration_number: 'mc 123 abc',
+      region: 'Dar es Salaam',
+      district: 'Kinondoni',
     });
     expect(res.ok).toBe(true);
     if (res.ok) {
+      expect(res.data.chassis_number).toBe('MD2A18AZXJWC12345'); // serials lose ALL whitespace
+      expect(res.data.engine_number).toBe('AZWJC1234567');
       expect(res.data.registration_number).toBe('MC 123 ABC');
-      expect(res.data.model).toBeNull();
     }
+  });
+
+  it('motorcycle registration is OPTIONAL; chassis/engine/colour are required', () => {
+    const noReg = IMPORT_DEFS.motorcycles.validateRow({
+      chassis_number: 'CH1',
+      engine_number: 'EN1',
+      colour: 'Blue',
+      make: 'Bajaj',
+      model: 'Boxer',
+    });
+    expect(noReg.ok).toBe(true);
+    if (noReg.ok) expect(noReg.data.registration_number).toBeNull();
+
+    expect(
+      IMPORT_DEFS.motorcycles.validateRow({
+        registration_number: 'MC 9',
+        make: 'Bajaj',
+        model: 'Boxer',
+      }).ok,
+    ).toBe(false); // missing chassis/engine/colour
+  });
+
+  it('rejects a district that does not belong to the region', () => {
+    expect(
+      IMPORT_DEFS.motorcycles.validateRow({
+        chassis_number: 'CH2',
+        engine_number: 'EN2',
+        colour: 'Black',
+        make: 'Bajaj',
+        model: 'Boxer',
+        region: 'Dar es Salaam',
+        district: 'Nyamagana', // Mwanza district
+      }).ok,
+    ).toBe(false);
   });
 
   it('validates + normalizes a rider row (phone to E.164)', () => {
@@ -48,11 +87,12 @@ describe('import definitions', () => {
 });
 
 describe('validateRows (with in-batch dedupe)', () => {
-  it('flags duplicates within the file', () => {
+  it('flags duplicate chassis numbers within the file', () => {
+    const base = { engine_number: 'EN', colour: 'Red', make: 'Bajaj', model: 'Boxer' };
     const { rows, summary } = validateRows('motorcycles', [
-      { motorcycle_number: 'M1', registration_number: 'MC 1' },
-      { motorcycle_number: 'M2', registration_number: 'mc 1' }, // same after normalize
-      { motorcycle_number: 'M3', registration_number: 'MC 3' },
+      { ...base, chassis_number: 'CHAS 1', engine_number: 'EN1' },
+      { ...base, chassis_number: 'chas1', engine_number: 'EN2' }, // same after normalize
+      { ...base, chassis_number: 'CHAS 3', engine_number: 'EN3' },
     ]);
     expect(summary.valid).toBe(2);
     expect(summary.duplicatesInBatch).toBe(1);
@@ -70,10 +110,13 @@ describe('validateRows (with in-batch dedupe)', () => {
 });
 
 describe('buildTemplateCsv', () => {
-  it('produces a header row and an example row', () => {
+  it('produces a header row and an example row with the 0021 columns', () => {
     const csv = buildTemplateCsv('motorcycles');
     const [header, example] = csv.trim().split('\n');
+    expect(header).toContain('chassis_number');
+    expect(header).toContain('engine_number');
     expect(header).toContain('registration_number');
+    expect(header).not.toContain('motorcycle_number'); // auto-generated, never typed
     expect(example).toContain('MC 123 ABC');
   });
 });
