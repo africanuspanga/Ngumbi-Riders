@@ -49,6 +49,13 @@ const serverSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: optionalEmail,
   OWNER_SUMMARY_EMAIL: optionalEmail,
+  // Mobishastra SMS (guarantor + owner notifications). Optional until the
+  // owner supplies the profile id / password / approved sender id.
+  MOBISHASTRA_USER: z.preprocess(emptyAsUndefined, z.string().optional()),
+  MOBISHASTRA_PASSWORD: z.preprocess(emptyAsUndefined, z.string().optional()),
+  MOBISHASTRA_SENDER_ID: z.preprocess(emptyAsUndefined, z.string().optional()),
+  MOBISHASTRA_BASE_URL: z.preprocess(emptyAsUndefined, z.string().url().optional()),
+  OWNER_NOTIFY_PHONE: z.preprocess(emptyAsUndefined, z.string().optional()),
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().optional(),

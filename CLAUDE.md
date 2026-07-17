@@ -34,7 +34,31 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 ## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
 
 Verified locally: `npm run typecheck` ✅ · `npm run lint` ✅ ·
-`npm run test` ✅ (161 unit pass, 10 RLS skip) · `npm run build` ✅ (56 routes).
+`npm run test` ✅ (173 unit pass, 10 RLS skip) · `npm run build` ✅.
+
+**🔴 CRITICAL SETTLEMENT FIX (2026-07-17) — migration 0019, applied live.**
+`record_completed_payment` (behind EVERY mobile webhook, status-poll, reconcile
+cron AND cash payment) threw on every call since go-live, so **no payment ever
+settled and no receipt was ever generated** — the true root cause of both the
+"Snippe shows paid but owner dashboard doesn't" report and the broken
+`/owner/payments/cash` page. Two DB bugs: (1) `case … 'paid_in_advance' …
+'paid' …` is `text`, no implicit cast to the `obligation_status` enum; (2) the
+receipt insert's `gen_random_bytes` (pgcrypto) lives in the `extensions` schema,
+off the function's `public, pg_temp` search_path. **`0019_fix_settlement_enum_cast.sql`
+casts the CASE branches and fully-qualifies `extensions.gen_random_bytes`;
+applied live + recorded in schema_migrations; verified by a rollback dry-run that
+now runs settlement end-to-end.** It slipped through because tests are node-only
+(no local Postgres), so the PL/pgSQL money functions were never executed — see
+`SAAS_PLAN.md §16` and add DB-level integration tests. ⚠ **0019 is applied to
+the live DB but must still be COMMITTED to git** so the repo matches live.
+Stranded pilot money needs owner reconciliation (LEANHARD double-paid 10k;
+JACOB 300k cash to re-record) — see the memory note `settlement-never-worked-fixed-0019`.
+
+Other 2026-07-17 work (in the working tree, needs commit + deploy): rider hero
+card green label clarified to "up to date" (`app/rider/page.tsx`);
+`lib/geo/tanzania.ts` (26 regions/districts + codes, spec #5/#7) + tests;
+Mobishastra SMS adapter `lib/mobishastra/client.ts` wired into the outbox
+(spec #4/#6), disabled-safe until `MOBISHASTRA_*` creds land.
 
 **LIVE-SITE BLOCKER FIX (2026-07-11) — needs deploy.** The production `/apply`
 wizard could never pass step 1 (reported by the owner testing

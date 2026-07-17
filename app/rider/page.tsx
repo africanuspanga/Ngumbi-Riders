@@ -12,11 +12,18 @@ import {
   CheckCircle2Icon,
 } from 'lucide-react';
 
-/* Hero card styling per payment state (spec §15.1 colour language). */
+/*
+ * Hero card styling per payment state (spec §15.1 colour language):
+ *   overdue → red  (rider owes / has arrears — "Una deni")
+ *   due     → orange (something is due today, not yet overdue)
+ *   paid    → green (fully up to date — no arrears, nothing due today)
+ * The green state means "up to date", not necessarily "just paid": a rider
+ * with no dues today is up to date even without a payment today.
+ */
 const STATE_UI: Record<string, { label: string; className: string }> = {
-  overdue: { label: 'Una deni', className: 'bg-[color:var(--color-overdue)] text-white' },
+  overdue: { label: 'Una deni la kulipa', className: 'bg-[color:var(--color-overdue)] text-white' },
   due: { label: 'Malipo ya leo yanahitajika', className: 'bg-[color:var(--color-warning)] text-white' },
-  paid: { label: 'Umelipa — hongera!', className: 'bg-primary text-white' },
+  paid: { label: 'Uko sawa — hakuna deni', className: 'bg-primary text-white' },
 };
 
 export default async function RiderHome() {

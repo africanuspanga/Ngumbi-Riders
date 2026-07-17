@@ -572,3 +572,82 @@ Enough to not be caught flat-footed at tenant #2; flesh out with real usage.
 - **Operational bar before tenant #2**: a named answer to "who gets paged when
   webhooks fail at 02:00", an incident runbook (extend BACKUP_RECOVERY.md),
   and a status-communication habit — even a manually updated status page.
+
+---
+
+## 16. Field learnings from the live pilot (2026-07-17)
+
+Real learnings from operating tenant #0 (Ng'umbi itself). Fold these into the
+SaaS bar so they are not re-learned per tenant.
+
+### 16.1 The settlement function had NEVER worked in production (critical)
+
+The single most important pilot finding. `record_completed_payment` — the
+atomic settlement function every mobile-money webhook, status-poll and cash
+payment funnels through — threw on **every** invocation, so **no payment ever
+reached `completed` and no receipt was ever generated** since go-live. Two
+independent latent bugs, both in a SECURITY DEFINER PL/pgSQL function:
+
+1. **Enum cast.** `set status = case when … then 'paid_in_advance' else 'paid'
+   end` — a `CASE` over untyped string literals resolves to `text`, and there
+   is **no implicit cast from `text` to the `obligation_status` enum**, so the
+   `UPDATE` raised `42804`. Present since migration 0014; copied unchanged into
+   0017 and 0018.
+2. **Unqualified extension function.** The receipt insert called
+   `encode(gen_random_bytes(6), 'hex')`. On Supabase, pgcrypto lives in the
+   `extensions` schema, which is **not** on the function's hardened
+   `search_path = public, pg_temp`, so it raised
+   `function gen_random_bytes(integer) does not exist`. (`gen_random_uuid()`
+   masked the risk — it *also* exists in `pg_catalog`, so it resolved; only the
+   pgcrypto-only `gen_random_bytes` broke.)
+
+Fixed in **migration 0019**: cast each `CASE` branch to
+`::public.obligation_status`, and fully-qualify `extensions.gen_random_bytes`.
+
+**Live blast radius observed:** mobile webhooks returned HTTP 500 → Snippe
+retried → riders saw "still pending" despite paying → riders cancelled and
+re-paid, producing genuine **double payments** (one rider paid 10 000 TZS twice
+on Snippe for a single 10 000 obligation). Cash payments failed with
+`settlement_failed` (3 attempts, 900 000 TZS, never recorded). And because no
+obligation ever flipped to `paid`, **every rider's dashboard card was
+perpetually orange/red** — misread as a separate UI bug when it was a symptom
+of settlement never completing.
+
+### 16.2 Why it shipped — the test gap (the transferable lesson)
+
+The unit suite is **node-only** (161 tests) and there is **no local Postgres**
+(no Docker on the build machine; DB work goes through the Management API SQL
+endpoint, D-029). So the pure TypeScript money math was well tested, but the
+**PL/pgSQL functions where the money actually moves were never executed by any
+test** — the exact code most protected by review, least protected by CI.
+
+**SaaS bar (do before tenant #2):** stand up a disposable Postgres in CI
+(`supabase db start` in a container, or an ephemeral hosted branch) and add
+**DB-level integration tests that call `record_completed_payment`,
+`activate_contract_and_generate_obligations`, `apply_exemption_waiver` and
+`apply_postponement` end-to-end** and assert the row transitions. A settlement
+function that has never run against a real Postgres must never reach a tenant.
+Multi-tenancy multiplies this risk: one broken definer function silently strands
+money for *every* org at once.
+
+### 16.3 Loud-failure gaps that hid the bug from operators
+
+The webhook did the right thing structurally (audit row + owner notification on
+invariant violations), but the *transient* 500 path — the one that actually
+fired here — produced **no operator-visible signal**; it only manifested as
+Snippe-side retries. Before tenant #2: alert on **any** webhook 5xx rate and on
+`payments` stuck in `pending`/`created` beyond a short SLA, not only on the
+explicit invariant branch. "Money is on the provider but not in our ledger" is
+the single alert that matters most and was absent.
+
+### 16.4 Reconciliation needs a first-class owner tool
+
+Recovering the pilot's stranded money (settle the genuinely-paid pending
+payment; refund-or-credit the double payment; re-record the failed cash) is
+today a manual DB exercise gated behind human authorization (correctly — an
+agent must not hand-edit live money). A tenant-facing **reconciliation console**
+(list provider-completed-but-locally-unsettled payments, one-click re-run
+settlement via the controlled function, and a controlled overpayment
+refund/credit flow) is a SaaS prerequisite, not a polish. The controlled
+un-settlement / reversal flow (already a tracked follow-up) is the same
+workstream.
