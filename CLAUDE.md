@@ -69,15 +69,21 @@ live site):
   reveal shows Voter ID; convert-to-rider copies identity_type + voter_id.
 - Owner notified (in-app + optional SMS to `OWNER_NOTIFY_PHONE`) on every new
   application (spec #6).
+- **Motorcycle fields + auto code (migration 0021, applied live; spec #16/#7):**
+  registration number is optional (add/correct later on the detail page);
+  chassis/engine/colour/make/model mandatory (chassis+engine unique); the
+  internal code is auto-generated `NGR-{REGION}-{DIST}-M-{SEQ4}` from the geo
+  codes (XXX fallback). Code is now the primary identifier in the UI.
 
 Remaining build-spec items (priority order, not yet started): monthly/weekly
 instalments + monthly cash recording (#8/#13 — highest money-risk, touches the
-settlement engine, needs a product decision on monthly due-day semantics),
-motorcycle field changes + auto code generation (#16/#7, geo data ready),
-accountant role + RLS (#10), motorcycle procurement workflow (#11), contract
-storage/download + template (#9/#18), phone financing (#14), duration units
-(#15), PWA polish (#17), data import (#19). Pilot money reconciliation is
-owner-driven in-app (see memory `settlement-never-worked-fixed-0019`).
+settlement engine; due-day decision captured in memory
+`monthly-instalment-due-day-decision`: owner sets a fixed due date, not overdue
+until it passes), accountant role + RLS (#10), motorcycle procurement workflow
+(#11, needs the accountant role), contract storage/download + template (#9/#18),
+phone financing (#14), duration units (#15), PWA polish (#17), data import
+(#19). Pilot money reconciliation is owner-driven in-app (see memory
+`settlement-never-worked-fixed-0019`).
 
 **LIVE-SITE BLOCKER FIX (2026-07-11) — needs deploy.** The production `/apply`
 wizard could never pass step 1 (reported by the owner testing
