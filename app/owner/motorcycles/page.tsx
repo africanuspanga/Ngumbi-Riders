@@ -43,10 +43,10 @@ export default async function MotorcyclesPage() {
               >
                 <div className="flex flex-col gap-0.5">
                   <span className="font-semibold text-foreground">
-                    {m.registration_number}
+                    {m.motorcycle_number}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {m.motorcycle_number}
+                    {m.registration_number ?? 'Hakuna namba ya usajili bado'}
                     {(m.make || m.model) && ` · ${[m.make, m.model].filter(Boolean).join(' ')}`}
                   </span>
                 </div>

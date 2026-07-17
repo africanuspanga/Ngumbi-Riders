@@ -8,7 +8,7 @@ import { manualRiderSchema, type ManualRiderInput } from '@/lib/riders/validatio
 import { createRiderManually } from '@/lib/riders/actions';
 import { TextField, SelectField } from '@/components/forms/Field';
 
-type MotoOption = { id: string; registration_number: string; motorcycle_number: string };
+type MotoOption = { id: string; registration_number: string | null; motorcycle_number: string };
 
 // A quick temp PIN that avoids trivially weak values (final check is server-side).
 function suggestPin(): string {
@@ -98,7 +98,7 @@ export function ManualRiderForm({ motorcycles }: { motorcycles: MotoOption[] }) 
           <option value="">— none —</option>
           {motorcycles.map((m) => (
             <option key={m.id} value={m.id}>
-              {m.registration_number} ({m.motorcycle_number})
+              {m.motorcycle_number}{m.registration_number ? ` · ${m.registration_number}` : ''}
             </option>
           ))}
         </SelectField>

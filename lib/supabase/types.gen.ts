@@ -968,32 +968,47 @@ export type Database = {
       }
       motorcycles: {
         Row: {
+          chassis_number: string | null
+          colour: string | null
           created_at: string
+          district: string | null
+          engine_number: string | null
           id: string
           make: string | null
           model: string | null
           motorcycle_number: string
-          registration_number: string
+          region: string | null
+          registration_number: string | null
           status: Database["public"]["Enums"]["motorcycle_status"]
           updated_at: string
         }
         Insert: {
+          chassis_number?: string | null
+          colour?: string | null
           created_at?: string
+          district?: string | null
+          engine_number?: string | null
           id?: string
           make?: string | null
           model?: string | null
           motorcycle_number: string
-          registration_number: string
+          region?: string | null
+          registration_number?: string | null
           status?: Database["public"]["Enums"]["motorcycle_status"]
           updated_at?: string
         }
         Update: {
+          chassis_number?: string | null
+          colour?: string | null
           created_at?: string
+          district?: string | null
+          engine_number?: string | null
           id?: string
           make?: string | null
           model?: string | null
           motorcycle_number?: string
-          registration_number?: string
+          region?: string | null
+          registration_number?: string | null
           status?: Database["public"]["Enums"]["motorcycle_status"]
           updated_at?: string
         }

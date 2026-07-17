@@ -129,7 +129,7 @@ export function RiderPinReset({ id }: { id: string }) {
   );
 }
 
-type MotoOption = { id: string; registration_number: string };
+type MotoOption = { id: string; registration_number: string | null; motorcycle_number: string };
 
 const STATUSES: RiderStatus[] = ['active', 'suspended', 'terminated', 'inactive'];
 
@@ -220,7 +220,7 @@ export function AssignmentActions({
         <select className="input bg-white" value={motoId} onChange={(e) => setMotoId(e.target.value)}>
           <option value="">Select motorcycle…</option>
           {motorcycles.map((m) => (
-            <option key={m.id} value={m.id}>{m.registration_number}</option>
+            <option key={m.id} value={m.id}>{m.motorcycle_number}{m.registration_number ? ` · ${m.registration_number}` : ''}</option>
           ))}
         </select>
         <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -248,7 +248,7 @@ export function AssignmentActions({
         <select className="input bg-white" value={motoId} onChange={(e) => setMotoId(e.target.value)}>
           <option value="">Transfer to…</option>
           {motorcycles.map((m) => (
-            <option key={m.id} value={m.id}>{m.registration_number}</option>
+            <option key={m.id} value={m.id}>{m.motorcycle_number}{m.registration_number ? ` · ${m.registration_number}` : ''}</option>
           ))}
         </select>
         <div className="flex gap-2">

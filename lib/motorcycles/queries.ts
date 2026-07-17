@@ -8,11 +8,22 @@ import type { MotorcycleStatus } from '@/lib/supabase/types';
 export type MotorcycleListItem = {
   id: string;
   motorcycle_number: string;
-  registration_number: string;
+  registration_number: string | null;
   make: string | null;
   model: string | null;
+  chassis_number: string | null;
+  engine_number: string | null;
+  colour: string | null;
+  region: string | null;
+  district: string | null;
   status: MotorcycleStatus;
 };
+
+/** Display label for a motorcycle — the code is the primary id; registration
+ *  (which may not be issued yet) is shown alongside when present. */
+export function motorcycleLabel(m: { motorcycle_number: string; registration_number: string | null }): string {
+  return m.registration_number ? `${m.motorcycle_number} · ${m.registration_number}` : m.motorcycle_number;
+}
 
 export type AssignmentHistoryRow = {
   id: string;
@@ -47,7 +58,7 @@ export async function listMotorcycles(
   const supabase = await createServerSupabase();
   let q = supabase
     .from('motorcycles')
-    .select('id, motorcycle_number, registration_number, make, model, status')
+    .select('id, motorcycle_number, registration_number, make, model, chassis_number, engine_number, colour, region, district, status')
     .order('motorcycle_number', { ascending: true })
     .limit(500);
   if (status) q = q.eq('status', status);
@@ -92,7 +103,7 @@ export async function listContractableMotorcycles(): Promise<ContractableMotorcy
   const list = (motos ?? []) as {
     id: string;
     motorcycle_number: string;
-    registration_number: string;
+    registration_number: string | null;
     status: MotorcycleStatus;
   }[];
   if (list.length === 0) return [];
@@ -135,7 +146,7 @@ export async function listContractableMotorcycles(): Promise<ContractableMotorcy
       const a = assignMap.get(m.id) ?? null;
       return {
         id: m.id,
-        label: `${m.registration_number} (${m.motorcycle_number})`,
+        label: motorcycleLabel(m),
         assignedRiderId: a?.riderId ?? null,
         assignedRiderLabel: a?.label ?? null,
       };
@@ -148,7 +159,7 @@ export async function getMotorcycle(
   const supabase = await createServerSupabase();
   const { data: m } = await supabase
     .from('motorcycles')
-    .select('id, motorcycle_number, registration_number, make, model, status')
+    .select('id, motorcycle_number, registration_number, make, model, chassis_number, engine_number, colour, region, district, status')
     .eq('id', id)
     .maybeSingle();
   if (!m) return null;

@@ -29,6 +29,7 @@ export default async function RiderDetailPage({
   const motoOptions = motorcycles.map((m) => ({
     id: m.id,
     registration_number: m.registration_number,
+    motorcycle_number: m.motorcycle_number,
   }));
 
   return (

@@ -1,5 +1,5 @@
 import { requireOwner } from '@/lib/auth/session';
-import { listMotorcycles } from '@/lib/motorcycles/queries';
+import { listMotorcycles, motorcycleLabel } from '@/lib/motorcycles/queries';
 import { getExpenseReport } from '@/lib/reports/queries';
 import { localDateString } from '@/lib/dates/tz';
 import { formatTZS } from '@/lib/money/format';
@@ -25,7 +25,7 @@ export default async function ExpensesPage() {
 
       <ExpenseForm
         today={today}
-        motorcycles={motorcycles.map((m) => ({ id: m.id, label: `${m.registration_number} (${m.motorcycle_number})` }))}
+        motorcycles={motorcycles.map((m) => ({ id: m.id, label: motorcycleLabel(m) }))}
       />
 
       <section className="flex flex-col gap-2 rounded-[--radius-card] border border-border bg-white p-4">

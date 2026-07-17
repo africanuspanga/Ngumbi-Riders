@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireOwner } from '@/lib/auth/session';
 import { getMotorcycle } from '@/lib/motorcycles/queries';
 import { formatTZS } from '@/lib/money/format';
+import { RegistrationForm } from './RegistrationForm';
 
 export const metadata = { title: 'Motorcycle' };
 
@@ -29,10 +30,10 @@ export default async function MotorcycleDetailPage({
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-primary-dark">
-            {m.registration_number}
+            {m.motorcycle_number}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {m.motorcycle_number}
+            {m.registration_number ?? 'Registration pending'}
             {(m.make || m.model) && ` · ${[m.make, m.model].filter(Boolean).join(' ')}`}
           </p>
         </div>
@@ -40,6 +41,25 @@ export default async function MotorcycleDetailPage({
           {m.status}
         </span>
       </header>
+
+      <Section title="Details">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+          <Detail label="Code" value={m.motorcycle_number} />
+          <Detail label="Registration" value={m.registration_number ?? '—'} />
+          <Detail label="Chassis number" value={m.chassis_number ?? '—'} />
+          <Detail label="Engine number" value={m.engine_number ?? '—'} />
+          <Detail label="Colour" value={m.colour ?? '—'} />
+          <Detail label="Make / model" value={[m.make, m.model].filter(Boolean).join(' ') || '—'} />
+          <Detail label="Region" value={m.region ?? '—'} />
+          <Detail label="District" value={m.district ?? '—'} />
+        </dl>
+        <div className="mt-1">
+          <p className="mb-1 text-xs text-muted-foreground">
+            {m.registration_number ? 'Correct registration number' : 'Add registration number (issued after purchase)'}
+          </p>
+          <RegistrationForm id={m.id} current={m.registration_number} />
+        </div>
+      </Section>
 
       <Section title="Current rider">
         {active ? (
@@ -105,5 +125,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="font-semibold text-primary-dark">{title}</h2>
       {children}
     </section>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="font-medium text-foreground">{value}</dd>
+    </div>
   );
 }
