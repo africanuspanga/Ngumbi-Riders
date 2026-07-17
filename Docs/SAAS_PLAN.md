@@ -12,6 +12,12 @@
 > numbers already use a per-year DB sequence). Items 18–25 (missed
 > assumptions), per-org encryption, PDPA data residency, tax, staff
 > invitations, billing tables and §15 were added.
+>
+> **Extended 2026-07-17:** §16 (live-pilot field learnings) added — first the
+> critical settlement-never-worked finding (§16.1–16.4), then the
+> monthly/weekly-instalment session (§16.5–16.7): schedule cadence is
+> settlement-agnostic, an interim DB-level money-test technique, and
+> migration-discipline notes for a live money DB.
 
 ---
 
@@ -651,3 +657,86 @@ settlement via the controlled function, and a controlled overpayment
 refund/credit flow) is a SaaS prerequisite, not a polish. The controlled
 un-settlement / reversal flow (already a tracked follow-up) is the same
 workstream.
+
+### 16.5 Payment cadence is settlement-agnostic — a design property to preserve
+
+Adding **monthly and weekly instalment schedules** (spec #8/#13, migration 0022,
+D-032) changed **zero money functions**. The three engines that move or gate
+money are all cadence-blind:
+
+- `activate_contract_and_generate_obligations` inserts whatever obligation
+  calendar the **pure, unit-tested TS engine** (`lib/obligations/schedule.ts`)
+  hands it — it never re-derives dates.
+- `record_completed_payment` settles **per obligation** (amount, status, rider,
+  reservations), regardless of how that obligation was scheduled.
+- the deadline-transition job (`lib/obligations/transitions.ts`) keys off **each
+  obligation's own due date**, so a monthly obligation correctly stays
+  `scheduled` (NOT overdue) until its owner-set due day — the exact "don't show
+  a monthly rider overdue every day" requirement fell out for free.
+
+Because a "monthly obligation" is just an obligation whose amount is the month's
+instalment, **one obligation = one month**, so the existing owner cash page
+already did "select rider → month → record" with no new money plumbing.
+
+**SaaS bar:** keep this boundary absolute. Cadence, grace rules and due-day logic
+live in the pure schedule engine; the SECURITY DEFINER money functions stay
+cadence-blind. Future cadences (fortnightly, balloon final payment, the
+phone-financing repayment phases #14, seasonal skips) must be **additive**: a
+schedule-engine change + optionally one enum label + nullable contract columns,
+validated by (a) schedule-engine unit tests and (b) **one** DB-level settlement
+dry-run — never a rewrite of settlement. This property is what makes per-tenant
+money paths cheap and safe to extend.
+
+### 16.6 An interim DB-level money test we can run today (partially closes §16.2)
+
+§16.2 flagged that the definer money functions were never executed by any test.
+Until CI Postgres exists (the real fix, §16.2), the monthly path was proven with
+a **rollback-only dry-run against the live DB**: a `DO $$ … $$` block builds a
+synthetic obligation + `cash` payment on a real active contract, calls
+`record_completed_payment`, captures the resulting statuses/receipt, then
+`RAISE EXCEPTION` to abort — **nothing commits** (verified: 0 synthetic rows
+persisted). The verification outcome is encoded in the exception message (which
+the Management API returns), since a rolled-back block yields no result set.
+Result here: obligation → `paid_in_advance`, payment → `completed`, allocation ==
+amount, receipt issued — end-to-end proof the 0019 fix holds for a monthly-sized
+obligation.
+
+Two gotchas this surfaced, both SaaS-relevant:
+
+- **Sequences are non-transactional.** `record_completed_payment` calls
+  `nextval` for the receipt number *before* the receipt insert, so the sequence
+  advances even on a rolled-back (and, historically, a *failed*) settlement — the
+  live receipt sequence was already >1 purely from failed pre-0019 attempts, each
+  of which reached `nextval` before throwing. A dry-run must snapshot and
+  `setval` the sequence back. The durable corollary: **receipt numbers are
+  legitimately non-contiguous** — never build a tenant-facing check that assumes
+  gap-free receipt sequences (bears on §2 item 5 / §6 per-org sequences).
+- **Unique `(contract_id, due_date)`** rejects a synthetic obligation that
+  collides with a real one — use a far-future `due_date` for such probes.
+
+**Make it a standard step:** every change to a definer money function ships with
+a CI DB-level test (preferred — the §16.2 bar) or, at minimum, a documented
+rollback-only dry-run against **staging** (§8). Reusable helper pattern: a
+throwaway node script POSTing SQL to the Management API SQL endpoint
+(`/tmp/ngr-sql.mjs` this session).
+
+### 16.7 Migration discipline on a live money DB (from 0022)
+
+- **Additive + backfill-free is the safe shape.** 0022 only adds two
+  `schedule_type` labels + a nullable `contracts.due_day_of_month`; existing rows
+  are untouched and daily/weekday contracts behave identically, so it applied to
+  the production money DB with no backfill and no behavior change. Prefer exactly
+  this shape for every live migration; it is also what makes "Ng'umbi is tenant
+  #1 by backfill" (§11) realistic.
+- **`ALTER TYPE … ADD VALUE` is irreversible and can't be used in-txn.** Postgres
+  cannot drop an enum value, and a newly added value cannot be *used* in the same
+  transaction that adds it — apply enum additions ahead of (or separately from)
+  any DDL/DML that references them. In the SaaS these enums (`schedule_type`,
+  `obligation_status`, …) stay **platform-wide, not per-org** — deliberately: one
+  enum to reason about, not N.
+- **Live money-DB migrations require explicit, per-session human authorization**
+  (the auto-mode classifier gates `ALTER`/`DROP` against production). This is the
+  right friction at tenant #0, but it **does not scale to N tenants** — which is
+  precisely why §8/§11 mandate a permanent staging project and a rehearse-every-
+  S-phase-migration discipline: at scale the confidence must come from staging
+  rehearsals + CI DB tests, not a human clicking "allow" on production each time.
