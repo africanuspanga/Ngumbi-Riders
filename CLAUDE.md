@@ -4,7 +4,11 @@
 > **Product source of truth = [`Docs/NGUMBI_RIDERS_BUILD_SPEC.md`](Docs/NGUMBI_RIDERS_BUILD_SPEC.md)** (the full build
 > spec). This file never overrides the spec; it tracks execution against it.
 >
-> **New here? Read [`Docs/HANDOVER.md`](Docs/HANDOVER.md) first** — the
+> **▶ CONTINUING WORK? Read [`Docs/SESSION_HANDOVER.md`](Docs/SESSION_HANDOVER.md)
+> FIRST** — the "pick up here" note (state as of 2026-07-17: what's done, what's
+> live, what's next, and how to work on this repo).
+>
+> **New here? Read [`Docs/HANDOVER.md`](Docs/HANDOVER.md)** — the
 > orientation guide for future sessions and developers (how the system works
 > and why); this file tracks where execution stands right now.
 >
