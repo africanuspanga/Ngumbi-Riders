@@ -9,6 +9,8 @@ import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { getClientIp } from '@/lib/security/request';
 import { localDateString } from '@/lib/dates/tz';
 import { enqueueSms } from '@/lib/messaging/outbox';
+import { notifyOwner } from '@/lib/notifications/service';
+import { serverEnv } from '@/lib/env';
 
 /*
  * Public rider application submission (spec §8, §23.3). Anonymous users have no
@@ -204,6 +206,32 @@ export async function POST(request: NextRequest) {
         storage_path: path,
       });
     }
+  }
+
+  // ---- Notify the owner of the new request (build spec #6) ----------------
+  // In-app notification always; SMS to OWNER_NOTIFY_PHONE if configured. Both
+  // best-effort — a notification failure must never fail the submission.
+  try {
+    const applicantName = `${data.firstName} ${data.lastName}`.trim();
+    await notifyOwner({
+      type: 'application_submitted',
+      title: 'Ombi jipya la mwendeshaji',
+      body: `${applicantName} amewasilisha ombi (${reference}).`,
+      deepLink: `/owner/applications/${applicationId}`,
+      dedupeKey: `application_submitted:${applicationId}`,
+    });
+    const ownerPhone = serverEnv().OWNER_NOTIFY_PHONE;
+    if (ownerPhone) {
+      await enqueueSms({
+        recipient: ownerPhone,
+        subject: 'application_submitted',
+        text:
+          `Ombi jipya la pikipiki limewasilishwa na ${applicantName} (${reference}). ` +
+          `Tafadhali likague katika mfumo wa Ng'umbi Riders.`,
+      });
+    }
+  } catch {
+    /* best-effort owner alert; the application still succeeds */
   }
 
   // Documents are uploaded one-by-one via /api/applications/documents using
