@@ -54,11 +54,30 @@ the live DB but must still be COMMITTED to git** so the repo matches live.
 Stranded pilot money needs owner reconciliation (LEANHARD double-paid 10k;
 JACOB 300k cash to re-record) — see the memory note `settlement-never-worked-fixed-0019`.
 
-Other 2026-07-17 work (in the working tree, needs commit + deploy): rider hero
-card green label clarified to "up to date" (`app/rider/page.tsx`);
-`lib/geo/tanzania.ts` (26 regions/districts + codes, spec #5/#7) + tests;
-Mobishastra SMS adapter `lib/mobishastra/client.ts` wired into the outbox
-(spec #4/#6), disabled-safe until `MOBISHASTRA_*` creds land.
+Other 2026-07-17 work (COMMITTED on main; needs a Vercel deploy to reach the
+live site):
+- rider hero card green label clarified to "up to date" (`app/rider/page.tsx`).
+- `lib/geo/tanzania.ts` (26 regions/districts + stable codes, spec #5/#7) + tests.
+- Mobishastra SMS adapter `lib/mobishastra/client.ts` wired into the outbox
+  (spec #4/#6), disabled-safe until `MOBISHASTRA_*` creds land (owner-chosen
+  provider; API = GET https://mshastra.com/sendurlcomma.aspx).
+- **Onboarding rework (migration 0020, applied live; spec #3/#4/#5):** applicant
+  picks an identity type (NIDA / Driving Licence / Voter ID); driving licence is
+  never mandatory; required docs follow the type. Exactly ONE guarantor (was
+  two) + guarantor confirmation SMS. Region/district are dependent dropdowns from
+  the geo dataset (server rejects a district not in the chosen region). Owner
+  reveal shows Voter ID; convert-to-rider copies identity_type + voter_id.
+- Owner notified (in-app + optional SMS to `OWNER_NOTIFY_PHONE`) on every new
+  application (spec #6).
+
+Remaining build-spec items (priority order, not yet started): monthly/weekly
+instalments + monthly cash recording (#8/#13 — highest money-risk, touches the
+settlement engine, needs a product decision on monthly due-day semantics),
+motorcycle field changes + auto code generation (#16/#7, geo data ready),
+accountant role + RLS (#10), motorcycle procurement workflow (#11), contract
+storage/download + template (#9/#18), phone financing (#14), duration units
+(#15), PWA polish (#17), data import (#19). Pilot money reconciliation is
+owner-driven in-app (see memory `settlement-never-worked-fixed-0019`).
 
 **LIVE-SITE BLOCKER FIX (2026-07-11) — needs deploy.** The production `/apply`
 wizard could never pass step 1 (reported by the owner testing
