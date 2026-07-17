@@ -5,6 +5,28 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-033 · PostgREST's row cap and swallowed errors are treated as a bug CLASS (review 2026-07-18)
+A full production-readiness audit found the obligation-status cron had
+transitioned NOTHING for days while reporting success nightly: PostgREST caps
+every select at `db-max-rows` (1000) regardless of the client's `.limit()` — so
+`.limit(10000)` silently returned the 1000 oldest rows and today's obligations
+were never selected — while the `toOverdue` update's ~1000-id `.in()` filter
+built a querystring larger than upstream proxies accept (the request FAILS, and
+the code read `{ data }` without `error`, so a failed update counted as "0 rows
+updated"). Three systemic rules now apply: (1) any query whose result set grows
+with fleet × days goes through `lib/supabase/fetch-all.ts` (stable-order
+`.range()` pagination that THROWS on error) or aggregates in SQL; (2) bulk
+`.in(id, …)` mutations are chunked (~150 ids); (3) destructuring `{ data }`
+without checking `error` in a job/money path is a review-blocking defect — a
+failed request must never be indistinguishable from an empty result. The same
+audit fixed two more silent-severity classes: an export misname (`proxyConfig`
+vs `config`) that Next ignored without warning, and RHF's kept-after-unmount
+values turning conditional fields into invisible validation errors (now
+`z.preprocess('' → undefined)` + an onInvalid form-level message). Full findings
+in `Docs/SAAS_PLAN.md` §17; migration `0023` carries the DB-side hardenings
+(contracts DELETE revoked + FK RESTRICT, signed-document immutability trigger,
+schedule-shape checks).
+
 ## D-032 · Monthly + weekly instalments reuse the schedule-agnostic money path (migration 0022)
 Spec #8/#13. The obligation calendar is still computed in the tested TS engine
 (`lib/obligations/schedule.ts`) and committed by the schedule-type-agnostic

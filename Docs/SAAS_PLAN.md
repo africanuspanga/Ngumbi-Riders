@@ -18,6 +18,12 @@
 > monthly/weekly-instalment session (§16.5–16.7): schedule cadence is
 > settlement-agnostic, an interim DB-level money-test technique, and
 > migration-discipline notes for a live money DB.
+>
+> **Extended 2026-07-18:** §17 added — the full production-readiness review
+> (9-lens audit, 30+ fixes, migration 0023) and what it changes for this plan:
+> two new silent-failure bug classes for the SaaS bar (§17.2), the pilot-first
+> gate restated with the concrete remaining checklist (§17.4), and inventory
+> updates folded into §2 learnings.
 
 ---
 
@@ -740,3 +746,102 @@ throwaway node script POSTing SQL to the Management API SQL endpoint
   precisely why §8/§11 mandate a permanent staging project and a rehearse-every-
   S-phase-migration discipline: at scale the confidence must come from staging
   rehearsals + CI DB tests, not a human clicking "allow" on production each time.
+
+---
+
+## 17. Production-readiness review (2026-07-18) — outcome & what it changes here
+
+A full 360° audit before the pilot: nine parallel review lenses (money core,
+DB/SQL, auth/security, jobs/messaging, forms/i18n, the new schedules feature,
+onboarding, rider app/date math, config/deploy) cross-checked against the live
+DB, followed by verification, ~30 fixes in one change-set (commit `cd9341b`),
+migration `0023`, a live status backfill, and deletion of the seeded demo
+accounts. D-033 records the engineering rules that came out of it.
+
+### 17.1 Headline findings (all fixed)
+
+- **The obligation-status cron had transitioned NOTHING for days while
+  reporting success** — the third "monitoring said fine, reality wasn't"
+  incident of this project (after settlement-never-worked §16.1 and the
+  webhook misconfig §6). Cause: PostgREST's `db-max-rows` cap (1000) silently
+  truncating a `.limit(10000)` select + oversized `.in()` update querystrings
+  failing at the proxy layer + every error destructured away. Live DB showed
+  1,150+ past-due obligations stuck `scheduled`, zero `overdue` ever.
+- **"Disable rider" didn't disable the login.** riders.status was never read
+  at login — an inactive/suspended/terminated rider kept full phone+PIN access
+  (and the demo riders' PINs are published in the repo). Now gated at login,
+  layout, payment-context, and enforced with an auth-level ban on disable.
+- **The same row cap silently corrupted every owner-facing aggregate** — KPI
+  dashboard, daily summary email, reports, data-quality checks (which could
+  raise FALSE corruption alerts), risk inputs, pay-view arrears.
+- A grants gap let an owner-session PostgREST call **delete a contract and
+  cascade-erase its entire obligation calendar** despite the 0016 write-locks
+  (referential actions run as the table owner). Fixed in 0023 with revoke +
+  FK RESTRICT + the signed-document immutability trigger 0006 had promised.
+- Money-path UX traps: daily-denominated pay presets ("Lipa siku 7" = 7 MONTHS
+  for a monthly rider), auto-cancelling a fresh pending payment with a live
+  USSD prompt (re-manufacturing the pilot's double-pay incident), a stuck
+  pending payment blocking cash with no owner-side release, and a webhook
+  path that turned a transient read failure into a permanent-looking
+  settlement block.
+
+### 17.2 New bug classes for the SaaS bar (add to §16's transferable lessons)
+
+1. **The platform lies in the direction of "empty", not "error".** PostgREST
+   row caps, oversized querystrings, and `{ data }`-without-`error`
+   destructuring all degrade into *silently smaller result sets* — which
+   aggregate dashboards, crons and dedupe logic happily consume. Per D-033:
+   fleet-scaling queries go through the paginated fetch helper (or SQL
+   aggregates), bulk `.in()` mutations are chunked, and an unchecked `error`
+   in a job/money path is a review-blocking defect. **Multi-tenant this is
+   existential**: per-org fan-out multiplies row counts, and a cap-truncated
+   cross-tenant query is a data-integrity incident across every org at once —
+   S1's query rewrite must adopt the helper/RPC pattern wholesale, and the
+   §16.2 CI bar should include one seeded-at-scale test (≥2× the row cap).
+2. **Framework contracts fail open.** `export const proxyConfig` (instead of
+   `config`) was silently ignored — the matcher never ran, and nothing
+   warned. Same family as the zod-v4 resolver bug: the integration point
+   *between* correct components is where this codebase's worst bugs live.
+   The SaaS bar: a smoke test per framework contract (does the matcher
+   exclude static assets? does the resolver reject?), not faith in naming.
+3. **UI state outlives UI visibility.** RHF keeps unmounted conditional
+   fields' values; a hidden `''` froze the contract form with an invisible
+   error. Every conditional-field form needs the `preprocess('' → undefined)`
+   + form-level onInvalid pattern — and the per-org form surface (S4 signup
+   wizard, org settings) will be FULL of conditional fields.
+
+### 17.3 Inventory updates for §2 (found during the audit)
+
+- The §2 rewrite must include the **paginated-fetch/RPC adoption** (17.2.1) as
+  an explicit S1 work item — it is not visible from the schema.
+- `setRiderStatus` now bans/unbans the Supabase auth user; the per-org rider
+  identity design (§5 Option A) must preserve an equivalent "org disables
+  rider → login dies" guarantee.
+- The outbox drains inline via `after()` on submission (plus the nightly
+  sweep); per-org messaging (§7) should keep this request-coupled drain — a
+  midnight-only queue reads as "broken SMS" to every new tenant.
+- Risk thresholds now scale with instalment size — per-org risk config (§1)
+  should expose the multipliers, not the absolute TZS numbers.
+
+### 17.4 Pilot-first gate (restated) — what "perfect pilot" concretely means
+
+Per §13/§14, S0 does not start until the single-tenant product has proven
+itself. After this review the remaining pilot gates are OPS, not code:
+
+1. **Deploy to Vercel** (the fixes + monthly/weekly + onboarding code are
+   committed but the live site still runs the previous build).
+2. Change the owner's temporary password (`npm run owner:password`) — the
+   demo riders are deleted, but the seed default owner password is also
+   public in the repo.
+3. Regenerate the Snippe key with `collection:read` + `collection:create`;
+   set `SNIPPE_WEBHOOK_SECRET`; verify one end-to-end mobile payment.
+4. Resend key + DNS for the daily summary; Mobishastra credentials +
+   `OWNER_NOTIFY_PHONE` for SMS.
+5. Import the real fleet via the (now 0021-correct) motorcycle import; the
+   owner records the outstanding cash (JACOB's 300k×3) and resolves
+   LEANHARD's double payment on the fixed reconciliation surface.
+6. Run 30–60 quiet days (§14): collections settle daily, the nightly jobs
+   stay green, receipts verify, arrears match reality.
+
+Only then does the §14 trigger discussion (2+ prospect fleets) open S0. The
+economic logic is unchanged; this review just cleared the known-defect column.

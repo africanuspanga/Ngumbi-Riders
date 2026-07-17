@@ -38,7 +38,24 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 ## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
 
 Verified locally: `npm run typecheck` ✅ · `npm run lint` ✅ ·
-`npm run test` ✅ (173 unit pass, 10 RLS skip) · `npm run build` ✅.
+`npm run test` ✅ (215 unit pass, 10 RLS skip) · `npm run build` ✅.
+
+**🔎 PRODUCTION-READINESS REVIEW (2026-07-18, commit `cd9341b`, D-033,
+`SAAS_PLAN.md` §17): 9-lens full-codebase audit; 30+ bugs fixed; migration
+`0023` applied live.** Headlines: the obligation-status cron transitioned
+NOTHING while reporting success (PostgREST 1000-row cap + oversized `.in()`
+updates + swallowed errors; statuses backfilled live — 1,160 overdue / 9 due);
+disabled riders could still log in (now gated at login/layout/money-path +
+auth-level ban; the 4 seeded demo/test riders were DELETED from the live DB);
+owner KPIs/summary/reports were computed from capped subsets (all queries now
+paginated via `lib/supabase/fetch-all.ts`); `proxy.ts` matcher silently ignored
+(`proxyConfig`→`config`); a PostgREST DELETE could cascade-erase a contract's
+obligation calendar (0023 revoke + FK RESTRICT + signed-doc immutability
+trigger); monthly pay presets were day-denominated; the motorcycle import
+wizard predated 0021 (rewritten). Systemic rules now in force (D-033): paginate
+fleet-scaling queries, chunk bulk `.in()` mutations, never destructure `{data}`
+without checking `error` in job/money paths. **Deploy to Vercel is the top
+remaining action — the live site still runs the pre-review build.**
 
 **🔴 CRITICAL SETTLEMENT FIX (2026-07-17) — migration 0019, applied live.**
 `record_completed_payment` (behind EVERY mobile webhook, status-poll, reconcile

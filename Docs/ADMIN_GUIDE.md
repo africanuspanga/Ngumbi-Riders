@@ -152,7 +152,11 @@ payment falls due — so pick the amount to match the schedule:
   the app's records; pending payments older than 30 minutes are re-checked
   against Snippe automatically by the daily job. Anything the system refuses
   to settle automatically raises a **payment_issue** notification (see §2) —
-  that page plus the audit trail is where you resolve it.
+  that page plus the audit trail is where you resolve it. A payment stuck at
+  *pending* for over an hour can be **cancelled** there — that frees its
+  reserved days so you can record cash for them; if the provider later reports
+  it paid after all, the system refuses to settle the cancelled payment and
+  alerts you instead (never a silent double-charge).
 - Receipts are numbered `NGR-RCPT-YYYY-######` and verifiable by a code on the
   receipt. Each number is unique, but the sequence **may skip values** — that
   is normal and not a sign of a missing receipt.

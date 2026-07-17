@@ -7,8 +7,26 @@
 > `Docs/HANDOVER.md`. This file tracks the live execution state.
 
 Everything below is **committed on `main`** and the working tree is clean.
-DB migrations `0019`, `0020`, `0021`, `0022` are **applied to the live database**
-and recorded in `supabase_migrations.schema_migrations`.
+DB migrations `0019`–`0023` are **applied to the live database** and recorded
+in `supabase_migrations.schema_migrations`.
+
+> **2026-07-18 — PRODUCTION-READINESS REVIEW DONE (commit `cd9341b`).** A
+> 9-lens full-codebase audit fixed 30+ bugs. Highlights: the obligation-status
+> cron was silently transitioning NOTHING (PostgREST 1000-row cap + oversized
+> `.in()` updates + swallowed errors — statuses now backfilled live: 1,160
+> overdue / 9 due); disabled riders could still log in (now gated at
+> login/layout/money-path + auth ban, and the 4 demo/test riders with public
+> PINs were DELETED from the live DB, audited); owner KPIs/reports/daily
+> summary were computed from capped row subsets (all paginated via the new
+> `lib/supabase/fetch-all.ts`); `proxy.ts` matcher was silently ignored
+> (`proxyConfig`→`config`); contract deletion could cascade-erase an
+> obligation calendar (0023: revoke + FK RESTRICT + signed-doc immutability
+> trigger + schedule-shape checks); monthly riders' pay presets were
+> day-denominated ("Lipa siku 7" = 7 months — now cadence-aware); the
+> motorcycle import wizard still used the pre-0021 shape (rewritten);
+> + ~20 more (see D-033 and `SAAS_PLAN.md` §17). Verified: 215 unit tests,
+> build ✅. **The live site still runs the OLD build — deploy to Vercel is the
+> top remaining action.**
 
 ---
 
@@ -57,17 +75,22 @@ Verification at handover: `npm run verify` → **189 unit tests pass**, typechec
 
 ---
 
-## 2. TWO things the OWNER must do (not code)
+## 2. Things the OWNER must do (not code)
 
-1. **Deploy to Vercel.** The DB fixes (`0019`–`0021`) are already live, but the
-   committed *code* (onboarding form, colours, SMS, notifications, motorcycle
-   form) needs a deploy to reach the site. Add these env vars in Vercel for SMS:
-   `MOBISHASTRA_USER`, `MOBISHASTRA_PASSWORD`, `MOBISHASTRA_SENDER_ID`,
-   `OWNER_NOTIFY_PHONE` (see `.env.example`).
-2. **Reconcile pilot money in-app** (owner chose to do this themselves): the
+1. **Deploy to Vercel — now the single most important action.** The DB fixes
+   (`0019`–`0023`) are live, but ALL committed code since go-live (the 30+
+   review fixes, monthly/weekly schedules, onboarding rework, SMS,
+   notifications, motorcycle form) only reaches www.ngumbi.co.tz on deploy.
+   Add these env vars in Vercel for SMS: `MOBISHASTRA_USER`,
+   `MOBISHASTRA_PASSWORD`, `MOBISHASTRA_SENDER_ID`, `OWNER_NOTIFY_PHONE`
+   (see `.env.example`).
+2. **Change the owner password** (`npm run owner:password`) — the seed default
+   is public in the repo. (The demo riders are already deleted.)
+3. **Reconcile pilot money in-app** (owner chose to do this themselves): the
    pending mobile payment `16c05398` self-heals via the reconcile-pending cron;
    re-record JACOB's **300,000** cash on the now-fixed `/owner/payments/cash`;
-   credit LEANHARD's **10,000** overpayment. Details in memory
+   credit LEANHARD's **10,000** overpayment. A stuck pending payment can now be
+   cancelled from `/owner/reconciliation` (new). Details in memory
    `settlement-never-worked-fixed-0019`.
 
 ---
