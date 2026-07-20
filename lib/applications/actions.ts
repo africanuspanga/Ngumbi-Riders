@@ -10,6 +10,7 @@ import { createRiderUser } from '@/lib/auth/provision';
 import { generateTempPin } from '@/lib/auth/temp-pin';
 import { normalizePhone } from '@/lib/auth/phone';
 import { derivePassword } from '@/lib/auth/pin-derive';
+import { formatRiderNumber, nextRiderSeq } from '@/lib/riders/numbering';
 import { writeAudit } from '@/lib/audit/audit';
 import type { ApplicationStatus } from '@/lib/supabase/types';
 
@@ -185,24 +186,34 @@ export async function convertToRider(
     if (pinErr) return { ok: false, error: 'create_rider_failed' };
     await admin.from('profiles').update({ must_change_pin: true }).eq('id', ex.profile_id);
   } else {
-    // Allocate the next rider number (race-tolerant; unique constraint guards).
-    const { count } = await admin
-      .from('riders')
-      .select('*', { count: 'exact', head: true });
-    riderNumber = `NGR-R-${String((count ?? 0) + 1).padStart(4, '0')}`;
-    tempPin = generateTempPin(canonicalPhone);
-
+    // Allocate the next rider number from the highest ever issued (count(*)+1
+    // collides forever once any rider row has been deleted) and retry a
+    // concurrent-allocation clash on the unique constraint.
     try {
-      const created = await createRiderUser({
-        phone: canonicalPhone,
-        pin: tempPin,
-        riderNumber,
-        firstName: a.first_name ?? '',
-        middleName: a.middle_name ?? undefined,
-        lastName: a.last_name ?? '',
-        mustChangePin: true,
-      });
-      riderId = created.riderId;
+      tempPin = generateTempPin(canonicalPhone);
+      let seq = await nextRiderSeq(admin);
+      for (let attempt = 0; ; attempt++) {
+        riderNumber = formatRiderNumber(seq);
+        try {
+          const created = await createRiderUser({
+            phone: canonicalPhone,
+            pin: tempPin,
+            riderNumber,
+            firstName: a.first_name ?? '',
+            middleName: a.middle_name ?? undefined,
+            lastName: a.last_name ?? '',
+            mustChangePin: true,
+          });
+          riderId = created.riderId;
+          break;
+        } catch (e) {
+          if (/rider_number/i.test((e as Error).message) && attempt < 3) {
+            seq++;
+            continue;
+          }
+          throw e;
+        }
+      }
     } catch {
       return { ok: false, error: 'create_rider_failed' };
     }

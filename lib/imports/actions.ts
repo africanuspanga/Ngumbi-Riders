@@ -9,6 +9,7 @@ import { validatePin } from '@/lib/auth/pin';
 import { encryptOptionalPII } from '@/lib/security/crypto';
 import { writeAudit } from '@/lib/audit/audit';
 import { buildMotorcycleCode } from '@/lib/motorcycles/code';
+import { formatRiderNumber, nextRiderSeq } from '@/lib/riders/numbering';
 import { parseImportFile } from './parse';
 import { validateRows } from './validate';
 import { IMPORT_DEFS, isImportType, type ImportType, type MotorcycleRow } from './definitions';
@@ -177,11 +178,11 @@ export async function commitImport(batchId: string): Promise<CommitResult> {
   let skipped = 0;
   const riderPins: { riderNumber: string; phone: string; tempPin: string }[] = [];
 
-  // Seed rider numbering once.
+  // Seed rider numbering once — from the highest number ever issued, not
+  // count(*) (deleted rider rows make the count lag the sequence forever).
   let riderSeq = 0;
   if (b.import_type === 'riders') {
-    const { count } = await admin.from('riders').select('*', { count: 'exact', head: true });
-    riderSeq = count ?? 0;
+    riderSeq = (await nextRiderSeq(admin)) - 1;
   }
 
   // Motorcycle codes sequence within a region+district bucket (spec #7), same
@@ -248,25 +249,38 @@ export async function commitImport(batchId: string): Promise<CommitResult> {
     } else {
       const d = result.data;
       riderSeq++;
-      const riderNumber = `NGR-R-${String(riderSeq).padStart(4, '0')}`;
+      let riderNumber = formatRiderNumber(riderSeq);
       // A spreadsheet-supplied PIN must pass the same weak-PIN rules as every
       // other credential path (no 1234/0000/phone-derived PINs via import).
       const tempPin =
         d.temp_pin && /^\d{4}$/.test(d.temp_pin) && validatePin(d.temp_pin, d.phone).ok
           ? d.temp_pin
           : generateTempPin(d.phone);
+      // Retry a rider_number clash (concurrent allocation) with the next
+      // number, mirroring the motorcycle-code loop; a phone duplicate or any
+      // other error is a REAL skip.
       let created;
-      try {
-        created = await createRiderUser({
-          phone: d.phone,
-          pin: tempPin,
-          riderNumber,
-          firstName: d.first_name,
-          middleName: d.middle_name ?? undefined,
-          lastName: d.last_name,
-          mustChangePin: true,
-        });
-      } catch {
+      for (let attempt = 0; attempt < 5 && !created; attempt++) {
+        riderNumber = formatRiderNumber(riderSeq);
+        try {
+          created = await createRiderUser({
+            phone: d.phone,
+            pin: tempPin,
+            riderNumber,
+            firstName: d.first_name,
+            middleName: d.middle_name ?? undefined,
+            lastName: d.last_name,
+            mustChangePin: true,
+          });
+        } catch (e) {
+          if (/rider_number/i.test((e as Error).message)) {
+            riderSeq++;
+            continue;
+          }
+          break;
+        }
+      }
+      if (!created) {
         skipped++;
         continue;
       }

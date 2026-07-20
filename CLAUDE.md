@@ -511,8 +511,13 @@ From deep-dive #2 (2026-07-10) — real but deliberately deferred:
 - **Push subscribe upserts by endpoint** — an authenticated user replaying
   another's (unguessable) endpoint URL could reassign it (delivery DoS at
   worst).
-- **Application/rider/contract numbers use count(*)+1** with unique-constraint
+- **Application/contract numbers use count(*)+1** with unique-constraint
   retries — replace with DB sequences if concurrent creation ever matters.
+  (Rider numbers are **max-based** since 2026-07-20 — `lib/riders/numbering.ts`;
+  count(*)+1 collided forever after the demo-rider deletion left the count 4
+  behind the issued sequence, surfacing as a bogus "phone already exists" on
+  every rider creation. Applications/contracts are never deleted, so their
+  count-based numbering doesn't have that failure mode.)
 - **`incident_reports`/`rider_applications` free-text fields** have no length
   caps; announcements likewise.
 - Owner file uploads (physical contract copy, drawn signature) skip magic-byte

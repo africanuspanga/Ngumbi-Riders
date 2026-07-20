@@ -13,6 +13,7 @@ import { writeAudit } from '@/lib/audit/audit';
 import { localDateString } from '@/lib/dates/tz';
 import { assignMotorcycle } from '@/lib/assignments/actions';
 import { manualRiderSchema } from './validation';
+import { formatRiderNumber, nextRiderSeq } from './numbering';
 import type { RiderStatus } from '@/lib/supabase/types';
 
 async function assertOwner(): Promise<string> {
@@ -38,26 +39,43 @@ export async function createRiderManually(
   if (!pinCheck.ok) return { ok: false, error: 'weak_pin' };
 
   const admin = createAdminClient();
-  const { count } = await admin
-    .from('riders')
-    .select('*', { count: 'exact', head: true });
-  const riderNumber = `NGR-R-${String((count ?? 0) + 1).padStart(4, '0')}`;
 
   let created;
+  let riderNumber = '';
   try {
-    created = await createRiderUser({
-      phone: canonicalPhone,
-      pin: d.tempPin,
-      riderNumber,
-      firstName: d.firstName,
-      middleName: d.middleName || undefined,
-      lastName: d.lastName,
-      mustChangePin: true,
-    });
+    let seq = await nextRiderSeq(admin);
+    for (let attempt = 0; ; attempt++) {
+      riderNumber = formatRiderNumber(seq);
+      try {
+        created = await createRiderUser({
+          phone: canonicalPhone,
+          pin: d.tempPin,
+          riderNumber,
+          firstName: d.firstName,
+          middleName: d.middleName || undefined,
+          lastName: d.lastName,
+          mustChangePin: true,
+        });
+        break;
+      } catch (e) {
+        // A rider_number clash is a concurrent allocation, not a rider
+        // conflict — take the next number and retry. Everything else rethrows.
+        if (/rider_number/i.test((e as Error).message) && attempt < 3) {
+          seq++;
+          continue;
+        }
+        throw e;
+      }
+    }
   } catch (e) {
+    const msg = (e as Error).message;
+    // 'duplicate' means THE PHONE is taken (auth user or riders.phone) — a
+    // rider_number collision must not surface as "phone already exists".
     return {
       ok: false,
-      error: /duplicate|already/i.test((e as Error).message) ? 'duplicate' : 'create_failed',
+      error: /duplicate|already/i.test(msg) && !/rider_number/i.test(msg)
+        ? 'duplicate'
+        : 'create_failed',
     };
   }
 
