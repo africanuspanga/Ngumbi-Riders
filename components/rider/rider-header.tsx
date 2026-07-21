@@ -9,7 +9,13 @@ export function RiderHeader() {
   const router = useRouter();
 
   async function logout() {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    // Best-effort: if the network is down the session can't be cleared, but we
+    // must still move the rider off the gated area rather than no-op silently.
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+      // offline — fall through to navigation anyway
+    }
     router.push('/login');
     router.refresh();
   }
@@ -25,7 +31,7 @@ export function RiderHeader() {
           <Link
             href="/rider/settings/pin"
             aria-label="Mipangilio ya PIN"
-            className="flex size-10 items-center justify-center rounded-full text-muted-foreground hover:bg-surface"
+            className="flex size-11 items-center justify-center rounded-full text-muted-foreground hover:bg-surface"
           >
             <SettingsIcon className="size-5" />
           </Link>
@@ -33,8 +39,7 @@ export function RiderHeader() {
             type="button"
             onClick={logout}
             aria-label="Toka"
-            className="flex size-10 items-center justify-center rounded-full text-muted-foreground hover:bg-surface"
-            style={{ minHeight: 0 }}
+            className="flex size-11 items-center justify-center rounded-full text-muted-foreground hover:bg-surface"
           >
             <LogOutIcon className="size-5" />
           </button>

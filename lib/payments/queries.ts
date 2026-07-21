@@ -208,10 +208,13 @@ export type CashCandidate = {
 /** Riders with an active contract and their outstanding obligations (owner). */
 export async function listCashCandidates(): Promise<CashCandidate[]> {
   const supabase = await createServerSupabase();
-  const { data: contracts } = await supabase
+  const { data: contracts, error } = await supabase
     .from('contracts')
     .select('id, rider_id, riders(first_name, last_name)')
     .eq('status', 'active');
+  // Surface the failure instead of silently rendering an empty rider dropdown
+  // (indistinguishable from "no active contracts" on a money-recording form).
+  if (error) throw new Error(`cash candidates lookup failed: ${error.message}`);
 
   type CRow = { id: string; rider_id: string; riders: { first_name: string; last_name: string } | null };
   const rows = (contracts ?? []) as unknown as CRow[];
@@ -252,11 +255,18 @@ export async function reconciliationSummary(): Promise<{
 }> {
   const supabase = await createServerSupabase();
   const cutoff = new Date(Date.now() - 60 * 60_000).toISOString(); // > 1h old
+  // Start of today in EAT (UTC+3) as a UTC instant, for "completed today".
+  const dayStart = new Date(`${localDateString()}T00:00:00+03:00`).toISOString();
   // head:true counts — reading rows and taking .length caps at 1000 (failed
   // payments accumulate forever, so that stat would eventually pin at 1000).
-  const [pendRes, failRes, { data: stale }] = await Promise.all([
+  const [pendRes, failRes, doneRes, staleRes] = await Promise.all([
     supabase.from('payments').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase.from('payments').select('id', { count: 'exact', head: true }).eq('status', 'failed'),
+    supabase
+      .from('payments')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'completed')
+      .gte('completed_at', dayStart),
     supabase
       .from('payments')
       .select('id, amount, method, status, created_at, completed_at')
@@ -265,10 +275,14 @@ export async function reconciliationSummary(): Promise<{
       .order('created_at', { ascending: true })
       .limit(50),
   ]);
+  // Reconciliation exists to reveal stuck money — a swallowed error rendering a
+  // false "all clear 0/0" is the worst outcome here, so fail loudly instead.
+  const err = pendRes.error ?? failRes.error ?? doneRes.error ?? staleRes.error;
+  if (err) throw new Error(`reconciliation summary failed: ${err.message}`);
   return {
-    pending: (pendRes as { count: number | null }).count ?? 0,
-    failed: (failRes as { count: number | null }).count ?? 0,
-    completedToday: 0,
-    stalePending: (stale ?? []) as unknown as PaymentListItem[],
+    pending: pendRes.count ?? 0,
+    failed: failRes.count ?? 0,
+    completedToday: doneRes.count ?? 0,
+    stalePending: (staleRes.data ?? []) as unknown as PaymentListItem[],
   };
 }

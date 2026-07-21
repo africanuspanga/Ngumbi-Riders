@@ -23,18 +23,34 @@ export function SignaturePad({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    // Scale for crisp lines on high-DPR screens.
-    const ratio = Math.min(window.devicePixelRatio || 1, 3);
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * ratio;
-    canvas.height = rect.height * ratio;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.scale(ratio, ratio);
-      ctx.lineWidth = 2.5;
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = '#122117';
+
+    // Size the backing store to the element's CSS box. Re-run when the box
+    // changes (late layout with width 0 at first paint, or device rotation) —
+    // otherwise the pointer→canvas coordinate mapping drifts and strokes land
+    // offset from the finger on low-cost Android.
+    function sizeCanvas() {
+      const el = canvasRef.current;
+      if (!el) return;
+      const ratio = Math.min(window.devicePixelRatio || 1, 3);
+      const rect = el.getBoundingClientRect();
+      const w = Math.round(rect.width * ratio);
+      const h = Math.round(rect.height * ratio);
+      if (w === 0 || h === 0 || (el.width === w && el.height === h)) return;
+      el.width = w;
+      el.height = h;
+      const ctx = el.getContext('2d');
+      if (ctx) {
+        ctx.scale(ratio, ratio);
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#122117';
+      }
     }
+
+    sizeCanvas();
+    const observer = new ResizeObserver(() => sizeCanvas());
+    observer.observe(canvas);
+    return () => observer.disconnect();
   }, []);
 
   function pos(e: React.PointerEvent<HTMLCanvasElement>) {

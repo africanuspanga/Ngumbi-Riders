@@ -10,3 +10,14 @@ export const PAYMENT_STATUS_LABELS_SW: Record<string, string> = {
   cancelled: 'Imeghairiwa',
   reversed: 'Imerejeshwa',
 };
+
+// Owner-facing English labels for payment_status (owner UI is English).
+export const PAYMENT_STATUS_LABELS_EN: Record<string, string> = {
+  created: 'Awaiting',
+  pending: 'Pending',
+  completed: 'Completed',
+  failed: 'Failed',
+  expired: 'Expired',
+  cancelled: 'Cancelled',
+  reversed: 'Reversed',
+};

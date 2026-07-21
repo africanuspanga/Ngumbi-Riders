@@ -9,7 +9,7 @@ import {
   PhysicalUpload,
   ActivateButton,
   LifecycleButtons,
-  GeneratePdfButton,
+  ContractDocuments,
 } from './contract-actions';
 
 export const metadata = { title: 'Contract' };
@@ -68,7 +68,7 @@ export default async function ContractDetailPage({
       </Section>
 
       <Section title="Contract document">
-        <GeneratePdfButton contractId={c.id} />
+        <ContractDocuments contractId={c.id} documents={c.documents} />
       </Section>
 
       <Section title="Obligations">

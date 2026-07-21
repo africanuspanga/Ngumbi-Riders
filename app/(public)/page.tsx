@@ -14,7 +14,7 @@ export default async function LandingPage() {
       </div>
       <div className="flex flex-col items-center gap-4">
         <Image
-          src="/icons/logo.png"
+          src="/icons/icon-192.png"
           alt={c('appName')}
           width={96}
           height={96}

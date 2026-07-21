@@ -62,7 +62,14 @@ export async function recomputeRiskForRider(riderId: string): Promise<RiskLevel>
     { overdueLast30, consecutiveMisses, arrearsAmount },
     scaleThresholdsForInstalment(instalment),
   );
-  await admin.from('riders').update({ risk_level: result.level, risk_reasons: result.reasons }).eq('id', riderId);
-  await admin.from('risk_snapshots').insert({ rider_id: riderId, level: result.level, reasons: result.reasons });
+  const { error: upErr } = await admin
+    .from('riders')
+    .update({ risk_level: result.level, risk_reasons: result.reasons })
+    .eq('id', riderId);
+  if (upErr) throw new Error(`risk update failed: ${upErr.message}`);
+  const { error: snapErr } = await admin
+    .from('risk_snapshots')
+    .insert({ rider_id: riderId, level: result.level, reasons: result.reasons });
+  if (snapErr) throw new Error(`risk snapshot failed: ${snapErr.message}`);
   return result.level;
 }

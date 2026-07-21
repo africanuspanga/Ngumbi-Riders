@@ -38,7 +38,12 @@ export async function createExemptionRequest(input: unknown): Promise<ActionResu
     })
     .select('id')
     .single();
-  if (error || !data) return { ok: false, error: 'insert_failed' };
+  if (error || !data) {
+    // 23505 = the one-open-request-per-obligation unique index: the rider
+    // already has a pending request for this day. Message it distinctly.
+    if (error?.code === '23505') return { ok: false, error: 'already_requested' };
+    return { ok: false, error: 'insert_failed' };
+  }
 
   revalidatePath('/rider/exemptions');
   return { ok: true, data: { id: (data as { id: string }).id } };

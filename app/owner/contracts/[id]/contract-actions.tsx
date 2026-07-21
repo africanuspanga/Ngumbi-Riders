@@ -9,26 +9,106 @@ import {
   activateContract,
   contractLifecycle,
   generateContractPdf,
+  getContractDocumentUrl,
 } from '@/lib/contracts/actions';
+import type { ContractDocument } from '@/lib/contracts/queries';
+import { formatLocalDateTime } from '@/lib/dates/tz';
 
-export function GeneratePdfButton({ contractId }: { contractId: string }) {
+/** Open a URL in a way that reliably triggers a download/preview on mobile. */
+function openUrl(url: string) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+export function ContractDocuments({
+  contractId,
+  documents,
+}: {
+  contractId: string;
+  documents: ContractDocument[];
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  function generate() {
+    setMsg(null);
+    start(async () => {
+      try {
+        const res = await generateContractPdf(contractId);
+        if (res.ok) {
+          if (res.data?.url) openUrl(res.data.url);
+          setMsg('PDF generated — the download should start now.');
+          router.refresh();
+        } else {
+          setMsg('Could not generate the PDF. Please try again.');
+        }
+      } catch {
+        setMsg('Could not generate the PDF — network error. Please try again.');
+      }
+    });
+  }
+
+  function download(documentId: string) {
+    setMsg(null);
+    setBusyId(documentId);
+    start(async () => {
+      try {
+        const res = await getContractDocumentUrl(documentId);
+        if (res.ok && res.data) openUrl(res.data.url);
+        else setMsg('Could not open this document. Please try again.');
+      } catch {
+        setMsg('Could not open this document — network error.');
+      } finally {
+        setBusyId(null);
+      }
+    });
+  }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-3">
+      {documents.length > 0 && (
+        <ul className="flex flex-col gap-2">
+          {documents.map((doc) => (
+            <li
+              key={doc.id}
+              className="flex items-center justify-between gap-3 rounded-[--radius-card] border border-border bg-surface px-3 py-2"
+            >
+              <span className="text-sm text-foreground">
+                {doc.is_signed ? 'Signed copy' : 'Contract PDF'} · v{doc.version}
+                <span className="block text-xs text-muted-foreground">
+                  {formatLocalDateTime(new Date(doc.created_at))}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => download(doc.id)}
+                disabled={pending}
+                className="shrink-0 rounded-[--radius-card] bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+              >
+                {busyId === doc.id ? 'Opening…' : 'Download'}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       <button
         type="button"
         disabled={pending}
-        onClick={() => start(async () => {
-          const res = await generateContractPdf(contractId);
-          setMsg(res.ok ? 'PDF generated and stored.' : 'Generation failed.');
-          if (res.ok) router.refresh();
-        })}
+        onClick={generate}
         className="self-start rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
       >
-        {pending ? 'Generating…' : 'Generate contract PDF'}
+        {pending && busyId === null
+          ? 'Generating…'
+          : documents.length > 0
+            ? 'Regenerate contract PDF'
+            : 'Generate contract PDF'}
       </button>
       {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
     </div>

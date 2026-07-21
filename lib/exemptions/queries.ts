@@ -70,9 +70,23 @@ export async function listRiderOutstandingForExemption(): Promise<{ id: string; 
     .in('status', ['scheduled', 'due', 'overdue'])
     .order('due_date', { ascending: true })
     .limit(100);
-  return ((data ?? []) as { id: string; due_date: string; amount_due: number }[]).map((o) => ({
-    id: o.id,
-    dueDate: o.due_date,
-    amount: o.amount_due,
-  }));
+
+  // Exclude obligations that already have an OPEN exemption request — the DB
+  // enforces one open request per obligation, so offering them again just
+  // dead-ends the rider on a duplicate-key error (RLS scopes this to the rider).
+  const { data: openReqs } = await supabase
+    .from('exemption_requests')
+    .select('obligation_id')
+    .in('status', ['submitted', 'under_review']);
+  const requested = new Set(
+    ((openReqs ?? []) as { obligation_id: string }[]).map((r) => r.obligation_id),
+  );
+
+  return ((data ?? []) as { id: string; due_date: string; amount_due: number }[])
+    .filter((o) => !requested.has(o.id))
+    .map((o) => ({
+      id: o.id,
+      dueDate: o.due_date,
+      amount: o.amount_due,
+    }));
 }

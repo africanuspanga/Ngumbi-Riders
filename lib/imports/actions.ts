@@ -35,6 +35,8 @@ export type DryRunResult =
       ok: true;
       batchId: string;
       summary: { total: number; valid: number; errors: number; duplicates: number };
+      totalRows: number;
+      previewCap: number;
       preview: { rowNumber: number; status: string; errors: string[] }[];
     }
   | { ok: false; error: string };
@@ -132,11 +134,20 @@ export async function dryRunImport(formData: FormData): Promise<DryRunResult> {
   });
 
   revalidatePath('/owner/imports');
+  // Show the PROBLEM rows first (errors + duplicates) so a large import doesn't
+  // bury the rows the owner actually needs to fix beyond the preview cap.
+  const ordered = [
+    ...validated.filter((r) => r.status !== 'valid'),
+    ...validated.filter((r) => r.status === 'valid'),
+  ];
+  const PREVIEW_CAP = 50;
   return {
     ok: true,
     batchId,
     summary,
-    preview: validated.slice(0, 25).map((r) => ({
+    totalRows: validated.length,
+    previewCap: PREVIEW_CAP,
+    preview: ordered.slice(0, PREVIEW_CAP).map((r) => ({
       rowNumber: r.rowNumber,
       status: r.status,
       errors: r.errors,

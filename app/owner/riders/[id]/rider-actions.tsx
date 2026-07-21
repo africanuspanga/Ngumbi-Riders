@@ -18,6 +18,20 @@ export function RiskControls({ id, current, reasons }: { id: string; current: Ri
   const [pending, start] = useTransition();
   const [note, setNote] = useState('');
   const [override, setOverride] = useState<RiskLevel>(current);
+  const [error, setError] = useState<string | null>(null);
+
+  function run(fn: () => Promise<{ ok: boolean }>, failMsg: string) {
+    setError(null);
+    start(async () => {
+      try {
+        const res = await fn();
+        if (res.ok) router.refresh();
+        else setError(failMsg);
+      } catch {
+        setError(`${failMsg} (network error).`);
+      }
+    });
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -32,7 +46,7 @@ export function RiskControls({ id, current, reasons }: { id: string; current: Ri
       <button
         type="button"
         disabled={pending}
-        onClick={() => start(async () => { await recomputeRiderRisk(id); router.refresh(); })}
+        onClick={() => run(() => recomputeRiderRisk(id), 'Could not recompute risk.')}
         className="self-start rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
       >
         {pending ? '…' : 'Recompute risk'}
@@ -48,12 +62,13 @@ export function RiskControls({ id, current, reasons }: { id: string; current: Ri
         <button
           type="button"
           disabled={pending || !note.trim()}
-          onClick={() => start(async () => { await setManualRisk(id, override, note); router.refresh(); })}
+          onClick={() => run(() => setManualRisk(id, override, note), 'Could not apply the override.')}
           className="self-start rounded-[--radius-card] bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
         >
           Apply override
         </button>
       </div>
+      {error && <p role="alert" className="text-sm font-medium text-overdue">{error}</p>}
     </div>
   );
 }
@@ -136,22 +151,35 @@ const STATUSES: RiderStatus[] = ['active', 'suspended', 'terminated', 'inactive'
 export function RiderStatusActions({ id, current }: { id: string; current: RiderStatus }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   return (
-    <div className="flex flex-wrap gap-2">
-      {STATUSES.filter((s) => s !== current).map((s) => (
-        <button
-          key={s}
-          type="button"
-          disabled={pending}
-          onClick={() => start(async () => {
-            await setRiderStatus(id, s);
-            router.refresh();
-          })}
-          className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
-        >
-          {s}
-        </button>
-      ))}
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-2">
+        {STATUSES.filter((s) => s !== current).map((s) => (
+          <button
+            key={s}
+            type="button"
+            disabled={pending}
+            onClick={() => start(async () => {
+              setError(null);
+              try {
+                const res = await setRiderStatus(id, s);
+                if (res.ok) router.refresh();
+                else
+                  setError(
+                    `Could not set status to "${s}". The rider's access may be inconsistent — reload and check before retrying.`,
+                  );
+              } catch {
+                setError(`Could not set status to "${s}" — network error.`);
+              }
+            })}
+            className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+      {error && <p role="alert" className="text-sm font-medium text-overdue">{error}</p>}
     </div>
   );
 }
@@ -164,6 +192,7 @@ const IDENTITY_TYPE_LABELS: Record<string, string> = {
 
 export function RiderRevealSecrets({ id }: { id: string }) {
   const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const [values, setValues] = useState<{
     nida: string | null;
     licence: string | null;
@@ -196,17 +225,26 @@ export function RiderRevealSecrets({ id }: { id: string }) {
     );
   }
   return (
-    <button
-      type="button"
-      disabled={pending}
-      onClick={() => start(async () => {
-        const res = await revealRiderSecrets(id);
-        if (res.ok) setValues(res.data ?? { nida: null, licence: null, voterId: null, identityType: null });
-      })}
-      className="self-start rounded-[--radius-card] border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-surface disabled:opacity-60"
-    >
-      {pending ? '…' : 'Reveal identity documents'}
-    </button>
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => start(async () => {
+          setError(null);
+          try {
+            const res = await revealRiderSecrets(id);
+            if (res.ok) setValues(res.data ?? { nida: null, licence: null, voterId: null, identityType: null });
+            else setError('Could not reveal the documents. Please try again.');
+          } catch {
+            setError('Could not reveal the documents — network error.');
+          }
+        })}
+        className="self-start rounded-[--radius-card] border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-surface disabled:opacity-60"
+      >
+        {pending ? '…' : 'Reveal identity documents'}
+      </button>
+      {error && <p role="alert" className="text-sm font-medium text-overdue">{error}</p>}
+    </div>
   );
 }
 

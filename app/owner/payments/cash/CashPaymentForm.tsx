@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { recordCashPayment } from '@/lib/payments/actions';
 import type { CashCandidate } from '@/lib/payments/queries';
+
+type Recorded = { riderName: string; amount: number; days: number; date: string };
 
 function tzs(n: number) {
   return `TZS ${Math.round(n).toLocaleString('en-US')}`;
@@ -36,6 +39,7 @@ export function CashPaymentForm({ candidates, today }: { candidates: CashCandida
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recorded, setRecorded] = useState<Recorded | null>(null);
 
   const candidate = candidates.find((c) => c.riderId === riderId) ?? null;
   const total = candidate
@@ -64,7 +68,17 @@ export function CashPaymentForm({ candidates, today }: { candidates: CashCandida
         note,
       });
       if (res.ok) {
-        router.push('/owner/payments');
+        // Confirm what was recorded (proof-of-record after the highest-stakes
+        // owner action) rather than redirecting to a list with no feedback.
+        setRecorded({
+          riderName: candidate.riderName,
+          amount: total,
+          days: selected.size,
+          date,
+        });
+        setRiderId('');
+        setSelected(new Set());
+        setNote('');
         router.refresh();
       } else {
         setError(CASH_ERRORS[res.error] ?? 'Could not record the payment. Reload the page and try again.');
@@ -79,6 +93,33 @@ export function CashPaymentForm({ candidates, today }: { candidates: CashCandida
 
   return (
     <div className="flex flex-col gap-5">
+      {recorded && (
+        <div
+          role="status"
+          className="flex flex-col gap-2 rounded-[--radius-card] border border-[color:var(--color-paid)] bg-[color:var(--color-paid)]/5 p-4"
+        >
+          <span className="font-semibold text-[color:var(--color-paid)]">✓ Cash payment recorded</span>
+          <span className="text-sm text-foreground">
+            {recorded.riderName} · {tzs(recorded.amount)} · {recorded.days} day
+            {recorded.days === 1 ? '' : 's'} · {recorded.date}
+          </span>
+          <div className="flex gap-2">
+            <Link
+              href="/owner/payments"
+              className="rounded-[--radius-card] bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover"
+            >
+              View payments
+            </Link>
+            <button
+              type="button"
+              onClick={() => setRecorded(null)}
+              className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface"
+            >
+              Record another
+            </button>
+          </div>
+        </div>
+      )}
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium">Rider</span>
         <select className="input bg-white" value={riderId} onChange={(e) => { setRiderId(e.target.value); setSelected(new Set()); }}>

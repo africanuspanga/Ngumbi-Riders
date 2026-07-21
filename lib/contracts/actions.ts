@@ -25,6 +25,23 @@ export type ActionResult<T = undefined> =
   | { ok: true; data?: T }
   | { ok: false; error: string };
 
+const CONTRACT_NUMBER_PREFIX = 'NGR-C-';
+
+/** Next contract number = highest issued + 1 (max-based, delete-safe). */
+async function nextContractNumber(
+  admin: ReturnType<typeof createAdminClient>,
+): Promise<string> {
+  const { data } = await admin
+    .from('contracts')
+    .select('contract_number')
+    .order('contract_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const last = (data as { contract_number: string } | null)?.contract_number;
+  const seq = last ? (parseInt(/(\d+)$/.exec(last)?.[1] ?? '0', 10) || 0) + 1 : 1;
+  return `${CONTRACT_NUMBER_PREFIX}${String(seq).padStart(4, '0')}`;
+}
+
 export async function createContract(
   input: unknown,
 ): Promise<ActionResult<{ id: string }>> {
@@ -84,36 +101,49 @@ export async function createContract(
     }
   }
 
-  const { count } = await admin.from('contracts').select('*', { count: 'exact', head: true });
-  const contractNumber = `NGR-C-${String((count ?? 0) + 1).padStart(4, '0')}`;
+  const base = {
+    rider_id: d.riderId,
+    motorcycle_id: d.motorcycleId,
+    contract_type: 'fixed_term_lease',
+    ownership_transfers: d.ownershipTransfers,
+    ownership_transfer_notes: d.ownershipTransferNotes || null,
+    start_date: d.startDate,
+    end_date: endDate,
+    duration_months: d.durationMonths,
+    schedule_type: d.scheduleType,
+    selected_weekdays: selectedWeekdays,
+    due_day_of_month: dueDayOfMonth,
+    installment_amount: d.installmentAmount,
+    payment_deadline_time: d.paymentDeadlineTime,
+    special_terms: d.specialTerms || null,
+    template_version: 1,
+    status: 'draft' as const,
+    current_version: 1,
+  };
 
-  const { data, error } = await admin
-    .from('contracts')
-    .insert({
-      contract_number: contractNumber,
-      rider_id: d.riderId,
-      motorcycle_id: d.motorcycleId,
-      contract_type: 'fixed_term_lease',
-      ownership_transfers: d.ownershipTransfers,
-      ownership_transfer_notes: d.ownershipTransferNotes || null,
-      start_date: d.startDate,
-      end_date: endDate,
-      duration_months: d.durationMonths,
-      schedule_type: d.scheduleType,
-      selected_weekdays: selectedWeekdays,
-      due_day_of_month: dueDayOfMonth,
-      installment_amount: d.installmentAmount,
-      payment_deadline_time: d.paymentDeadlineTime,
-      special_terms: d.specialTerms || null,
-      template_version: 1,
-      status: 'draft',
-      current_version: 1,
-    })
-    .select('id')
-    .single();
-  if (error || !data) return { ok: false, error: 'insert_failed' };
-
-  const id = (data as { id: string }).id;
+  // Number from the highest issued, not count(*): contracts use `on delete
+  // restrict` so they aren't normally deleted, but a count-derived number
+  // collides forever after any gap. Mirror the max-based rider numbering, and
+  // retry on the (rare) concurrent-creation unique clash. See
+  // lib/riders/numbering.ts.
+  let id: string | null = null;
+  let contractNumber = '';
+  for (let attempt = 0; attempt < 4 && !id; attempt++) {
+    contractNumber = await nextContractNumber(admin);
+    const { data, error } = await admin
+      .from('contracts')
+      .insert({ contract_number: contractNumber, ...base })
+      .select('id')
+      .single();
+    if (data) {
+      id = (data as { id: string }).id;
+      break;
+    }
+    // 23505 = unique_violation on contract_number → someone raced us; retry
+    // with a freshly-computed number. Any other error is fatal.
+    if (!error || error.code !== '23505') return { ok: false, error: 'insert_failed' };
+  }
+  if (!id) return { ok: false, error: 'insert_failed' };
   await writeAudit({
     actorId: ownerId,
     actorRole: 'owner',
@@ -304,7 +334,7 @@ export async function activateContract(
 /** Generate the contract PDF from the versioned template and store it (§10.4). */
 export async function generateContractPdf(
   contractId: string,
-): Promise<ActionResult<{ path: string }>> {
+): Promise<ActionResult<{ path: string; url: string | null }>> {
   const ownerId = await assertOwner();
   const admin = createAdminClient();
 
@@ -376,7 +406,33 @@ export async function generateContractPdf(
     metadata: { sha256: hash },
   });
   revalidatePath(`/owner/contracts/${contractId}`);
-  return { ok: true, data: { path } };
+
+  // Hand back a ready-to-open signed URL so the UI can download immediately
+  // instead of leaving the owner staring at a "generated" message with no file.
+  const { data: signed } = await admin.storage
+    .from('contract-documents')
+    .createSignedUrl(path, 120);
+  return { ok: true, data: { path, url: signed?.signedUrl ?? null } };
+}
+
+/** Short-lived signed URL to download a stored contract document (owner-only). */
+export async function getContractDocumentUrl(
+  documentId: string,
+): Promise<ActionResult<{ url: string }>> {
+  await assertOwner();
+  const admin = createAdminClient();
+  const { data: doc } = await admin
+    .from('contract_documents')
+    .select('storage_path')
+    .eq('id', documentId)
+    .maybeSingle();
+  if (!doc) return { ok: false, error: 'not_found' };
+  const path = (doc as { storage_path: string }).storage_path;
+  const { data, error } = await admin.storage
+    .from('contract-documents')
+    .createSignedUrl(path, 120);
+  if (error || !data) return { ok: false, error: 'sign_failed' };
+  return { ok: true, data: { url: data.signedUrl } };
 }
 
 const LIFECYCLE: Record<string, { from: ContractStatus[]; to: ContractStatus; cancelFuture: boolean }> = {

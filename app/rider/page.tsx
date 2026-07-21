@@ -132,9 +132,12 @@ export default async function RiderHome() {
                 <div className="flex flex-col">
                   <span className="text-xs text-muted-foreground">Pikipiki yako</span>
                   <span className="font-semibold">
-                    {home.motorcycle.registration}
+                    {home.motorcycle.registration ?? home.motorcycle.code}
                     {home.motorcycle.model ? ` · ${home.motorcycle.model}` : ''}
                   </span>
+                  {home.motorcycle.registration && (
+                    <span className="text-xs text-muted-foreground">{home.motorcycle.code}</span>
+                  )}
                 </div>
               </CardContent>
             </Card>

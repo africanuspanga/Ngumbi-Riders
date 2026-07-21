@@ -18,7 +18,12 @@ async function assertOwner() {
 /** Recompute a rider's explainable risk from their obligations (spec §20). */
 export async function recomputeRiderRisk(riderId: string): Promise<ActionResult<{ level: RiskLevel }>> {
   const ownerId = await assertOwner();
-  const level = await recomputeRiskForRider(riderId);
+  let level: RiskLevel;
+  try {
+    level = await recomputeRiskForRider(riderId);
+  } catch {
+    return { ok: false, error: 'recompute_failed' };
+  }
   await writeAudit({
     actorId: ownerId,
     actorRole: 'owner',
@@ -36,8 +41,15 @@ export async function setManualRisk(riderId: string, level: RiskLevel, note: str
   const ownerId = await assertOwner();
   const admin = createAdminClient();
   const reasons = ['Owner manual override', note].filter(Boolean);
-  await admin.from('riders').update({ risk_level: level, risk_reasons: reasons }).eq('id', riderId);
-  await admin.from('risk_snapshots').insert({ rider_id: riderId, level, reasons });
+  const { error: upErr } = await admin
+    .from('riders')
+    .update({ risk_level: level, risk_reasons: reasons })
+    .eq('id', riderId);
+  if (upErr) return { ok: false, error: 'update_failed' };
+  const { error: snapErr } = await admin
+    .from('risk_snapshots')
+    .insert({ rider_id: riderId, level, reasons });
+  if (snapErr) return { ok: false, error: 'snapshot_failed' };
   await writeAudit({
     actorId: ownerId,
     actorRole: 'owner',

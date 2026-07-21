@@ -45,7 +45,16 @@ export type ContractDetail = {
   registration: string;
   signatures: ContractSignature[];
   hasSignedDocument: boolean;
+  documents: ContractDocument[];
   obligationStats: { total: number; paid: number; value: number };
+};
+
+export type ContractDocument = {
+  id: string;
+  doc_type: string;
+  is_signed: boolean;
+  version: number;
+  created_at: string;
 };
 
 export async function listContracts(
@@ -97,12 +106,12 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
     .eq('contract_id', id)
     .order('signed_at', { ascending: true });
 
-  const { data: signedDocs } = await supabase
+  const { data: docs } = await supabase
     .from('contract_documents')
-    .select('id')
+    .select('id, doc_type, is_signed, version, created_at')
     .eq('contract_id', id)
-    .eq('is_signed', true)
-    .limit(1);
+    .order('created_at', { ascending: false });
+  const documents = (docs ?? []) as ContractDocument[];
 
   const { data: obligations } = await supabase
     .from('payment_obligations')
@@ -137,7 +146,8 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
     rider_number: raw.riders?.rider_number ?? '—',
     registration: raw.motorcycles?.registration_number ?? '—',
     signatures: (sigs ?? []) as unknown as ContractSignature[],
-    hasSignedDocument: (signedDocs ?? []).length > 0,
+    hasSignedDocument: documents.some((doc) => doc.is_signed),
+    documents,
     obligationStats: {
       total: obs.length,
       paid: obs.filter((o) => o.status === 'paid' || o.status === 'paid_in_advance').length,

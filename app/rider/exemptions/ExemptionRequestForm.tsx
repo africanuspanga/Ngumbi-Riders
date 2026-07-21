@@ -26,6 +26,9 @@ export function ExemptionRequestForm({ obligations }: { obligations: Obligation[
         setObligationId('');
         setReason('');
         router.refresh();
+      } else if (res.error === 'already_requested') {
+        setError('Tayari umeomba msamaha kwa siku hii. Subiri jibu la mmiliki.');
+        router.refresh();
       } else {
         setError('Imeshindikana kutuma ombi.');
       }

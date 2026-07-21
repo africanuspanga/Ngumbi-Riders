@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireOwner } from '@/lib/auth/session';
 import { listAllPayments } from '@/lib/payments/queries';
+import { PAYMENT_STATUS_LABELS_EN } from '@/lib/payments/labels';
 import { formatTZS } from '@/lib/money/format';
 import { localDateString } from '@/lib/dates/tz';
 
@@ -48,7 +49,7 @@ export default async function OwnerPaymentsPage() {
                   {localDateString(new Date(p.completed_at ?? p.created_at))} · {p.method === 'cash' ? 'Cash' : 'Mobile money'}
                 </span>
               </div>
-              <span className={`text-sm font-semibold ${TONE[p.status] ?? 'text-muted-foreground'}`}>{p.status}</span>
+              <span className={`text-sm font-semibold ${TONE[p.status] ?? 'text-muted-foreground'}`}>{PAYMENT_STATUS_LABELS_EN[p.status] ?? p.status}</span>
             </li>
           ))}
         </ul>

@@ -155,7 +155,7 @@ export async function getOwnerDashboard(): Promise<OwnerDashboard> {
 // ---- Rider dashboard -----------------------------------------------------
 export type RiderHome = {
   dashboard: RiderDashboard;
-  motorcycle: { registration: string; model: string | null } | null;
+  motorcycle: { code: string; registration: string | null; model: string | null } | null;
   recentPayments: { id: string; amount: number; status: string; date: string }[];
   unreadNotifications: number;
 };
@@ -203,11 +203,13 @@ export async function getRiderHome(): Promise<RiderHome | null> {
 
   const { data: assignment } = await supabase
     .from('motorcycle_assignments')
-    .select('motorcycles(registration_number, model)')
+    .select('motorcycles(motorcycle_number, registration_number, model)')
     .eq('rider_id', riderId)
     .eq('is_active', true)
     .maybeSingle();
-  const moto = (assignment as { motorcycles: { registration_number: string; model: string | null } | null } | null)?.motorcycles;
+  // registration_number is nullable since migration 0021 (the auto-generated
+  // motorcycle_number is the primary identifier) — never assume it exists.
+  const moto = (assignment as { motorcycles: { motorcycle_number: string; registration_number: string | null; model: string | null } | null } | null)?.motorcycles;
 
   const { data: pays } = await supabase
     .from('payments')
@@ -222,7 +224,9 @@ export async function getRiderHome(): Promise<RiderHome | null> {
 
   return {
     dashboard: computeRiderDashboard(obligations, today),
-    motorcycle: moto ? { registration: moto.registration_number, model: moto.model } : null,
+    motorcycle: moto
+      ? { code: moto.motorcycle_number, registration: moto.registration_number, model: moto.model }
+      : null,
     recentPayments: ((pays ?? []) as { id: string; amount: number; status: string; completed_at: string | null; created_at: string }[]).map(
       // EAT calendar date, not the UTC slice — a payment completed 00:00–03:00
       // EAT would otherwise display the previous day.

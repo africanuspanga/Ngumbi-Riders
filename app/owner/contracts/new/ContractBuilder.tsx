@@ -70,14 +70,17 @@ export function ContractBuilder({
   const monthsLabel = values.durationMonths ? String(values.durationMonths) : 'N';
 
   // Weekly defaults its payment day to the contract's start weekday (owner can
-  // change it); prefill once weekly is chosen and a start date exists.
+  // change it). Set a concrete value AS SOON AS weekly is chosen — otherwise the
+  // native <select> visibly shows "Sun" while the form value stays undefined,
+  // and the contract is rejected on submit for a field that looks filled.
   useEffect(() => {
     if (
       scheduleType === 'weekly' &&
-      values.startDate &&
       (values.weeklyWeekday === undefined || (values.weeklyWeekday as unknown) === '')
     ) {
-      const wd = new Date(`${values.startDate}T00:00:00Z`).getUTCDay();
+      const wd = values.startDate
+        ? new Date(`${values.startDate}T00:00:00Z`).getUTCDay()
+        : 0; // matches the first option the select already shows
       setValue('weeklyWeekday', wd, { shouldValidate: true });
     }
   }, [scheduleType, values.startDate, values.weeklyWeekday, setValue]);

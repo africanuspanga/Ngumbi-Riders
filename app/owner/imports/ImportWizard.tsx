@@ -167,6 +167,12 @@ export function ImportWizard() {
             </tbody>
           </table>
         </div>
+        {dry.totalRows > dry.preview.length && (
+          <p className="text-xs text-muted-foreground">
+            Showing {dry.preview.length} of {dry.totalRows} rows (problem rows first). All{' '}
+            {dry.summary.valid} valid rows will still be imported.
+          </p>
+        )}
 
         {error && <p className="text-sm text-overdue">{error}</p>}
         <div className="flex gap-3">
