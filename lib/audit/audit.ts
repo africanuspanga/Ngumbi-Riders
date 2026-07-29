@@ -15,11 +15,19 @@ export type AuditAction =
   | 'rider.pin_reset'
   | 'rider.phone_changed'
   | 'owner.login'
+  | 'accountant.login'
+  | 'accountant.created'
+  | 'accountant.activated'
+  | 'accountant.deactivated'
+  | 'accountant.access_removed'
+  | 'accountant.password_reset'
   | 'auth.locked_out';
 
 export async function writeAudit(params: {
   actorId: string | null;
-  actorRole: 'owner' | 'rider' | 'system' | 'anonymous';
+  // 'accountant' joined the roles in migration 0024 (build spec #10) — every
+  // action they take is attributed to them, never folded into "owner".
+  actorRole: 'owner' | 'rider' | 'accountant' | 'system' | 'anonymous';
   action: AuditAction | string;
   entityType?: string | null;
   entityId?: string | null;

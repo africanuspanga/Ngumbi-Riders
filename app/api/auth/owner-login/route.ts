@@ -9,6 +9,8 @@ import {
 } from '@/lib/auth/rate-limit';
 import { getClientIp } from '@/lib/security/request';
 import { writeAudit } from '@/lib/audit/audit';
+import { homePathFor, isStaffRole } from '@/lib/auth/roles';
+import type { UserRole } from '@/lib/supabase/types';
 
 // Owner authentication: Supabase email/password OR phone/password (spec §7.1 —
 // the owner may sign in with either identifier; his auth user carries both a
@@ -80,15 +82,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
   }
 
-  // Confirm this account is actually the owner; riders must not enter here.
+  // Confirm this account is back-office staff; riders must not enter here.
+  // Accountants (spec #10) share this email/password entrance with the owner
+  // and are routed to their own area.
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, is_active')
     .eq('id', data.user.id)
     .maybeSingle();
-  const role = (profile as { role: string } | null)?.role;
+  const p = profile as { role: UserRole; is_active: boolean | null } | null;
+  const role = p?.role;
 
-  if (role !== 'owner') {
+  if (!isStaffRole(role)) {
     await supabase.auth.signOut();
     await recordLoginAttempt({
       phone: emailKey,
@@ -99,13 +104,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
   }
 
+  // A deactivated accountant is refused at the door — the owner withdrawing
+  // access must end the session path immediately, not at token expiry. The
+  // owner is never gated on this flag (locking the sole owner out would be
+  // unrecoverable from inside the app).
+  if (role !== 'owner' && p?.is_active === false) {
+    await supabase.auth.signOut();
+    await recordLoginAttempt({ phone: emailKey, ip, outcome: 'invalid_credentials', userAgent });
+    return NextResponse.json({ error: 'account_disabled' }, { status: 403 });
+  }
+
   await recordLoginAttempt({ phone: emailKey, ip, outcome: 'success', userAgent });
   await writeAudit({
     actorId: data.user.id,
-    actorRole: 'owner',
-    action: 'owner.login',
+    actorRole: role!,
+    action: `${role}.login`,
     ip,
   });
 
-  return NextResponse.json({ ok: true, redirectTo: '/owner' });
+  return NextResponse.json({ ok: true, redirectTo: homePathFor(role) });
 }

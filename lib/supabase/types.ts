@@ -11,7 +11,10 @@
  */
 
 // ---- Enum unions (mirror 0001_enums.sql) --------------------------------
-export type UserRole = 'owner' | 'rider';
+// 'accountant' was added by migration 0024 (build spec #10): a finance-only
+// staff role the owner creates, activates and deactivates. See lib/auth/roles.ts
+// for what it may and may not do.
+export type UserRole = 'owner' | 'rider' | 'accountant';
 
 export type RiderStatus =
   | 'onboarding'

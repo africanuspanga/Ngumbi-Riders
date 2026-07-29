@@ -1,28 +1,24 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getSessionProfile } from '@/lib/auth/session';
+import { checkPermission, getSessionProfile } from '@/lib/auth/session';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit/audit';
 import { newIdempotencyKey } from './idempotency';
 import { triggerPush } from '@/lib/snippe/client';
 import { localDateString } from '@/lib/dates/tz';
 
-async function assertOwner(): Promise<string> {
-  const profile = await getSessionProfile();
-  if (!profile || profile.role !== 'owner') throw new Error('forbidden');
-  return profile.userId;
-}
-
 export type ActionResult<T = undefined> =
   | { ok: true; data?: T }
   | { ok: false; error: string };
 
 /*
- * Owner-only cash payment (spec §12.6). ONLY the owner may record cash — riders
- * cannot. The server recomputes the amount from the selected whole obligations
- * (never trusts a client amount) and settles atomically via the same
- * record_completed_payment function used by the webhook.
+ * Manual (cash) payment recording (spec §12.6, build spec #10). The OWNER and
+ * an ACTIVE ACCOUNTANT may record cash — riders never can. The server recomputes
+ * the amount from the selected whole obligations (never trusts a client amount)
+ * and settles atomically via the same record_completed_payment function used by
+ * the webhook, so the accountant's path has exactly the same money guarantees
+ * as the owner's.
  */
 export async function recordCashPayment(input: {
   riderId: string;
@@ -31,7 +27,11 @@ export async function recordCashPayment(input: {
   paymentDate: string;
   note?: string;
 }): Promise<ActionResult<{ paymentId: string }>> {
-  const ownerId = await assertOwner();
+  // Server-side permission check — the accountant's UI hiding a button is not
+  // access control. A deactivated accountant fails here too.
+  const actor = await checkPermission('payments.record');
+  if (!actor) return { ok: false, error: 'forbidden' };
+  const ownerId = actor.userId;
   if (!input.obligationIds?.length) return { ok: false, error: 'no_obligations' };
 
   // The settlement date must be a real calendar date — validated BEFORE any
@@ -136,7 +136,7 @@ export async function recordCashPayment(input: {
 
   await writeAudit({
     actorId: ownerId,
-    actorRole: 'owner',
+    actorRole: actor.role,
     action: 'payment.cash_recorded',
     entityType: 'payment',
     entityId: paymentId,
@@ -144,6 +144,8 @@ export async function recordCashPayment(input: {
   });
   revalidatePath('/owner/payments');
   revalidatePath(`/owner/riders/${input.riderId}`);
+  revalidatePath('/accountant/payments');
+  revalidatePath('/accountant');
   return { ok: true, data: { paymentId } };
 }
 

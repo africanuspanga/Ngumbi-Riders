@@ -26,6 +26,9 @@ export default async function NewRiderPage() {
           id: m.id,
           registration_number: m.registration_number,
           motorcycle_number: m.motorcycle_number,
+          // Carried so picking a bike can fill the rider's location (#7).
+          region: m.region,
+          district: m.district,
         }))}
       />
     </div>

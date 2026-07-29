@@ -42,12 +42,14 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isProtected = path.startsWith('/rider') || path.startsWith('/owner');
+  const isStaffArea = path.startsWith('/owner') || path.startsWith('/accountant');
+  const isProtected = path.startsWith('/rider') || isStaffArea;
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
-    // Owners have their own sign-in page; riders use the default one.
-    url.pathname = path.startsWith('/owner') ? '/login/owner' : '/login';
+    // Staff (owner + accountant) share the email/password sign-in page; riders
+    // use the default phone + PIN one.
+    url.pathname = isStaffArea ? '/login/owner' : '/login';
     url.searchParams.set('next', path);
     return NextResponse.redirect(url);
   }

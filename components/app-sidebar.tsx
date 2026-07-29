@@ -14,16 +14,33 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { NavGroup } from '@/components/nav-group';
-import { footerNavLinks, navGroups, isNavItemActive } from '@/components/app-shared';
+import {
+  accountantFooterNavLinks,
+  accountantNavGroups,
+  footerNavLinks,
+  navGroups,
+  isNavItemActive,
+} from '@/components/app-shared';
 import { BanknoteIcon } from 'lucide-react';
 
-export function AppSidebar() {
+/**
+ * Back-office sidebar. The accountant (build spec #10) gets a finance-only nav
+ * and lands on /accountant; the owner keeps the full fleet nav.
+ */
+export function AppSidebar({ role = 'owner' }: { role?: 'owner' | 'accountant' }) {
   const pathname = usePathname();
+  const isAccountant = role === 'accountant';
+  const groups = isAccountant ? accountantNavGroups : navGroups;
+  const footer = isAccountant ? accountantFooterNavLinks : footerNavLinks;
+  const home = isAccountant ? '/accountant' : '/owner';
+  const quickAction = isAccountant
+    ? { label: 'Record payment', href: '/accountant/payments/cash' }
+    : { label: 'Record cash payment', href: '/owner/payments' };
 
   return (
     <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader className="h-14 justify-center">
-        <SidebarMenuButton render={<Link href="/owner" />}>
+        <SidebarMenuButton render={<Link href={home} />}>
           <Image
             src="/logo.png"
             alt=""
@@ -39,21 +56,21 @@ export function AppSidebar() {
           <SidebarMenuItem className="flex items-center gap-2">
             <SidebarMenuButton
               className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
-              tooltip="Record cash payment"
-              render={<Link href="/owner/payments" />}
+              tooltip={quickAction.label}
+              render={<Link href={quickAction.href} />}
             >
               <BanknoteIcon />
-              <span>Record cash payment</span>
+              <span>{quickAction.label}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarGroup>
-        {navGroups.map((group, index) => (
+        {groups.map((group, index) => (
           <NavGroup key={`sidebar-group-${index}`} {...group} />
         ))}
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
-          {footerNavLinks.map((item) => (
+          {footer.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
                 className="text-sidebar-foreground/70"

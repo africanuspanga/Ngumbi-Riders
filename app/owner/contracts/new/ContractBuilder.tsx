@@ -12,12 +12,18 @@ import {
   WEEKDAY_LABELS,
 } from '@/lib/contracts/validation';
 import { createContract } from '@/lib/contracts/actions';
+import { scheduleSummary } from '@/lib/obligations/schedule';
 import {
-  contractEndDate,
-  scheduleSummary,
-} from '@/lib/obligations/schedule';
+  contractEndDateFor,
+  formatDuration,
+  monthlyInstalmentCount,
+  normalizeDuration,
+} from '@/lib/contracts/duration';
+import { summarizePlan, type PlanEntry, type PlanFrequency } from '@/lib/obligations/plan';
 import { formatTZS } from '@/lib/money/format';
+import { formatDate } from '@/lib/dates/format';
 import { TextField, SelectField, TextAreaField } from '@/components/forms/Field';
+import { PaymentPlanBuilder } from './PaymentPlanBuilder';
 
 // Server-side createContract rejections mapped to owner-facing copy.
 const CONTRACT_ERRORS: Record<string, string> = {
@@ -26,6 +32,12 @@ const CONTRACT_ERRORS: Record<string, string> = {
   motorcycle_in_contract: 'That motorcycle is already under a contract.',
   motorcycle_unavailable: 'That motorcycle is inactive and cannot be leased.',
   motorcycle_not_found: 'That motorcycle no longer exists — reload and try again.',
+  invalid_duration:
+    'That term could not be turned into an end date. Check the duration or enter an exact end date.',
+  plan_empty: 'The payment plan has no payments selected.',
+  plan_out_of_term: 'The plan has payment dates outside the contract term.',
+  plan_duplicate_dates: 'The plan has two payments on the same date.',
+  plan_too_long: 'That plan has too many payments.',
 };
 
 type Option = { id: string; label: string };
@@ -61,13 +73,29 @@ export function ContractBuilder({
       ownershipTransfers: false,
       installmentAmount: defaultAmount || undefined,
       paymentDeadlineTime: '18:00',
+      durationYears: 0,
+      durationMonths: 0,
+      durationWeeks: 0,
+      durationDays: 0,
+      endDateMode: 'duration',
     },
   });
+
+  // The owner-edited payment plan (#1). Held outside RHF because it is a table
+  // of rows the user edits directly, then submitted with the form.
+  const [plan, setPlan] = useState<PlanEntry[] | null>(null);
 
   const values = useWatch({ control });
   const weekdays = values.selectedWeekdays ?? [];
   const scheduleType = values.scheduleType ?? 'daily';
-  const monthsLabel = values.durationMonths ? String(values.durationMonths) : 'N';
+  const endDateMode = values.endDateMode ?? 'duration';
+  const duration = normalizeDuration({
+    years: values.durationYears,
+    months: values.durationMonths,
+    weeks: values.durationWeeks,
+    days: values.durationDays,
+  });
+  const monthsLabel = duration.months || duration.years ? String(duration.years * 12 + duration.months) : 'N';
 
   // Weekly defaults its payment day to the contract's start weekday (owner can
   // change it). Set a concrete value AS SOON AS weekly is chosen — otherwise the
@@ -103,41 +131,65 @@ export function ContractBuilder({
     setValue('selectedWeekdays', next, { shouldValidate: true });
   }
 
-  // Live preview (spec §10.3 step 3). The engine throws until the schedule is
-  // fully specified (a weekly day / monthly due day chosen) — caught → no preview.
+  // The contract's inclusive end date — from the duration components, or the
+  // owner's exact date (#9). Recomputed on every change, so the preview always
+  // reflects what will be saved.
+  let computedEndDate: string | null = null;
+  try {
+    if (values.startDate) {
+      computedEndDate = contractEndDateFor({
+        startDate: values.startDate,
+        duration,
+        exactEndDate: endDateMode === 'exact' ? (values.exactEndDate as string) || null : null,
+      });
+    }
+  } catch {
+    computedEndDate = null;
+  }
+
+  const scheduleWeekdays =
+    scheduleType === 'weekly'
+      ? values.weeklyWeekday === undefined || (values.weeklyWeekday as unknown) === ''
+        ? []
+        : [Number(values.weeklyWeekday)]
+      : weekdays;
+  const frequency: PlanFrequency =
+    scheduleType === 'selected_weekdays' ? 'custom' : (scheduleType as PlanFrequency);
+
+  // Live preview (spec §10.3 step 3). An edited plan is authoritative; otherwise
+  // the cadence engine is asked. Both throw until fully specified → no preview.
   let preview: { count: number; total: number; endDate: string } | null = null;
   try {
-    const months = Number(values.durationMonths);
     const amount = Number(values.installmentAmount);
-    if (values.startDate && months && amount) {
-      const deadline = values.paymentDeadlineTime || '18:00';
-      const dueDay = scheduleType === 'monthly' ? Number(values.dueDayOfMonth) : undefined;
-      const scheduleWeekdays =
-        scheduleType === 'weekly'
-          ? values.weeklyWeekday === undefined || (values.weeklyWeekday as unknown) === ''
-            ? []
-            : [Number(values.weeklyWeekday)]
-          : weekdays;
-      const endDate = contractEndDate({
-        scheduleType,
-        startDate: values.startDate,
-        durationMonths: months,
-        dueDayOfMonth: dueDay,
-        deadlineTime: deadline,
-      });
-      const { count, total } = scheduleSummary(
-        {
-          startDate: values.startDate,
-          endDate,
-          scheduleType,
-          selectedWeekdays: scheduleWeekdays,
-          dueDayOfMonth: dueDay,
-          monthlyCount: scheduleType === 'monthly' ? months : undefined,
-          deadlineTime: deadline,
-        },
-        amount,
-      );
-      preview = { count, total, endDate };
+    if (values.startDate && computedEndDate && amount) {
+      if (plan) {
+        const { count, total } = summarizePlan(plan);
+        preview = { count, total, endDate: computedEndDate };
+      } else {
+        const deadline = values.paymentDeadlineTime || '18:00';
+        const dueDay = scheduleType === 'monthly' ? Number(values.dueDayOfMonth) : undefined;
+        const { count, total } = scheduleSummary(
+          {
+            startDate: values.startDate,
+            endDate: computedEndDate,
+            scheduleType,
+            selectedWeekdays: scheduleWeekdays,
+            dueDayOfMonth: dueDay,
+            monthlyCount:
+              scheduleType === 'monthly' && dueDay
+                ? monthlyInstalmentCount({
+                    startDate: values.startDate,
+                    endDate: computedEndDate,
+                    duration,
+                    dueDayOfMonth: dueDay,
+                  })
+                : undefined,
+            deadlineTime: deadline,
+          },
+          amount,
+        );
+        preview = { count, total, endDate: computedEndDate };
+      }
     }
   } catch {
     preview = null;
@@ -146,7 +198,7 @@ export function ContractBuilder({
   async function onSubmit(v: ContractBuilderInput) {
     setError(null);
     try {
-      const res = await createContract(v);
+      const res = await createContract({ ...v, paymentPlan: plan ?? undefined });
       if (res.ok && res.data) {
         router.push(`/owner/contracts/${res.data.id}`);
         router.refresh();
@@ -217,16 +269,63 @@ export function ContractBuilder({
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
-        <TextField label="Start date" type="date" required error={errors.startDate?.message} {...register('startDate')} />
-        <TextField label="Duration (months)" type="number" min={1} max={60} required error={errors.durationMonths?.message} {...register('durationMonths')} />
-      </div>
+      <TextField label="Start date" type="date" required error={errors.startDate?.message} {...register('startDate')} />
 
-      <SelectField label="Schedule" required error={errors.scheduleType?.message} {...register('scheduleType')}>
-        <option value="daily">Every day</option>
-        <option value="weekly">Weekly (one day a week)</option>
-        <option value="selected_weekdays">Selected weekdays</option>
-        <option value="monthly">Monthly (one payment a month)</option>
+      {/* Flexible contract duration (#9) */}
+      <fieldset className="flex flex-col gap-3 rounded-[--radius-card] border border-border p-3">
+        <legend className="px-1 text-sm font-semibold text-muted-foreground">Contract length</legend>
+
+        <SelectField label="Set the end date by" {...register('endDateMode')}>
+          <option value="duration">Duration (years / months / weeks / days)</option>
+          <option value="exact">Exact end date</option>
+        </SelectField>
+
+        {endDateMode === 'duration' ? (
+          <>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <TextField label="Years" type="number" min={0} max={10} error={errors.durationYears?.message} {...register('durationYears')} />
+              <TextField label="Months" type="number" min={0} max={600} error={errors.durationMonths?.message} {...register('durationMonths')} />
+              <TextField label="Weeks" type="number" min={0} max={520} error={errors.durationWeeks?.message} {...register('durationWeeks')} />
+              <TextField label="Days" type="number" min={0} max={3650} error={errors.durationDays?.message} {...register('durationDays')} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Combine units freely — e.g. 3 months, 12 weeks, 90 days, or
+              &ldquo;6 months, 1 week and 4 days&rdquo;. Months are real calendar
+              months (never a flat 30 days) and leap years are handled.
+            </p>
+          </>
+        ) : (
+          <TextField
+            label="End date"
+            type="date"
+            required
+            min={values.startDate}
+            error={errors.exactEndDate?.message}
+            hint="Use this when the term must end on a specific day."
+            {...register('exactEndDate')}
+          />
+        )}
+
+        <p className="rounded-[--radius-card] bg-surface p-2 text-sm">
+          {computedEndDate ? (
+            <>
+              Term: <strong className="text-primary-dark">{formatDate(values.startDate)}</strong> →{' '}
+              <strong className="text-primary-dark">{formatDate(computedEndDate)}</strong>
+              {endDateMode === 'duration' && ` · ${formatDuration(duration)}`}
+            </>
+          ) : (
+            <span className="text-muted-foreground">
+              Enter a start date and a term to see the calculated end date.
+            </span>
+          )}
+        </p>
+      </fieldset>
+
+      <SelectField label="Payment frequency" required error={errors.scheduleType?.message} {...register('scheduleType')}>
+        <option value="daily">Daily — every day</option>
+        <option value="weekly">Weekly — one day a week</option>
+        <option value="monthly">Monthly — one payment a month</option>
+        <option value="selected_weekdays">Custom — chosen weekdays</option>
       </SelectField>
 
       {scheduleType === 'selected_weekdays' && (
@@ -292,11 +391,29 @@ export function ContractBuilder({
       )}
       <TextAreaField label="Special terms" error={errors.specialTerms?.message} {...register('specialTerms')} />
 
+      {/* Bulk payment-plan generator (#1) */}
+      <PaymentPlanBuilder
+        startDate={values.startDate ?? ''}
+        endDate={computedEndDate ?? ''}
+        amount={Number(values.installmentAmount) || 0}
+        frequency={frequency}
+        weekdays={scheduleWeekdays}
+        dueDayOfMonth={scheduleType === 'monthly' ? Number(values.dueDayOfMonth) || undefined : undefined}
+        plan={plan}
+        onChange={setPlan}
+      />
+
       {preview && (
         <div className="rounded-[--radius-card] border border-primary bg-surface p-4 text-sm">
           <p className="font-semibold text-primary-dark">Preview</p>
           <p className="text-foreground">
-            {preview.count} obligations · total {formatTZS(preview.total)} · ends {preview.endDate}
+            {preview.count} payment{preview.count === 1 ? '' : 's'} · total{' '}
+            {formatTZS(preview.total)} · ends {formatDate(preview.endDate)}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {plan
+              ? 'Using the generated plan above — the exact dates and amounts listed there will be created.'
+              : 'Using the plain schedule. Generate a plan above if you need to exclude days or vary amounts.'}
           </p>
         </div>
       )}

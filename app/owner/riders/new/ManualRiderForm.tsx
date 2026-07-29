@@ -1,14 +1,21 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { manualRiderSchema, type ManualRiderInput } from '@/lib/riders/validation';
 import { createRiderManually } from '@/lib/riders/actions';
 import { TextField, SelectField } from '@/components/forms/Field';
+import { RegionDistrictFields } from '@/components/forms/RegionDistrictFields';
 
-type MotoOption = { id: string; registration_number: string | null; motorcycle_number: string };
+type MotoOption = {
+  id: string;
+  registration_number: string | null;
+  motorcycle_number: string;
+  region: string | null;
+  district: string | null;
+};
 
 // A quick temp PIN that avoids trivially weak values (final check is server-side).
 function suggestPin(): string {
@@ -25,8 +32,51 @@ export function ManualRiderForm({ motorcycles }: { motorcycles: MotoOption[] }) 
     register,
     handleSubmit,
     setValue,
+    control,
     formState: { errors, isSubmitting },
-  } = useForm<ManualRiderInput>({ resolver: zodResolver(manualRiderSchema) });
+  } = useForm<ManualRiderInput>({
+    resolver: zodResolver(manualRiderSchema),
+    defaultValues: { region: '', district: '', locationSource: 'manual' },
+  });
+
+  const values = useWatch({ control });
+  const region = values.region ?? '';
+  const district = values.district ?? '';
+  const motorcycleId = values.motorcycleId ?? '';
+  const selectedMoto = motorcycles.find((m) => m.id === motorcycleId) ?? null;
+
+  /*
+   * Build spec #7: the motorcycle record is the source of truth for where a
+   * bike operates, so selecting one fills the rider's region/district instead
+   * of making the owner type them again.
+   *
+   * It only auto-fills while the location is still MOTORCYCLE-derived (or
+   * empty). Once the owner edits the fields by hand, location_source flips to
+   * 'manual' and a later motorcycle change no longer overwrites their typing —
+   * a rider's home address may legitimately differ from the bike's operating
+   * area, and silently clobbering it would be a data-loss bug.
+   */
+  const lastAppliedMoto = useRef<string | null>(null);
+  useEffect(() => {
+    if (!selectedMoto) return;
+    if (lastAppliedMoto.current === selectedMoto.id) return;
+    const derived = values.locationSource !== 'manual';
+    const empty = !region && !district;
+    if (!derived && !empty) return;
+    if (!selectedMoto.region) return;
+
+    lastAppliedMoto.current = selectedMoto.id;
+    setValue('region', selectedMoto.region, { shouldValidate: true });
+    setValue('district', selectedMoto.district ?? '', { shouldValidate: true });
+    setValue('locationSource', 'motorcycle');
+  }, [selectedMoto, region, district, values.locationSource, setValue]);
+
+  /** A hand edit means the location is the rider's own, not the bike's. */
+  function setLocation(field: 'region' | 'district', value: string) {
+    setValue(field, value, { shouldValidate: true });
+    setValue('locationSource', 'manual');
+    lastAppliedMoto.current = null;
+  }
 
   async function onSubmit(values: ManualRiderInput) {
     setError(null);
@@ -84,8 +134,21 @@ export function ManualRiderForm({ motorcycles }: { motorcycles: MotoOption[] }) 
           <option value="male">Male</option>
           <option value="female">Female</option>
         </SelectField>
-        <TextField label="Region" error={errors.region?.message} {...register('region')} />
-        <TextField label="District" error={errors.district?.message} {...register('district')} />
+        <RegionDistrictFields
+          region={region}
+          district={district}
+          onRegionChange={(v) => setLocation('region', v)}
+          onDistrictChange={(v) => setLocation('district', v)}
+          regionError={errors.region?.message}
+          districtError={errors.district?.message}
+          regionLabel="Region (rider's home)"
+          districtLabel="District (rider's home)"
+          hint={
+            values.locationSource === 'motorcycle'
+              ? "Filled from the selected motorcycle's operating area — edit if the rider lives elsewhere."
+              : undefined
+          }
+        />
         <TextField label="Ward" error={errors.ward?.message} {...register('ward')} />
         <TextField label="Street" error={errors.street?.message} {...register('street')} />
         <TextField label="Full address" error={errors.fullAddress?.message} {...register('fullAddress')} />
@@ -99,14 +162,28 @@ export function ManualRiderForm({ motorcycles }: { motorcycles: MotoOption[] }) 
 
       <fieldset className="flex flex-col gap-4">
         <legend className="mb-1 text-sm font-semibold text-muted-foreground">Assign a motorcycle (optional)</legend>
-        <SelectField label="Motorcycle" error={errors.motorcycleId?.message} defaultValue="" {...register('motorcycleId')}>
+        <SelectField
+          label="Motorcycle"
+          error={errors.motorcycleId?.message}
+          defaultValue=""
+          hint="Selecting a motorcycle fills the rider's region and district from its operating area."
+          {...register('motorcycleId')}
+        >
           <option value="">— none —</option>
           {motorcycles.map((m) => (
             <option key={m.id} value={m.id}>
-              {m.motorcycle_number}{m.registration_number ? ` · ${m.registration_number}` : ''}
+              {m.motorcycle_number}
+              {m.registration_number ? ` · ${m.registration_number}` : ''}
+              {m.region ? ` · ${[m.district, m.region].filter(Boolean).join(', ')}` : ''}
             </option>
           ))}
         </SelectField>
+        {selectedMoto && !selectedMoto.region && (
+          <p className="-mt-2 text-xs text-muted-foreground">
+            This motorcycle has no region on file, so nothing was filled in. Add
+            it on the motorcycle&rsquo;s page to reuse it next time.
+          </p>
+        )}
         <TextField label="Assignment start date" type="date" error={errors.assignmentStartDate?.message} {...register('assignmentStartDate')} />
       </fieldset>
 

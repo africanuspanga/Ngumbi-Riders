@@ -37,6 +37,63 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
 
+**🆕 CLIENT-FEEDBACK BUILD (2026-07-29, migrations `0024`+`0025`, applied live;
+D-034).** Nine client-requested changes shipped together. Headlines:
+
+- **Accountant role (#10 / spec #4)** — a real permission model at last.
+  `lib/auth/roles.ts` (pure, tested) + `requirePermission()`/`checkPermission()`
+  in every action + **RLS** (`is_accountant()`, `is_staff()`, SELECT-only
+  policies on 14 financial tables, nothing on private data/guarantors/
+  applications/payment_events/audit/imports). Owner manages accounts at
+  `/owner/staff`; accountant area at `/accountant/*`. `profiles.is_active` is
+  checked *inside* `is_accountant()`, so deactivation bites on the next QUERY,
+  not the next login. **Verified live: 31/31 RBAC probe checks** (can read the
+  12 finance tables, blocked on the 9 sensitive ones, cannot self-promote,
+  cannot INSERT into `payments`, deactivation revokes instantly).
+- **Bulk payment plans (#1)** — `lib/obligations/plan.ts` generates a whole
+  schedule from start+end+amount+frequency (daily/weekly/monthly/custom);
+  rows are individually excludable/re-datable/re-priceable; stored as
+  `contracts.payment_plan` jsonb and replayed verbatim at activation.
+  `activate_contract_and_generate_obligations` gained per-row amounts
+  (`coalesce(nullif(o->>'amount','')::int, installment_amount)`) — **every 0018
+  guard preserved verbatim**; proved by a rollback-only dry run (5-day plan,
+  1 day excluded, 1 amount edited → 4 obligations, 55,000 total, then rolled
+  back).
+- **Flexible durations (#9)** — `lib/contracts/duration.ts`: years/months/
+  weeks/days in any combination, or an exact end date that wins. Calendar
+  months (never 30-day blocks), leap-safe. `duration_months` is now the MONTHS
+  COMPONENT, not the whole term.
+- **Automatic contract completion (#8)** — nightly `contractCompletionTask`
+  (in `DAILY_TASKS`, right after the status sweep) moves `active → completed`
+  once the end date passes; **"Contract Ended — Outstanding Balance" is
+  DERIVED** from the ledger (`lib/contracts/status.ts`), never stored, so it
+  can't go stale. Backfill in 0025 completed Daud's `NGR-C-0011` (ended
+  30/06/2026, 0 outstanding) — exactly the case the client reported.
+- **Rider directory (#2)** — search (name/phone/rider code/motorcycle reg/
+  contract number; phone matched on the national significant number so
+  `0712…`, `+255712…` and `712…` all hit), 8 sorts, 7 quick filters + region/
+  district/motorcycle/date-range, card+table views with the preference in a
+  COOKIE (read server-side — no effect, no hydration flash), 25/page.
+- **Rider profile + pictures (#3)** — one `getRiderProfile()` shape rendered
+  for owner/accountant/rider; photos in the PRIVATE `rider-documents` bucket
+  behind signed URLs, magic-byte validated (WebP added to the sniffer),
+  owner-only writes, rider sees only their own (`/rider/profile`).
+- **Dates (#5)** — `lib/dates/format.ts` is the single utility; **DD/MM/YYYY**
+  everywhere. Calendar dates are split textually (never tz-converted, which
+  would shift them a day); instants render in EAT.
+- **Geo (#6)** — all **31 regions** (26 mainland + **5 Zanzibar**, previously
+  absent entirely) + 11 missing mainland districts. Existing spellings frozen
+  (`Nyang'wale`, `Arumeru`, `Hanang'`, `Kibiti`) — rows store names as text, so
+  a rename orphans them.
+- **Location inheritance (#7)** — the real bug was that `ManualRiderForm` never
+  had dropdowns (free text). New shared `RegionDistrictFields` + server-side
+  `isDistrictOfRegion` validation; picking a motorcycle fills the rider's
+  region/district, and `riders.location_source` records provenance so a hand
+  edit is never overwritten.
+
+Verified: **308 unit tests** (+93), typecheck ✅, lint ✅, `npm run build` ✅.
+See `Docs/SAAS_PLAN.md` §18 for the transferable lessons and D-034.
+
 Verified locally: `npm run typecheck` ✅ · `npm run lint` ✅ ·
 `npm run test` ✅ (215 unit pass, 10 RLS skip) · `npm run build` ✅.
 
@@ -414,14 +471,27 @@ app/api/auth/*       rider-login, owner-login, change-pin, logout
 app/api/health       liveness
 proxy.ts             Next 16 proxy (was middleware) — session refresh + gate
 
+app/accountant/      gated accountant area (spec #10) — dashboard, reports,
+                     payments (+record), outstanding, riders, motorcycles,
+                     contracts, notes
+app/owner/staff/     owner-only accountant account management
+
 lib/env.ts           validated env (public vs server-only)
 lib/supabase/        client (browser) · server (SSR) · admin (service role, server-only) · proxy · types
 lib/auth/            phone (E.164) · pin (validation) · pin-derive (HMAC, server-only) ·
-                     lockout (pure) · rate-limit (server-only) · session · provision (Admin API)
+                     lockout (pure) · rate-limit (server-only) · session ·
+                     provision (Admin API) · roles (permission matrix, pure)
+lib/staff/           accountant account create/activate/deactivate/reset (owner-only)
+lib/notes/           internal financial notes (append-only)
+lib/contracts/       actions · queries · validation · pdf · duration (#9) · status (#8)
+lib/obligations/     schedule (cadence engine) · plan (bulk generator, #1) · transitions
+lib/riders/          actions · queries · validation · numbering · directory (#2, pure) ·
+                     profile (#3) · photo + photo-constants
+lib/dates/           tz (timezone primitives) · format (DD/MM/YYYY, the shared utility)
 lib/security/        request (client IP)     lib/audit/  audit writer
 lib/money/ dates/ i18n/ validation/          domain utilities
 
-supabase/migrations/ 0001..0018 + seed.sql    supabase/config.toml
+supabase/migrations/ 0001..0025 + seed.sql    supabase/config.toml
 scripts/seed.ts      owner + demo rider seeding
 tests/unit/          phone, pin, lockout, money
 tests/integration/rls/ isolation suite (opt-in via RLS_TEST_ENABLED)
@@ -455,6 +525,16 @@ Migration-by-migration contents + planned future migrations: `docs/MIGRATION_PLA
 10. Record assumptions in `DECISIONS.md`; keep `IMPLEMENTATION_STATUS.md` current.
 11. Rider UI: simple, **Swahili-first**, low-bandwidth. SMS/WhatsApp behind flags
     until providers configured. Money is stored as **integer TZS**.
+12. **Every privileged action calls `requirePermission()`/`checkPermission()`**
+    (`lib/auth/roles.ts`) — hiding a button is not access control. RLS stays
+    decisive; a new role ships with a live RBAC probe or it is an assumption.
+13. **If a status can be computed from the ledger, compute it** (D-034). Only
+    persist state a human chose. Derived money state cannot go stale.
+14. **`npm run build` is part of the done-gate, not just `npm run verify`** —
+    `'use server'` files may export only async functions, and that (like the
+    `proxyConfig` matcher before it) is caught at build time alone.
+15. Reference data encoded into identifiers (geo codes) is **append-only**;
+    never rename a region/district that live rows store as text.
 
 ---
 

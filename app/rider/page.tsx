@@ -3,6 +3,7 @@ import { requireRider } from '@/lib/auth/session';
 import { getRiderHome } from '@/lib/dashboard/queries';
 import { formatTZS } from '@/lib/money/format';
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card';
+import { formatDate } from '@/lib/dates/format';
 import {
   BikeIcon,
   CalendarDaysIcon,
@@ -166,7 +167,7 @@ export default async function RiderHome() {
                       >
                         <span className="flex items-center gap-2 text-muted-foreground">
                           <CalendarDaysIcon className="size-4" />
-                          {p.date}
+                          {formatDate(p.date)}
                         </span>
                         <span className="font-semibold tabular-nums">{formatTZS(p.amount)}</span>
                       </Link>

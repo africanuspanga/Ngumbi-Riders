@@ -12,7 +12,8 @@ import { encryptOptionalPII, decryptPII } from '@/lib/security/crypto';
 import { writeAudit } from '@/lib/audit/audit';
 import { localDateString } from '@/lib/dates/tz';
 import { assignMotorcycle } from '@/lib/assignments/actions';
-import { manualRiderSchema } from './validation';
+import { manualRiderSchemaWithGeo } from './validation';
+import { canonicalDistrictName, canonicalRegionName } from '@/lib/geo/tanzania';
 import { formatRiderNumber, nextRiderSeq } from './numbering';
 import type { RiderStatus } from '@/lib/supabase/types';
 
@@ -30,7 +31,9 @@ export async function createRiderManually(
   input: unknown,
 ): Promise<ActionResult<{ riderId: string; riderNumber: string; warnings?: string[] }>> {
   const ownerId = await assertOwner();
-  const parsed = manualRiderSchema.safeParse(input);
+  // Re-validated server-side, including the region/district pairing (#6/#7) —
+  // the dropdown constrains the choice but never enforces it.
+  const parsed = manualRiderSchemaWithGeo.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'validation' };
   const d = parsed.data;
 
@@ -90,8 +93,11 @@ export async function createRiderManually(
       email: d.email || null,
       date_of_birth: d.dateOfBirth || null,
       gender: d.gender || null,
-      region: d.region || null,
-      district: d.district || null,
+      // Canonical spelling so the same place always filters as one value.
+      region: canonicalRegionName(d.region || null),
+      district: canonicalDistrictName(d.region || null, d.district || null),
+      // Records whether this location came from the assigned motorcycle (#7).
+      location_source: d.locationSource === 'motorcycle' ? 'motorcycle' : 'manual',
       ward: d.ward || null,
       street: d.street || null,
       full_address: d.fullAddress || null,

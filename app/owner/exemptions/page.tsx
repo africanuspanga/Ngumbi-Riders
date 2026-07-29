@@ -2,6 +2,7 @@ import { requireOwner } from '@/lib/auth/session';
 import { listOwnerExemptions } from '@/lib/exemptions/queries';
 import { EXEMPTION_STATUS_LABELS } from '@/lib/exemptions/validation';
 import { ExemptionDecision } from './ExemptionDecision';
+import { formatDate } from '@/lib/dates/format';
 
 export const metadata = { title: 'Exemptions' };
 
@@ -28,7 +29,7 @@ export default async function OwnerExemptionsPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold text-foreground">{e.rider_name}</p>
-                  <p className="text-xs text-muted-foreground">Obligation: {e.due_date ?? '—'}</p>
+                  <p className="text-xs text-muted-foreground">Obligation: {formatDate(e.due_date)}</p>
                 </div>
                 <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
                   {EXEMPTION_STATUS_LABELS[e.status] ?? e.status}

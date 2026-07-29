@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createExemptionRequest } from '@/lib/exemptions/actions';
+import { formatDate } from '@/lib/dates/format';
 
 type Obligation = { id: string; dueDate: string; amount: number };
 
@@ -49,7 +50,7 @@ export function ExemptionRequestForm({ obligations }: { obligations: Obligation[
       <select className="input bg-white" value={obligationId} onChange={(e) => setObligationId(e.target.value)}>
         <option value="">Chagua siku ya malipo…</option>
         {obligations.map((o) => (
-          <option key={o.id} value={o.id}>{o.dueDate} · TZS {o.amount.toLocaleString('en-US')}</option>
+          <option key={o.id} value={o.id}>{formatDate(o.dueDate)} · TZS {o.amount.toLocaleString('en-US')}</option>
         ))}
       </select>
       <textarea className="input min-h-20" placeholder="Sababu (mf. pikipiki imeharibika)" value={reason} onChange={(e) => setReason(e.target.value)} />

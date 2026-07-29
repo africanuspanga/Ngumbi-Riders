@@ -19,8 +19,8 @@
   "login": {
     "title": "Ingia",
     "heading": "Ingia kwenye akaunti yako",
-    "ownerTitle": "Ingia — Mmiliki",
-    "ownerHeading": "Ingia kama mmiliki",
+    "ownerTitle": "Ingia — Wafanyakazi",
+    "ownerHeading": "Ingia kama mmiliki au mhasibu",
     "riderTab": "Mwendeshaji",
     "ownerTab": "Mmiliki",
     "phone": "Namba ya simu",
@@ -30,12 +30,13 @@
     "submit": "Ingia",
     "pending": "Inaingia…",
     "forgotPin": "Umesahau PIN yako? Wasiliana na mmiliki.",
-    "ownerLink": "Wewe ni mmiliki? Ingia hapa",
+    "ownerLink": "Wewe ni mmiliki au mhasibu? Ingia hapa",
     "riderLink": "Ingia kama mwendeshaji",
     "invalidCredentials": "Namba ya simu au PIN si sahihi.",
     "locked": "Akaunti imefungwa kwa muda. Jaribu tena baadaye.",
     "tooManyAttempts": "Umejaribu mara nyingi. Subiri dakika 30.",
-    "network": "Imeshindikana kuunganisha na seva. Angalia mtandao kisha jaribu tena."
+    "network": "Imeshindikana kuunganisha na seva. Angalia mtandao kisha jaribu tena.",
+    "accountDisabled": "Akaunti yako imezimwa. Wasiliana na mmiliki."
   },
   "pin": {
     "changeTitle": "Badilisha PIN",

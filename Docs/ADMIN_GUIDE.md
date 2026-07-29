@@ -76,12 +76,61 @@ overdue state, progress bar, payment calendar).
    applicant's connection died mid-upload — you'll see which ones on the review
    page; ask them to re-apply or bring the documents physically.
 2. **Manual creation** (`/owner/riders` → new): for riders you already know;
-   same temp-PIN handover.
+   same temp-PIN handover. **Region and district are dropdowns** here too, and
+   picking a motorcycle **fills the rider's region and district automatically**
+   from that bike's operating area — you don't type the same location twice.
+   If the rider actually lives somewhere else, just change the fields; your
+   edit is kept and won't be overwritten if you later change the motorcycle.
 3. **Bulk import** (`/owner/imports`): CSV/XLSX wizard for existing riders and
    motorcycles (used at go-live to load the current fleet). If your sheet
    provides a `temp_pin` column, weak PINs (1234, 0000, repeats, the phone's
    own digits…) are **replaced with a safe generated one** — always hand out
    the PINs from the import result screen, not from your spreadsheet.
+
+### 3.1 Finding riders (`/owner/riders`)
+
+The rider register is a searchable directory, not one long list.
+
+- **Search** by rider name, phone number (type it any way — `0712 345 678`,
+  `+255712345678` or `712345678` all match), rider code, motorcycle
+  registration, motorcycle code or contract number.
+- **Quick filters**: all riders · active riders · active contracts ·
+  completed contracts · overdue payments · fully paid · no motorcycle
+  assigned.
+- **More filters**: region, district, a specific motorcycle, and a
+  registration-date range.
+- **Sort** by name (A–Z / Z–A), date registered (newest / oldest), contract
+  start date, contract end date, payment status (worst first) or outstanding
+  balance (highest first).
+- **Card view or table view** — switch with the two buttons top-right. Your
+  choice is remembered for next time.
+- Long lists are paged 25 at a time.
+
+Click a rider's card, row, name or picture to open their profile.
+
+### 3.2 The rider profile
+
+Each rider has one complete profile, shown to you at
+`/owner/riders/<rider>` and to the rider themselves under the person icon in
+their app header. It gathers:
+
+- profile picture, full name, rider code, phone, email, date of birth,
+  identification type and whether an ID number is on file, account status;
+- region, district, ward, street and address — with a note saying whether the
+  location came from the rider or from their motorcycle;
+- assigned motorcycle (code, registration, make, model, colour, assigned
+  since);
+- contract details and status, the payment-plan summary, amount paid,
+  outstanding amount, progress bar and **next payment date**;
+- guarantor details and uploaded documents.
+
+**Profile pictures.** A rider's photo from their application is used
+automatically. To change it, open their profile and use **Upload picture** /
+**Replace picture** / **Remove**. JPG, PNG or WebP up to 4 MB; the file type is
+verified from the file's actual contents, not its name. Where there's no photo
+you see a clean initials placeholder. Only you can set a rider's picture —
+riders cannot change their own or anyone else's, and a rider can only ever open
+their own profile.
 
 ## 4. Motorcycles & assignments
 
@@ -101,9 +150,9 @@ overdue state, progress bar, payment calendar).
 ## 5. Contracts — the heart of the system
 
 1. **Create** (`/owner/contracts` → new): pick rider + motorcycle, set the
-   **instalment amount** (TZS), the **schedule**, the start date and the
-   duration in months. The builder shows a live preview of the whole payment
-   calendar (number of payments, total value, end date) as you type.
+   **instalment amount** (TZS), the **payment frequency**, the start date and
+   the **contract length**. The builder shows a live preview of the whole
+   payment calendar (number of payments, total value, end date) as you type.
 2. **Sign**: both you and the rider sign on screen, or upload a signed
    physical copy. A PDF of the contract is generated and hashed.
 3. **Activate**: activation generates every payment obligation for the whole
@@ -130,6 +179,71 @@ payment falls due — so pick the amount to match the schedule:
   their payment only becomes due, then overdue, around the due day you set. You
   record their monthly cash the same way as any payment (§6): pick the rider and
   tick the month that's due.
+
+### 5.1 Contract length — any combination of units
+
+Set the term in **years, months, weeks and days**, in any combination:
+3 months · 12 weeks · 90 days · 3 months and 2 weeks · 6 months, 1 week and
+4 days · 1 year and 3 months. The end date is calculated for you and shown
+under the fields as you type.
+
+- Months are **real calendar months**, never a flat 30 days, and leap years
+  are handled (a term through February gets 28 or 29 days as appropriate).
+- If you need the term to end on a **specific day**, switch *Set the end date
+  by* to **Exact end date** and type it. That date then wins over any
+  calculation — useful for a month-end lease that must run to the last day of
+  the month.
+- The saved contract shows both the readable term ("6 months, 1 week and
+  4 days") and whether the end date came from the duration or was typed.
+
+### 5.2 Building the payment plan in one go
+
+Instead of picking dates one at a time, use **Generate schedule** in the
+contract builder:
+
+1. The start and end dates come from the contract term you set above.
+2. Enter the **amount per payment** and choose the **frequency** — Daily,
+   Weekly, Monthly, or Custom (specific weekdays).
+3. Press **Generate schedule**. Every payment date in the period appears at
+   once — e.g. 01/08/2026 → 29/09/2026, daily, TZS 10,000 produces all
+   60 dates.
+4. Adjust anything you need:
+   - untick a date to **exclude** it (public holiday, agreed rest day),
+   - **Select all / Deselect all** to work in bulk,
+   - change an individual **date** or **amount** directly in the row.
+5. The running **count and total** update as you edit, so you can check the
+   plan before saving.
+
+The plan you approve is exactly what gets created when you activate the
+contract. If you'd rather use the plain repeating schedule, press **Discard
+plan** and the contract falls back to the frequency you chose.
+
+Two things the system will not let you do: save a payment dated outside the
+contract term, and create two payments on the same date (a duplicate is
+flagged and only one is kept).
+
+### 5.3 Contract status is automatic
+
+You never have to mark a contract finished. Every night the system checks
+every running contract and completes the ones whose end date has passed. The
+status you see is:
+
+| Status | Meaning |
+| --- | --- |
+| **Upcoming** | Signed and activated, but the term hasn't started yet |
+| **Active** | Running now |
+| **Suspended** | You paused it |
+| **Contract Completed** | Term finished and nothing is owed |
+| **Contract Ended — Outstanding Balance** | Term finished but payments are still unpaid |
+| **Terminated / Cancelled** | You ended it early |
+
+A finished contract that still has unpaid days is **never** shown as settled —
+it reads "Contract Ended — Outstanding Balance", on the rider's profile, the
+contract page, the rider list and the reports, with the amount still owed.
+
+The status also updates on screen the moment the end date passes, without
+waiting for the nightly job. No payment dates are ever created past the
+contract's end date.
 
 ## 6. Payments
 
@@ -205,6 +319,66 @@ payment_issue notifications rather than wrong numbers.
   attempts on later runs), and emails queued before Resend was configured are
   delivered once the key is in place — nothing is lost.
 
+## 9.1 Your accountant (`/owner/staff`)
+
+You can give a bookkeeper their own login instead of sharing yours.
+
+**Creating one.** Go to **Staff** (bottom of the sidebar) → *Add an
+accountant*: name, email, and an initial password (at least 10 characters with
+an uppercase letter, a lowercase letter and a number). Hand them the password
+directly; they sign in at the same page you do, `/login/owner`, and land in
+their own area at `/accountant`.
+
+**What an accountant can do**
+
+- See the financial dashboard, payment schedules, completed payments, overdue
+  payments and outstanding balances
+- **Record an authorised manual payment** (same rules as yours: whole
+  instalments, oldest first, amount computed by the system)
+- View receipts and payment history
+- Generate reports for any date range — daily, weekly, monthly or custom — and
+  export them to CSV or Excel
+- View rider, motorcycle and contract information needed for accounting, and
+  contract financial summaries
+- Add **internal financial notes** (visible to you and other accountants;
+  notes can't be edited or deleted once added)
+
+**What an accountant cannot do**
+
+- Touch your account, change system ownership or anyone's role
+- Create or deactivate other staff
+- Change system settings or see payment credentials
+- Modify or create contracts, riders or motorcycles
+- Reveal NIDA / licence / Voter ID numbers, or see guarantors and application
+  documents
+- See the audit trail, login history, imports or system internals
+- Delete anything at all
+
+These limits are enforced in the database itself, not just by hiding buttons —
+an accountant who typed an owner-only address directly would still be refused.
+
+**Controlling access.** On the Staff page each accountant has **Deactivate /
+Activate**, **Reset password** and **Remove access**. Deactivating signs them
+out immediately and blocks the next login; their history stays in the audit
+trail (which is why the account is disabled rather than deleted — financial
+records must keep naming who did what). "Remove access" also scrambles the old
+password, so re-activating requires you to set a new one.
+
+## 9.2 Dates and places
+
+- **Every date in the app is DD/MM/YYYY** — 29/07/2026 — on profiles,
+  motorcycles, contracts, payment plans, payment history, receipts, reports,
+  tables, filters and notifications.
+- **Region and district dropdowns cover all 31 Tanzanian regions** — the 26
+  mainland regions plus the 5 Zanzibar regions (Kaskazini Unguja, Kusini
+  Unguja, Mjini Magharibi, Kaskazini Pemba, Kusini Pemba). Choosing a region
+  filters the district list to that region's districts. The same list is used
+  everywhere — riders, motorcycles, applications and search filters — so a
+  place always spells the same way.
+- Records created before the dropdowns existed keep whatever location was
+  typed then; you'll see it listed as "(existing record)" and can leave it or
+  pick a proper value.
+
 ## 10. System health & audit
 
 - **`/owner/system`**: last run of every scheduled job and data-quality
@@ -217,9 +391,14 @@ payment_issue notifications rather than wrong numbers.
 All background work runs **once per day at midnight** Tanzania time
 (21:00 UTC) through a single cron endpoint `/api/cron/daily` (up to 5 minutes
 of runtime budget), which executes in order: obligation status flips
-(due/overdue) → pending-payment reconciliation → reservation cleanup → risk
-recalculation → data-quality checks → your daily summary email (for the day
-that just ended) → message outbox.
+(due/overdue) → **contract completion** → pending-payment reconciliation →
+reservation cleanup → risk recalculation → data-quality checks → your daily
+summary email (for the day that just ended) → message outbox.
+
+**Contract completion** is the job that closes finished leases automatically:
+any running contract whose end date has passed becomes *Completed*, you get a
+summary notification (including how many ended still owing money), and the
+rider is told. It never touches paused contracts, and never touches money.
 
 Because the plan allows only daily crons:
 

@@ -4,11 +4,14 @@
  * extension, so before storing we confirm the actual leading bytes match one of
  * the accepted formats. Pure and dependency-free for unit testing.
  */
-export type SniffedType = 'pdf' | 'png' | 'jpeg';
+export type SniffedType = 'pdf' | 'png' | 'jpeg' | 'webp';
 
 const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const PDF_MAGIC = [0x25, 0x50, 0x44, 0x46]; // %PDF
 const JPEG_MAGIC = [0xff, 0xd8, 0xff];
+// WebP is a RIFF container: "RIFF" <4-byte size> "WEBP".
+const RIFF_MAGIC = [0x52, 0x49, 0x46, 0x46];
+const WEBP_TAG = [0x57, 0x45, 0x42, 0x50];
 
 function startsWith(bytes: Uint8Array, magic: number[]): boolean {
   if (bytes.length < magic.length) return false;
@@ -18,11 +21,22 @@ function startsWith(bytes: Uint8Array, magic: number[]): boolean {
   return true;
 }
 
+function matchesAt(bytes: Uint8Array, offset: number, magic: number[]): boolean {
+  if (bytes.length < offset + magic.length) return false;
+  for (let i = 0; i < magic.length; i++) {
+    if (bytes[offset + i] !== magic[i]) return false;
+  }
+  return true;
+}
+
 /** Returns the true type from the leading bytes, or null if unrecognised. */
 export function sniffFileType(bytes: Uint8Array): SniffedType | null {
   if (startsWith(bytes, PNG_MAGIC)) return 'png';
   if (startsWith(bytes, PDF_MAGIC)) return 'pdf';
   if (startsWith(bytes, JPEG_MAGIC)) return 'jpeg';
+  // WebP added 2026-07-29 for rider profile pictures (#3): modern Android
+  // cameras and browsers produce it, and rejecting it looked like a bug.
+  if (startsWith(bytes, RIFF_MAGIC) && matchesAt(bytes, 8, WEBP_TAG)) return 'webp';
   return null;
 }
 
@@ -31,6 +45,7 @@ const MIME_TO_TYPE: Record<string, SniffedType> = {
   'application/pdf': 'pdf',
   'image/png': 'png',
   'image/jpeg': 'jpeg',
+  'image/webp': 'webp',
 };
 
 /**

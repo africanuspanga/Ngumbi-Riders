@@ -2,7 +2,10 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireOwner } from '@/lib/auth/session';
 import { getRider } from '@/lib/riders/queries';
+import { getRiderProfile } from '@/lib/riders/profile';
 import { listAvailableMotorcycles } from '@/lib/motorcycles/queries';
+import { RiderProfileView } from '@/components/riders/RiderProfileView';
+import { formatDate } from '@/lib/dates/format';
 import {
   RiderStatusActions,
   RiderRevealSecrets,
@@ -13,6 +16,11 @@ import {
 
 export const metadata = { title: 'Rider' };
 
+/**
+ * Owner rider profile (build spec #3): the full read-only profile followed by
+ * the owner-only management actions (identity reveal, PIN reset, assignment,
+ * risk, status) that were already here.
+ */
 export default async function RiderDetailPage({
   params,
 }: {
@@ -20,11 +28,12 @@ export default async function RiderDetailPage({
 }) {
   await requireOwner();
   const { id } = await params;
-  const [rider, motorcycles] = await Promise.all([
+  const [profile, rider, motorcycles] = await Promise.all([
+    getRiderProfile(id, 'owner'),
     getRider(id),
     listAvailableMotorcycles(),
   ]);
-  if (!rider) notFound();
+  if (!profile || !rider) notFound();
 
   const motoOptions = motorcycles.map((m) => ({
     id: m.id,
@@ -40,50 +49,30 @@ export default async function RiderDetailPage({
         </Link>
       </div>
 
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-primary-dark">
-            {rider.first_name} {rider.middle_name ? `${rider.middle_name} ` : ''}
-            {rider.last_name}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {rider.rider_number} · {rider.phone}
-          </p>
-        </div>
-        <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
-          {rider.status}
-        </span>
-      </header>
-
       {rider.complianceWarnings.length > 0 && (
         <div className="rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 p-3 text-sm text-[color:var(--color-warning)]">
           ⚠ {rider.complianceWarnings.join(' · ')}
         </div>
       )}
 
-      <Section title="Profile">
-        <Grid>
-          <Info label="Email" value={rider.email} />
-          <Info label="Date of birth" value={rider.date_of_birth} />
-          <Info label="Gender" value={rider.gender} />
-          <Info label="Region" value={rider.region} />
-          <Info label="District" value={rider.district} />
-          <Info label="Ward" value={rider.ward} />
-        </Grid>
-        <Info label="Address" value={rider.full_address} />
-      </Section>
+      <RiderProfileView
+        profile={profile}
+        audience="owner"
+        motorcycleHref={(mid) => `/owner/motorcycles/${mid}`}
+        contractHref={(cid) => `/owner/contracts/${cid}`}
+      />
 
       <Section title="Sensitive identifiers">
-        <RiderRevealSecrets id={rider.id} />
+        <RiderRevealSecrets id={profile.id} />
       </Section>
 
       <Section title="Sign-in / PIN">
-        <RiderPinReset id={rider.id} />
+        <RiderPinReset id={profile.id} />
       </Section>
 
-      <Section title="Motorcycle">
+      <Section title="Motorcycle assignment">
         <AssignmentActions
-          riderId={rider.id}
+          riderId={profile.id}
           current={
             rider.currentMotorcycle
               ? {
@@ -107,7 +96,7 @@ export default async function RiderDetailPage({
                   {a.registration}
                 </Link>
                 <span className="text-right text-muted-foreground">
-                  {a.start_date} → {a.end_date ?? 'active'}
+                  {formatDate(a.start_date)} → {a.end_date ? formatDate(a.end_date) : 'active'}
                   {a.transfer_reason && ` · ${a.transfer_reason}`}
                 </span>
               </li>
@@ -117,11 +106,11 @@ export default async function RiderDetailPage({
       </Section>
 
       <Section title="Risk">
-        <RiskControls id={rider.id} current={rider.risk_level} reasons={rider.risk_reasons ?? []} />
+        <RiskControls id={profile.id} current={rider.risk_level} reasons={rider.risk_reasons ?? []} />
       </Section>
 
       <Section title="Status">
-        <RiderStatusActions id={rider.id} current={rider.status} />
+        <RiderStatusActions id={profile.id} current={rider.status} />
       </Section>
     </div>
   );
@@ -133,16 +122,5 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="font-semibold text-primary-dark">{title}</h2>
       {children}
     </section>
-  );
-}
-function Grid({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-2 gap-x-4 gap-y-2">{children}</div>;
-}
-function Info({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div className="flex flex-col">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium text-foreground">{value || '—'}</span>
-    </div>
   );
 }

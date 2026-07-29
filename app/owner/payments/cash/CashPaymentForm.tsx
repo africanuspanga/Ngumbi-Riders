@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { recordCashPayment } from '@/lib/payments/actions';
 import type { CashCandidate } from '@/lib/payments/queries';
+import { formatDate } from '@/lib/dates/format';
 
 type Recorded = { riderName: string; amount: number; days: number; date: string };
 
@@ -101,7 +102,7 @@ export function CashPaymentForm({ candidates, today }: { candidates: CashCandida
           <span className="font-semibold text-[color:var(--color-paid)]">✓ Cash payment recorded</span>
           <span className="text-sm text-foreground">
             {recorded.riderName} · {tzs(recorded.amount)} · {recorded.days} day
-            {recorded.days === 1 ? '' : 's'} · {recorded.date}
+            {recorded.days === 1 ? '' : 's'} · {formatDate(recorded.date)}
           </span>
           <div className="flex gap-2">
             <Link
@@ -142,7 +143,7 @@ export function CashPaymentForm({ candidates, today }: { candidates: CashCandida
                   <label className="flex cursor-pointer items-center justify-between px-3 py-2.5">
                     <span className="flex items-center gap-2">
                       <input type="checkbox" className="h-5 w-5" checked={selected.has(o.id)} onChange={() => toggle(o.id)} />
-                      <span className={o.dueDate < today ? 'text-overdue' : ''}>{o.dueDate}</span>
+                      <span className={o.dueDate < today ? 'text-overdue' : ''}>{formatDate(o.dueDate)}</span>
                     </span>
                     <span className="font-medium">{tzs(o.amount)}</span>
                   </label>

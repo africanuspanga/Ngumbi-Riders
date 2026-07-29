@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
-import { getSessionProfile } from '@/lib/auth/session';
+import { checkPermission } from '@/lib/auth/session';
 import { localDateString } from '@/lib/dates/tz';
 import { toCsv, type CsvCell } from '@/lib/reports/csv';
 import { getCollectionReport, getArrearsReport, getExpenseReport } from '@/lib/reports/queries';
 
-// Report exports (spec §19.3): CSV and XLSX. Owner-only. Print-friendly output
-// is the report page itself; PDF export is a tracked follow-up.
+// Report exports (spec §19.3): CSV and XLSX. Owner + active accountant
+// (`reports.export`, build spec #10). Print-friendly output is the report page
+// itself; PDF export is a tracked follow-up.
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 // XLSX generation over a long date range needs more than the short default.
@@ -52,8 +53,10 @@ async function buildTable(report: string, from: string, to: string): Promise<Tab
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ report: string }> }) {
-  const profile = await getSessionProfile();
-  if (!profile || profile.role !== 'owner') return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  // Server-side permission check: the accountant reaches this URL from their
+  // own report page, and a rider must never be able to fetch it by guessing.
+  const profile = await checkPermission('reports.export');
+  if (!profile) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
   const { report } = await params;
   const url = new URL(request.url);

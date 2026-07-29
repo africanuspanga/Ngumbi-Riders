@@ -142,6 +142,113 @@ export const obligationStatusTask: CronTask = async () => {
   return { due: toDue.length, overdue: toOverdue.length, notifyErrors };
 };
 
+/**
+ * Automatic contract completion (build spec #8). A lease whose term has ended
+ * must stop reading as "Active" without the owner touching it — the client
+ * reported Daud's finished contract still showing as running.
+ *
+ * Server-side by design: this runs nightly whether or not anyone opens a page.
+ * The UI additionally DERIVES the ended state (lib/contracts/status.ts), so a
+ * contract reads correctly even between the end date and this job's next run.
+ *
+ * Only `active` contracts are touched. Paused ones are excluded: the owner
+ * suspended them deliberately and must decide how they end. Money is never
+ * touched — a contract that ends with unpaid obligations keeps them, and is
+ * shown as "Contract Ended — Outstanding Balance" rather than settled.
+ */
+export const contractCompletionTask: CronTask = async () => {
+  const admin = createAdminClient();
+  const today = localDateString();
+
+  const due = await fetchAllPages<{ id: string; rider_id: string; contract_number: string; end_date: string }>(
+    (from, to) =>
+      admin
+        .from('contracts')
+        .select('id, rider_id, contract_number, end_date')
+        .eq('status', 'active')
+        .not('end_date', 'is', null)
+        .lt('end_date', today)
+        .order('end_date', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    { label: 'contract-completion select' },
+  );
+  if (due.length === 0) return { completed: 0, withArrears: 0, notifyErrors: 0 };
+
+  // Which of them still owe money? Read BEFORE the status flip so the
+  // notification tells the owner the truth (chunked: an .in() with hundreds of
+  // ids builds a querystring upstream proxies reject — D-033).
+  const owing = new Set<string>();
+  for (const ids of chunkIds(due.map((c) => c.id))) {
+    const rows = await fetchAllPages<{ contract_id: string }>(
+      (from, to) =>
+        admin
+          .from('payment_obligations')
+          .select('contract_id')
+          .in('contract_id', ids)
+          .in('status', ['scheduled', 'due', 'overdue'])
+          .order('contract_id', { ascending: true })
+          .range(from, to),
+      { label: 'contract-completion arrears' },
+    );
+    for (const r of rows) owing.add(r.contract_id);
+  }
+
+  // Conditional on status='active' so a contract terminated between the read
+  // and this write is not resurrected as merely "completed".
+  const completed: string[] = [];
+  for (const ids of chunkIds(due.map((c) => c.id))) {
+    const { data: updated, error } = await admin
+      .from('contracts')
+      .update({ status: 'completed' })
+      .in('id', ids)
+      .eq('status', 'active')
+      .select('id');
+    if (error) throw new Error(`contract completion update failed: ${error.message}`);
+    for (const c of (updated ?? []) as { id: string }[]) completed.push(c.id);
+  }
+
+  // Best-effort notifications: the status flips are already committed, so one
+  // failure must not skip the rest (the obligation-status job's lesson).
+  const byId = new Map(due.map((c) => [c.id, c]));
+  let notifyErrors = 0;
+  for (const id of completed) {
+    const c = byId.get(id)!;
+    const hasArrears = owing.has(id);
+    try {
+      await notifyRider(c.rider_id, {
+        type: hasArrears ? 'contract_ended_outstanding' : 'contract_completed',
+        title: hasArrears ? 'Mkataba umeisha — una deni' : 'Mkataba umekamilika',
+        body: hasArrears
+          ? 'Muda wa mkataba wako umeisha lakini bado una malipo ambayo hayajakamilika.'
+          : 'Hongera! Umekamilisha mkataba wako.',
+        deepLink: '/rider',
+        dedupeKey: `contract_completed:${id}`,
+      });
+    } catch {
+      notifyErrors++;
+    }
+  }
+
+  const withArrears = completed.filter((id) => owing.has(id)).length;
+  try {
+    await notifyOwner({
+      type: 'contracts_completed',
+      title: 'Mikataba imekamilika',
+      body:
+        withArrears > 0
+          ? `${completed.length} contract(s) reached their end date; ${withArrears} still have an outstanding balance.`
+          : `${completed.length} contract(s) reached their end date and are now complete.`,
+      deepLink: '/owner/contracts',
+      dedupeKey: `contracts_completed:${today}`,
+    });
+  } catch {
+    notifyErrors++;
+  }
+
+  return { completed: completed.length, withArrears, notifyErrors };
+};
+
 /** Pending Snippe reconciliation (spec §12.5): resolves missed webhooks. */
 export const reconcilePendingTask: CronTask = async () => {
   const admin = createAdminClient();
@@ -444,6 +551,9 @@ export const dailySummaryTask: CronTask = async (): Promise<Record<string, numbe
  */
 export const DAILY_TASKS: [name: string, task: CronTask][] = [
   ['obligation-status', obligationStatusTask],
+  // Completion runs right after the status sweep: a lease that ended yesterday
+  // should be marked complete before the dashboard and summary are computed.
+  ['contract-completion', contractCompletionTask],
   ['reconcile-pending', reconcilePendingTask],
   ['reservation-cleanup', reservationCleanupTask],
   ['risk-recalc', riskRecalcTask],

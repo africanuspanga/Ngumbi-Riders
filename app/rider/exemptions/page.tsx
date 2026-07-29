@@ -2,6 +2,7 @@ import { requireRider } from '@/lib/auth/session';
 import { listRiderExemptions, listRiderOutstandingForExemption } from '@/lib/exemptions/queries';
 import { EXEMPTION_STATUS_LABELS } from '@/lib/exemptions/validation';
 import { ExemptionRequestForm } from './ExemptionRequestForm';
+import { formatDate } from '@/lib/dates/format';
 
 export const metadata = { title: 'Misamaha' };
 
@@ -25,7 +26,7 @@ export default async function RiderExemptionsPage() {
           {requests.map((r) => (
             <li key={r.id} className="flex flex-col gap-0.5 px-4 py-3">
               <div className="flex justify-between">
-                <span className="font-semibold">{r.due_date ?? '—'}</span>
+                <span className="font-semibold">{formatDate(r.due_date)}</span>
                 <span className="text-xs text-muted-foreground">{EXEMPTION_STATUS_LABELS[r.status] ?? r.status}</span>
               </div>
               <p className="text-sm text-foreground">{r.reason}</p>

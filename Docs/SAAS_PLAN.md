@@ -845,3 +845,147 @@ itself. After this review the remaining pilot gates are OPS, not code:
 
 Only then does the §14 trigger discussion (2+ prospect fleets) open S0. The
 economic logic is unchanged; this review just cleared the known-defect column.
+
+---
+
+## 18. Client-feedback build (2026-07-29) — what it teaches the SaaS plan
+
+Nine client-requested changes shipped together: bulk payment-plan generation,
+rider search/sort/filter/views, a full rider profile with pictures, the
+**accountant role**, a house date format, the complete Tanzania geo dataset,
+motorcycle→rider location inheritance, automatic contract completion, and
+flexible contract durations. Migrations `0024` (enum) + `0025` (everything
+else) are applied live. What matters for a future multi-tenant product:
+
+### 18.1 The accountant role is the first real RBAC — treat it as the template
+
+Until now "roles" meant owner vs rider, which is a boolean in disguise. The
+accountant forced an actual permission model, and the shape it took is the one
+S0 should generalise rather than re-invent:
+
+- **A pure, unit-tested permission table** (`lib/auth/roles.ts`, 9 tests) that
+  both server and client import. Role → permission, nothing derived from the
+  UI.
+- **Three enforcement layers, not one**: `requirePermission()` in every action
+  and route handler, `requireAccountant()` in the layout, and — decisively —
+  RLS policies. The 31-check live probe that proved this (accountant can read
+  the 12 financial tables, is blocked on the 9 sensitive ones, cannot
+  self-promote, cannot insert into `payments`) is the test shape every future
+  role needs. **Per-org roles in S0 must ship with an equivalent probe**; a
+  role without one is an assumption, not a boundary.
+- **`profiles.is_active` as the revocation switch**, checked inside
+  `is_accountant()` itself rather than only at login. Deactivation therefore
+  takes effect on the next *query*, not the next login. Multi-tenant
+  membership revocation (§5) needs exactly this property — an org disabling a
+  user must not leave a valid JWT with live data access for an hour.
+- **The owner is deliberately exempt from `is_active`.** Locking the sole
+  owner out would be unrecoverable from inside the app. In a multi-tenant world
+  the equivalent invariant is "an org can never end up with zero active
+  admins" — enforce it in the DB, not the UI.
+
+### 18.2 Derived state beats stored state for anything money-adjacent
+
+The client asked for a "contract completed" status. The tempting fix is a new
+enum value plus a nightly writer. What shipped instead:
+
+- the **lifecycle** stays in `contract_status` (what the owner did), and
+- **"ended with an outstanding balance" is derived at read time** from the
+  obligation ledger (`lib/contracts/status.ts`, 13 tests).
+
+Reason: an "ended_outstanding" column would be a second source of truth for
+money that goes stale the instant a payment settles — the same class of defect
+as the capped-KPI queries in §17. The nightly job only moves `active →
+completed`; it never asserts anything about the balance. **S0 rule: if a
+status can be computed from the ledger, compute it. Only persist state a human
+chose.**
+
+A useful corollary the UI gets for free: the derived status is correct
+*between* the end date and the next job run, so "the cron hasn't fired yet"
+never shows the owner a wrong answer.
+
+### 18.3 Reference data must be complete before it is depended upon
+
+The region dropdown had 26 of Tanzania's 31 regions — every Zanzibar region was
+missing — plus 11 absent mainland districts. Nobody noticed because
+motorcycle-code generation has an `XXX` fallback and the rider form used free
+text. Two lessons:
+
+- **A fallback hides a data gap.** `XXX` made incomplete geo invisible; the
+  audit only surfaced when a form was made to *depend* on the dataset.
+- **Reference data is append-only once it is encoded into identifiers.**
+  Motorcycle codes freeze region/district codes, and rider/motorcycle rows
+  store the names as text, so a rename orphans live rows. The dataset now
+  documents this and preserves older spellings (`Nyang'wale`, `Arumeru`,
+  `Hanang'`, `Kibiti`) verbatim rather than "correcting" them. **Any
+  per-tenant reference data in S0 needs the same append-only contract.**
+
+### 18.4 One dataset, many forms — the bug was a second list
+
+The client's "regions don't load in the rider form" was not a loading bug at
+all: `ManualRiderForm` never had dropdowns, only free-text inputs. The apply
+wizard had proper dependent dropdowns; manual rider creation had been left
+behind when `lib/geo/tanzania.ts` was introduced. The fix was a shared
+`RegionDistrictFields` component plus server-side pair validation
+(`isDistrictOfRegion`) in the action, not just the form.
+
+**Transferable:** when a shared dataset lands, grep for every form that should
+consume it. A "central source of truth" that only one of four call sites uses
+is not central. The same applies to the date formatter added here — the
+searchable audit was "find every place rendering a raw ISO date", and it found
+eleven.
+
+### 18.5 Editable generated data needs an explicit store, not a re-derivation
+
+The bulk payment plan (#1) could have been stored as "frequency + amount" and
+re-derived at activation. That breaks the moment the owner excludes a public
+holiday or changes one instalment. `contracts.payment_plan` (jsonb) stores the
+approved rows, and activation replays them verbatim; the cadence path remains
+for contracts with no plan.
+
+The money function grew exactly one line —
+`coalesce(nullif(o->>'amount','')::integer, v_contract.installment_amount)` —
+and every 0018 guard was preserved verbatim. **Rewriting a money function is
+the highest-risk edit in this codebase** (0019 exists because of one), so the
+replacement was diffed against 0018 line by line and then proved with a
+rollback-only dry run: 4 obligations generated from a 5-day plan with one day
+excluded and one amount edited to 25,000, contract activated, then rolled
+back. §16's "no DB-level money tests" gap is what makes that dry run
+mandatory, not optional — S0 should have real pgTAP coverage instead.
+
+### 18.6 Defaults that overwrite user input are data loss
+
+Motorcycle→rider location inheritance (#7) is a *default*, not a binding. The
+naive version — re-copy the bike's region whenever the motorcycle changes —
+silently destroys a hand-typed home address. `riders.location_source`
+(`manual` | `motorcycle`) records provenance, and the form stops auto-filling
+the moment the owner edits the field. **Any inherited/denormalised value in S0
+needs the same provenance flag**, otherwise "convenience" quietly corrupts the
+record.
+
+### 18.7 Framework constraints found only at build time
+
+Two `'use server'` files exported a zod schema and a size constant. Typecheck,
+lint and all 308 tests passed; only `next build` caught it ("a 'use server'
+file can only export async functions"). Constants and schemas now live in
+sibling non-action modules (`lib/notes/validation.ts`,
+`lib/riders/photo-constants.ts`).
+
+**`npm run verify` is not sufficient before declaring work done — `npm run
+build` is part of the gate.** This is the second time a build-only constraint
+has bitten (the first was the `proxyConfig`→`config` matcher in §17).
+
+### 18.8 Inventory additions for §2
+
+- `profiles` now carries `is_active`, `email`, `created_by`, `deactivated_at` —
+  all of which become org-membership columns under §4's tenancy model.
+- `financial_notes` is append-only with no UPDATE/DELETE policy for anyone; it
+  is the first table designed that way from the start rather than retrofitted.
+- The rider directory fetches the WHOLE rider/contract/obligation set and
+  filters in the browser. Correct and instant at pilot scale (15 riders, 4,235
+  obligations) and paginated so nothing truncates — but it is an O(fleet) read
+  per page view. **S0 must move this filter server-side**; the pure helpers in
+  `lib/riders/directory.ts` already run unchanged in both places, which was the
+  point of extracting them.
+- Profile pictures live in the private `rider-documents` bucket behind
+  per-request signed URLs. Per-tenant storage isolation (§10) must keep that
+  property — a public bucket for "just avatars" would leak identity photos.

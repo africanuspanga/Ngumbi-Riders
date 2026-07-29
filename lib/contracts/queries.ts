@@ -33,6 +33,10 @@ export type ContractDetail = {
   start_date: string | null;
   end_date: string | null;
   duration_months: number | null;
+  duration_years: number | null;
+  duration_weeks: number | null;
+  duration_days: number | null;
+  end_date_source: 'duration' | 'exact';
   schedule_type: ScheduleType;
   selected_weekdays: number[];
   due_day_of_month: number | null;
@@ -46,7 +50,7 @@ export type ContractDetail = {
   signatures: ContractSignature[];
   hasSignedDocument: boolean;
   documents: ContractDocument[];
-  obligationStats: { total: number; paid: number; value: number };
+  obligationStats: { total: number; paid: number; value: number; outstanding: number };
 };
 
 export type ContractDocument = {
@@ -135,6 +139,10 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
     start_date: (raw.start_date as string) ?? null,
     end_date: (raw.end_date as string) ?? null,
     duration_months: (raw.duration_months as number) ?? null,
+    duration_years: (raw.duration_years as number) ?? 0,
+    duration_weeks: (raw.duration_weeks as number) ?? 0,
+    duration_days: (raw.duration_days as number) ?? 0,
+    end_date_source: ((raw.end_date_source as string) ?? 'duration') as 'duration' | 'exact',
     schedule_type: raw.schedule_type as ScheduleType,
     selected_weekdays: (raw.selected_weekdays as number[]) ?? [],
     due_day_of_month: (raw.due_day_of_month as number | null) ?? null,
@@ -156,6 +164,8 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
       value: obs
         .filter((o) => !['cancelled', 'postponed', 'exempted'].includes(o.status))
         .reduce((s, o) => s + o.amount_due, 0),
+      // Still owed — drives the "Contract Ended — Outstanding Balance" state (#8).
+      outstanding: obs.filter((o) => ['scheduled', 'due', 'overdue'].includes(o.status)).length,
     },
   };
 }

@@ -4,6 +4,7 @@ import { getExpenseReport } from '@/lib/reports/queries';
 import { localDateString } from '@/lib/dates/tz';
 import { formatTZS } from '@/lib/money/format';
 import { ExpenseForm } from './ExpenseForm';
+import { formatDate } from '@/lib/dates/format';
 
 export const metadata = { title: 'Expenses' };
 
@@ -38,7 +39,7 @@ export default async function ExpensesPage() {
             <tbody>
               {expenses.rows.map((e, i) => (
                 <tr key={i} className="border-t border-border">
-                  <td className="py-1">{e.date}</td>
+                  <td className="py-1">{formatDate(e.date)}</td>
                   <td>{e.registration}</td>
                   <td>{e.category}{e.note ? ` · ${e.note}` : ''}</td>
                   <td className="text-right font-medium">{formatTZS(e.amount)}</td>

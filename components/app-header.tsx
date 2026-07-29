@@ -7,7 +7,13 @@ import { CustomSidebarTrigger } from '@/components/custom-sidebar-trigger';
 import { findActiveNavItem } from '@/components/app-shared';
 import { NavUser } from '@/components/nav-user';
 
-export function AppHeader({ ownerName }: { ownerName: string }) {
+export function AppHeader({
+  ownerName,
+  roleLabel,
+}: {
+  ownerName: string;
+  roleLabel?: string;
+}) {
   const pathname = usePathname();
   const activeItem = findActiveNavItem(pathname);
 
@@ -22,6 +28,11 @@ export function AppHeader({ ownerName }: { ownerName: string }) {
         <AppBreadcrumbs page={activeItem} />
       </div>
       <div className="flex items-center gap-3">
+        {roleLabel && (
+          <span className="hidden rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted-foreground sm:inline">
+            {roleLabel}
+          </span>
+        )}
         <NavUser name={ownerName} />
       </div>
     </header>

@@ -2,24 +2,22 @@ import Link from 'next/link';
 import { requireOwner } from '@/lib/auth/session';
 import { listContracts } from '@/lib/contracts/queries';
 import { formatTZS } from '@/lib/money/format';
+import { formatDate } from '@/lib/dates/format';
+import { localDateString } from '@/lib/dates/tz';
+import {
+  deriveContractDisplayStatus,
+  CONTRACT_STATUS_LABELS,
+  CONTRACT_STATUS_TONE,
+} from '@/lib/contracts/status';
 
 export const metadata = { title: 'Contracts' };
-
-const STATUS_TONE: Record<string, string> = {
-  draft: 'bg-surface text-muted-foreground',
-  awaiting_signatures: 'bg-amber-50 text-[color:var(--color-warning)]',
-  scheduled: 'bg-blue-50 text-[color:var(--color-advance)]',
-  active: 'bg-surface text-[color:var(--color-paid)]',
-  paused: 'bg-amber-50 text-[color:var(--color-warning)]',
-  completed: 'bg-surface text-[color:var(--color-paid)]',
-  completed_early: 'bg-surface text-[color:var(--color-paid)]',
-  terminated: 'bg-red-50 text-[color:var(--color-overdue)]',
-  cancelled: 'bg-surface text-muted-foreground',
-};
 
 export default async function ContractsPage() {
   await requireOwner();
   const contracts = await listContracts();
+  // Status is DERIVED (build spec #8), so a lease whose end date has passed
+  // reads as completed here even before the nightly completion job runs.
+  const today = localDateString();
 
   return (
     <div className="flex flex-col gap-6">
@@ -54,11 +52,31 @@ export default async function ContractsPage() {
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {c.registration} · {formatTZS(c.installment_amount)}/installment
-                    {c.start_date && ` · ${c.start_date} → ${c.end_date}`}
+                    {c.start_date && ` · ${formatDate(c.start_date)} → ${formatDate(c.end_date)}`}
                   </span>
                 </div>
-                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_TONE[c.status]}`}>
-                  {c.status}
+                <span
+                  className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                    CONTRACT_STATUS_TONE[
+                      deriveContractDisplayStatus({
+                        status: c.status,
+                        startDate: c.start_date,
+                        endDate: c.end_date,
+                        today,
+                      })
+                    ]
+                  }`}
+                >
+                  {
+                    CONTRACT_STATUS_LABELS[
+                      deriveContractDisplayStatus({
+                        status: c.status,
+                        startDate: c.start_date,
+                        endDate: c.end_date,
+                        today,
+                      })
+                    ]
+                  }
                 </span>
               </Link>
             </li>

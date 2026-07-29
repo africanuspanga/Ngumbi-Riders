@@ -19,15 +19,26 @@ export function localDateString(instant: Date = new Date()): string {
   return parts;
 }
 
-/** Human-readable date + time in Dar es Salaam, e.g. "06 Jul 2026, 21:00". */
+/**
+ * Human-readable date + time in Dar es Salaam in the house format
+ * **DD/MM/YYYY HH:MM** (build spec #5), e.g. "29/07/2026 21:00".
+ *
+ * Kept here (rather than importing lib/dates/format) so this module stays the
+ * leaf of the date dependency graph — `format.ts` imports APP_TIMEZONE from it.
+ * `formatDateTime()` in lib/dates/format.ts is the general entry point; this
+ * one takes a Date and is what the pre-existing call sites use.
+ */
 export function formatLocalDateTime(instant: Date): string {
-  return new Intl.DateTimeFormat('en-GB', {
+  const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: APP_TIMEZONE,
     day: '2-digit',
-    month: 'short',
+    month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
-  }).format(instant);
+  }).formatToParts(instant);
+  const p: Record<string, string> = {};
+  for (const part of parts) p[part.type] = part.value;
+  return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
 }

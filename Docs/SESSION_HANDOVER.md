@@ -7,8 +7,34 @@
 > `Docs/HANDOVER.md`. This file tracks the live execution state.
 
 Everything below is **committed on `main`** and the working tree is clean.
-DB migrations `0019`–`0023` are **applied to the live database** and recorded
+DB migrations `0019`–`0025` are **applied to the live database** and recorded
 in `supabase_migrations.schema_migrations`.
+
+> **2026-07-29 — CLIENT-FEEDBACK BUILD (migrations `0024`+`0025`, applied
+> live; D-034).** Nine client-requested changes shipped in one pass:
+> **(1)** bulk payment-plan generator (start+end+amount+frequency → whole
+> schedule, rows individually excludable/re-datable/re-priceable, stored as
+> `contracts.payment_plan` and replayed at activation);
+> **(2)** rider directory with search / 8 sorts / 7+ filters / card+table views
+> (preference in a cookie, read server-side);
+> **(3)** full rider profile + private-bucket profile pictures, one shape for
+> owner / accountant / rider;
+> **(4)** the **accountant role** — permission matrix, `requirePermission()`
+> everywhere, RLS via `is_accountant()`/`is_staff()`, owner-managed at
+> `/owner/staff`, area at `/accountant/*`;
+> **(5)** DD/MM/YYYY everywhere via `lib/dates/format.ts`;
+> **(6)** all **31** Tanzania regions (the 5 Zanzibar ones were missing
+> entirely) + 11 absent districts;
+> **(7)** motorcycle → rider location inheritance with a `location_source`
+> provenance flag (the real bug: `ManualRiderForm` never had dropdowns);
+> **(8)** automatic contract completion (nightly job + DERIVED
+> "Contract Ended — Outstanding Balance"); backfill closed Daud's `NGR-C-0011`;
+> **(9)** flexible durations (years/months/weeks/days or an exact end date).
+>
+> Verified: **308 unit tests**, typecheck, lint, `npm run build`, a **31/31
+> live RBAC probe**, and a **rollback-only money dry run** proving per-row plan
+> amounts reach `payment_obligations`. Transferable lessons in
+> `Docs/SAAS_PLAN.md` §18.
 
 > **2026-07-18 — PRODUCTION-READINESS REVIEW DONE (commit `cd9341b`).** A
 > 9-lens full-codebase audit fixed 30+ bugs. Highlights: the obligation-status
@@ -115,10 +141,15 @@ The user is working through the 21-item spec in their **priority order**
   **dry-run** proving a monthly obligation settles → `paid_in_advance` +
   receipt (the DB-level money test 0019 lacked). Throwaway Management-API SQL
   helper for such dry-runs: `/tmp/ngr-sql.mjs`.
-- **NEXT: #10 accountant role + RBAC/RLS** → unblocks **#11** motorcycle procurement
-  workflow (owner approve → accountant invoice → owner pays + proof → accountant
-  receipt → contract-ready). #11 needs a `motorcycle_requests`-style concept and
-  the accountant role first.
+- **✅ DONE #10 accountant role + RBAC/RLS (2026-07-29, migrations 0024/0025).**
+  Permission matrix in `lib/auth/roles.ts`, `requirePermission()` in every
+  privileged action, RLS via `is_accountant()`/`is_staff()`, owner management at
+  `/owner/staff`, accountant area at `/accountant/*`. Verified live 31/31.
+  This **unblocks #11** motorcycle procurement (owner approve → accountant
+  invoice → owner pays + proof → accountant receipt → contract-ready), which
+  still needs a `motorcycle_requests`-style concept.
+- **✅ DONE #15 duration units** — years/months/weeks/days or an exact end date
+  (`lib/contracts/duration.ts`). `duration_months` is now the months COMPONENT.
 - **#9/#18** contract PDF storage/download + template (a sample contract PDF is
   at `/Users/admin/Downloads/09. MKATABA-JACKSON FESTO MAGOHA.pdf`).
 - **#14** phone financing (repayment phases), **#15** duration units

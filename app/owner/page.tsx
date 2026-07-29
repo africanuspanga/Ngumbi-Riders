@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/table';
 import { CollectionsChart } from '@/components/owner/collections-chart';
 import { TriangleAlertIcon, ArrowRightIcon } from 'lucide-react';
+import { formatDate } from '@/lib/dates/format';
 
 export const metadata = { title: 'Dashboard' };
 
@@ -164,7 +165,7 @@ export default async function OwnerHome() {
                       <Link href={`/owner/contracts/${c.id}`} className="truncate font-medium hover:underline">
                         {c.number} · {c.rider}
                       </Link>
-                      <span className="text-muted-foreground shrink-0 text-xs">{c.endDate}</span>
+                      <span className="text-muted-foreground shrink-0 text-xs">{formatDate(c.endDate)}</span>
                     </li>
                   ))}
                 </ul>

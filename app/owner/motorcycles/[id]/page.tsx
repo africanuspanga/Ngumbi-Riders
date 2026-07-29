@@ -4,6 +4,7 @@ import { requireOwner } from '@/lib/auth/session';
 import { getMotorcycle } from '@/lib/motorcycles/queries';
 import { formatTZS } from '@/lib/money/format';
 import { RegistrationForm } from './RegistrationForm';
+import { formatDate } from '@/lib/dates/format';
 
 export const metadata = { title: 'Motorcycle' };
 
@@ -85,7 +86,7 @@ export default async function MotorcycleDetailPage({
                   {a.rider_name} ({a.rider_number})
                 </span>
                 <span className="text-right text-muted-foreground">
-                  {a.start_date} → {a.end_date ?? 'active'}
+                  {formatDate(a.start_date)} → {a.end_date ? formatDate(a.end_date) : 'active'}
                   {a.transfer_reason && ` · ${a.transfer_reason}`}
                 </span>
               </li>

@@ -7,10 +7,14 @@ import { createServerSupabase } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit/audit';
 import { localDateString, formatLocalDateTime } from '@/lib/dates/tz';
+import { generateSchedule } from '@/lib/obligations/schedule';
 import {
-  generateSchedule,
-  contractEndDate,
-} from '@/lib/obligations/schedule';
+  contractEndDateFor,
+  monthlyInstalmentCount,
+  normalizeDuration,
+  DurationError,
+} from '@/lib/contracts/duration';
+import { normalizePlan, planToObligations, validatePlan, type PlanEntry } from '@/lib/obligations/plan';
 import { renderContractPdf } from './pdf';
 import { contractBuilderSchema } from './validation';
 import type { ContractStatus, ScheduleType } from '@/lib/supabase/types';
@@ -61,13 +65,33 @@ export async function createContract(
         : [];
   const dueDayOfMonth = d.scheduleType === 'monthly' ? d.dueDayOfMonth! : null;
 
-  const endDate = contractEndDate({
-    scheduleType: d.scheduleType,
-    startDate: d.startDate,
-    durationMonths: d.durationMonths,
-    dueDayOfMonth: dueDayOfMonth ?? undefined,
-    deadlineTime: d.paymentDeadlineTime,
+  // Flexible term (#9): years/months/weeks/days, or the owner's exact end date.
+  const duration = normalizeDuration({
+    years: d.durationYears,
+    months: d.durationMonths,
+    weeks: d.durationWeeks,
+    days: d.durationDays,
   });
+  let endDate: string;
+  try {
+    endDate = contractEndDateFor({
+      startDate: d.startDate,
+      duration,
+      exactEndDate: d.endDateMode === 'exact' ? d.exactEndDate : null,
+    });
+  } catch (e) {
+    return { ok: false, error: e instanceof DurationError ? 'invalid_duration' : 'invalid_duration' };
+  }
+
+  // Owner-edited payment plan (#1). Re-validated here against the contract term
+  // — the client's dates and amounts are never trusted (spec rule 3).
+  let plan: PlanEntry[] | null = null;
+  if (d.paymentPlan?.length) {
+    const check = validatePlan(d.paymentPlan as PlanEntry[], { startDate: d.startDate, endDate });
+    if (!check.ok) return { ok: false, error: check.error };
+    plan = check.entries;
+  }
+
   const admin = createAdminClient();
 
   // The motorcycle must be leasable for THIS rider (never trust the client's
@@ -109,13 +133,22 @@ export async function createContract(
     ownership_transfer_notes: d.ownershipTransferNotes || null,
     start_date: d.startDate,
     end_date: endDate,
-    duration_months: d.durationMonths,
+    duration_months: duration.months,
+    duration_years: duration.years,
+    duration_weeks: duration.weeks,
+    duration_days: duration.days,
+    end_date_source: d.endDateMode,
     schedule_type: d.scheduleType,
     selected_weekdays: selectedWeekdays,
     due_day_of_month: dueDayOfMonth,
     installment_amount: d.installmentAmount,
     payment_deadline_time: d.paymentDeadlineTime,
     special_terms: d.specialTerms || null,
+    // The generated/edited plan (#1). NULL keeps the cadence-derived behaviour.
+    payment_plan: plan ? plan.map((p) => ({ dueDate: p.dueDate, amount: p.amount })) : null,
+    payment_frequency:
+      d.scheduleType === 'selected_weekdays' ? 'custom' : d.scheduleType,
+    payment_plan_generated_at: plan ? new Date().toISOString() : null,
     template_version: 1,
     status: 'draft' as const,
     current_version: 1,
@@ -249,7 +282,7 @@ export async function activateContract(
 
   const { data: c } = await supabase
     .from('contracts')
-    .select('id, rider_id, motorcycle_id, start_date, end_date, schedule_type, selected_weekdays, due_day_of_month, duration_months, payment_deadline_time, installment_amount, assignment_id')
+    .select('id, rider_id, motorcycle_id, start_date, end_date, schedule_type, selected_weekdays, due_day_of_month, duration_months, duration_years, duration_weeks, duration_days, payment_plan, payment_deadline_time, installment_amount, assignment_id')
     .eq('id', contractId)
     .maybeSingle();
   if (!c) return { ok: false, error: 'not_found' };
@@ -262,33 +295,76 @@ export async function activateContract(
     selected_weekdays: number[];
     due_day_of_month: number | null;
     duration_months: number | null;
+    duration_years: number | null;
+    duration_weeks: number | null;
+    duration_days: number | null;
+    payment_plan: { dueDate: string; amount: number }[] | null;
     payment_deadline_time: string;
     installment_amount: number;
     assignment_id: string | null;
   };
   if (!row.start_date || !row.end_date) return { ok: false, error: 'missing_dates' };
-  if (row.schedule_type === 'monthly' && !row.duration_months) {
-    return { ok: false, error: 'invalid_schedule' };
+
+  const deadline = String(row.payment_deadline_time).slice(0, 5);
+  let obligations;
+
+  if (Array.isArray(row.payment_plan) && row.payment_plan.length > 0) {
+    // An explicit owner-approved plan (#1) wins: the owner may have excluded
+    // days or changed individual amounts, so it no longer matches any cadence.
+    // Re-validated against the stored term even though it was validated at
+    // creation — the contract's dates could have been edited since.
+    const entries: PlanEntry[] = row.payment_plan.map((p) => ({
+      dueDate: p.dueDate,
+      amount: p.amount,
+      included: true,
+    }));
+    const check = validatePlan(entries, { startDate: row.start_date, endDate: row.end_date });
+    if (!check.ok) return { ok: false, error: 'invalid_schedule' };
+    obligations = planToObligations(normalizePlan(check.entries), deadline);
+  } else {
+    // No stored plan → derive the calendar from the cadence, as before.
+    const monthlyCount =
+      row.schedule_type === 'monthly'
+        ? monthlyInstalmentCount({
+            startDate: row.start_date,
+            endDate: row.end_date,
+            duration: normalizeDuration({
+              years: row.duration_years,
+              months: row.duration_months,
+              weeks: row.duration_weeks,
+              days: row.duration_days,
+            }),
+            dueDayOfMonth: row.due_day_of_month ?? 1,
+          })
+        : undefined;
+    if (row.schedule_type === 'monthly' && !monthlyCount) {
+      return { ok: false, error: 'invalid_schedule' };
+    }
+    try {
+      obligations = generateSchedule({
+        startDate: row.start_date,
+        endDate: row.end_date,
+        scheduleType: row.schedule_type,
+        selectedWeekdays: row.selected_weekdays,
+        dueDayOfMonth: row.due_day_of_month ?? undefined,
+        monthlyCount,
+        deadlineTime: deadline,
+      }).map((o) => ({
+        dueDate: o.dueDate,
+        dueAtUtc: o.dueAtUtc,
+        localDueTime: o.localDueTime,
+      }));
+    } catch {
+      return { ok: false, error: 'invalid_schedule' };
+    }
   }
 
-  let obligations;
-  try {
-    obligations = generateSchedule({
-      startDate: row.start_date,
-      endDate: row.end_date,
-      scheduleType: row.schedule_type,
-      selectedWeekdays: row.selected_weekdays,
-      dueDayOfMonth: row.due_day_of_month ?? undefined,
-      monthlyCount: row.duration_months ?? undefined,
-      deadlineTime: String(row.payment_deadline_time).slice(0, 5),
-    }).map((o) => ({
-      dueDate: o.dueDate,
-      dueAtUtc: o.dueAtUtc,
-      localDueTime: o.localDueTime,
-    }));
-  } catch {
-    return { ok: false, error: 'invalid_schedule' };
-  }
+  // Nothing may be scheduled beyond the contract's end date (#8) — a stale
+  // plan or a shortened term must never keep billing after the lease is over.
+  obligations = obligations.filter(
+    (o) => o.dueDate >= row.start_date! && o.dueDate <= row.end_date!,
+  );
+  if (obligations.length === 0) return { ok: false, error: 'invalid_schedule' };
 
   // Ensure the contract points at an active assignment for this rider+moto.
   const admin = createAdminClient();

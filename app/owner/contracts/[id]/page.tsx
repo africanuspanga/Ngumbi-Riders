@@ -4,6 +4,14 @@ import { requireOwner } from '@/lib/auth/session';
 import { getContract } from '@/lib/contracts/queries';
 import { formatTZS } from '@/lib/money/format';
 import { scheduleLabel } from '@/lib/contracts/validation';
+import { formatDate } from '@/lib/dates/format';
+import { localDateString } from '@/lib/dates/tz';
+import {
+  deriveContractDisplayStatus,
+  CONTRACT_STATUS_LABELS,
+  CONTRACT_STATUS_TONE,
+} from '@/lib/contracts/status';
+import { formatDuration, normalizeDuration } from '@/lib/contracts/duration';
 import {
   SignatureCapture,
   PhysicalUpload,
@@ -31,6 +39,26 @@ export default async function ContractDetailPage({
     ((hasOwnerSig && hasRiderSig) || c.hasSignedDocument);
   const preActivation = c.status === 'draft' || c.status === 'awaiting_signatures' || c.status === 'scheduled';
 
+  // Derived status (#8): a term that has ended reads as completed here without
+  // waiting for the nightly job, and a finished contract with unpaid days is
+  // never shown as settled.
+  const outstandingCount = c.obligationStats.outstanding;
+  const displayStatus = deriveContractDisplayStatus({
+    status: c.status,
+    startDate: c.start_date,
+    endDate: c.end_date,
+    outstandingCount,
+    today: localDateString(),
+  });
+  const durationLabel = formatDuration(
+    normalizeDuration({
+      years: c.duration_years,
+      months: c.duration_months,
+      weeks: c.duration_weeks,
+      days: c.duration_days,
+    }),
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -46,18 +74,28 @@ export default async function ContractDetailPage({
             {c.rider_name} ({c.rider_number}) · {c.registration}
           </p>
         </div>
-        <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
-          {c.status}
+        <span
+          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${CONTRACT_STATUS_TONE[displayStatus]}`}
+        >
+          {CONTRACT_STATUS_LABELS[displayStatus]}
         </span>
       </header>
+
+      {displayStatus === 'ended_outstanding' && (
+        <p className="rounded-[--radius-card] border border-[color:var(--color-overdue)] bg-red-50 p-3 text-sm font-semibold text-[color:var(--color-overdue)]">
+          This contract has reached its end date but {outstandingCount} payment(s) are still unpaid.
+          It is not settled.
+        </p>
+      )}
 
       <Section title="Terms">
         <Grid>
           <Info label="Installment" value={formatTZS(c.installment_amount)} />
           <Info label="Deadline" value={c.payment_deadline_time} />
-          <Info label="Start" value={c.start_date} />
-          <Info label="End" value={c.end_date} />
-          <Info label="Duration" value={c.duration_months ? `${c.duration_months} months` : null} />
+          <Info label="Start" value={formatDate(c.start_date)} />
+          <Info label="End" value={formatDate(c.end_date)} />
+          <Info label="Duration" value={durationLabel} />
+          <Info label="End date set by" value={c.end_date_source === 'exact' ? 'Exact date' : 'Duration'} />
           <Info
             label="Schedule"
             value={scheduleLabel(c.schedule_type, c.selected_weekdays, c.due_day_of_month)}

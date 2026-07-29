@@ -19,8 +19,8 @@
   "login": {
     "title": "Sign in",
     "heading": "Login to your account",
-    "ownerTitle": "Sign in — Owner",
-    "ownerHeading": "Owner sign in",
+    "ownerTitle": "Sign in — Staff",
+    "ownerHeading": "Owner or accountant sign in",
     "riderTab": "Rider",
     "ownerTab": "Owner",
     "phone": "Phone number",
@@ -30,12 +30,13 @@
     "submit": "Sign in",
     "pending": "Signing in…",
     "forgotPin": "Forgot your PIN? Contact the owner.",
-    "ownerLink": "Are you the owner? Sign in here",
+    "ownerLink": "Are you the owner or accountant? Sign in here",
     "riderLink": "Rider sign in",
     "invalidCredentials": "Phone number or PIN is incorrect.",
     "locked": "Account temporarily locked. Please try again later.",
     "tooManyAttempts": "Too many attempts. Wait 30 minutes.",
-    "network": "Could not reach the server. Check your connection and try again."
+    "network": "Could not reach the server. Check your connection and try again.",
+    "accountDisabled": "Your account has been deactivated. Contact the owner."
   },
   "pin": {
     "changeTitle": "Change PIN",

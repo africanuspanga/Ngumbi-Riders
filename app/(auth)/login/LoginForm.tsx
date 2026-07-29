@@ -39,6 +39,10 @@ export function LoginForm({ mode, next }: { mode: Mode; next?: string }) {
 
       if (!res.ok) {
         if (data?.error === 'locked') setError(t('locked'));
+        // A deactivated accountant must be told WHY, not left retrying a
+        // password that is in fact correct (spec #10 — the owner can withdraw
+        // access at any time).
+        else if (data?.error === 'account_disabled') setError(t('accountDisabled'));
         else if (!data) setError(t('network'));
         else setError(t('invalidCredentials'));
         return;

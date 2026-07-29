@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { SettingsIcon, LogOutIcon } from 'lucide-react';
+import { SettingsIcon, LogOutIcon, UserIcon } from 'lucide-react';
 
 export function RiderHeader() {
   const router = useRouter();
@@ -28,6 +28,16 @@ export function RiderHeader() {
           <span className="font-semibold text-primary-dark">Ng&rsquo;umbi Riders</span>
         </Link>
         <div className="flex items-center gap-1">
+          {/* The rider's own profile (build spec #3). Kept in the header rather
+              than the 5-tab bottom bar, which is already at its thumb-reach
+              limit on a low-cost Android screen. */}
+          <Link
+            href="/rider/profile"
+            aria-label="Wasifu wangu"
+            className="flex size-11 items-center justify-center rounded-full text-muted-foreground hover:bg-surface"
+          >
+            <UserIcon className="size-5" />
+          </Link>
           <Link
             href="/rider/settings/pin"
             aria-label="Mipangilio ya PIN"

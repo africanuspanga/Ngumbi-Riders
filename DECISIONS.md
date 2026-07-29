@@ -5,6 +5,48 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-034 · Roles get a permission matrix + live probe; derived money state is never stored (2026-07-29)
+
+The client-feedback build added the **accountant** role (migrations 0024/0025),
+the first real RBAC in this codebase. Four decisions were taken and now bind:
+
+1. **Permission model, not role checks scattered in pages.** `lib/auth/roles.ts`
+   is a pure, unit-tested role→permission table imported by both server and
+   client. Every privileged server action and route handler calls
+   `requirePermission()` / `checkPermission()`; layouts call
+   `requireOwner()` / `requireAccountant()`; RLS remains decisive. A hidden
+   button is explicitly NOT access control.
+2. **A new role ships with a live RBAC probe.** The accountant was verified
+   against the real database with 31 assertions: readable finance tables,
+   blocked sensitive tables (`rider_private_data`, `guarantors`,
+   `rider_applications`, `application_documents`, `payment_events`,
+   `audit_logs`, `login_attempts`, `import_batches`, `system_job_runs`),
+   no self-promotion, no direct `payments` INSERT, and instant loss of access
+   on deactivation. Without such a probe a role is an assumption.
+3. **Revocation is checked inside the RLS helper, not only at login.**
+   `profiles.is_active` is tested within `is_accountant()`, so deactivating an
+   accountant takes effect on the next QUERY rather than at token expiry.
+   The OWNER is deliberately exempt — locking the sole owner out would be
+   unrecoverable from inside the app.
+4. **Derived money state is computed, never persisted.** The client asked for a
+   "contract completed" status. `contract_status` keeps only the lifecycle the
+   owner drove; **"Contract Ended — Outstanding Balance" is derived at read
+   time** from the obligation ledger (`lib/contracts/status.ts`). Storing it
+   would create a second source of truth for money that goes stale the moment a
+   payment settles — the D-033 defect class. The nightly job therefore only
+   moves `active → completed` and asserts nothing about the balance. Corollary:
+   the derived status is also correct *between* the end date and the next cron
+   run, so a not-yet-fired job never shows a wrong answer.
+
+Two supporting rules from the same build: reference data encoded into
+identifiers (the Tanzania geo dataset behind motorcycle codes) is **append-only**
+— rows store region/district as text, so a rename orphans them; and
+**`npm run build` is part of the done-gate**, because `'use server'` files may
+export only async functions and that constraint is invisible to typecheck, lint
+and tests alike (the second build-only defect after the `proxyConfig` matcher).
+
+---
+
 ## D-033 · PostgREST's row cap and swallowed errors are treated as a bug CLASS (review 2026-07-18)
 A full production-readiness audit found the obligation-status cron had
 transitioned NOTHING for days while reporting success nightly: PostgREST caps

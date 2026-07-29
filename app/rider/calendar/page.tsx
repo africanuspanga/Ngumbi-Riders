@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireRider } from '@/lib/auth/session';
 import { getRiderCalendar } from '@/lib/dashboard/queries';
 import type { CalendarColor } from '@/lib/dashboard/rider';
+import { formatDate } from '@/lib/dates/format';
 
 export const metadata = { title: 'Kalenda' };
 
@@ -123,7 +124,7 @@ export default async function CalendarPage() {
                   return (
                     <div
                       key={date}
-                      title={`${d.date} · ${STATUS_LABEL[d.status] ?? d.status}`}
+                      title={`${formatDate(d.date)} · ${STATUS_LABEL[d.status] ?? d.status}`}
                       className={`flex aspect-square items-center justify-center rounded text-[10px] font-medium ${darkText ? 'text-foreground' : 'text-white'} ${DOT[d.color]}`}
                     >
                       {i + 1}

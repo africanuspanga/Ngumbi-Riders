@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isValidPhone } from '@/lib/auth/phone';
+import { isDistrictOfRegion, regionByName } from '@/lib/geo/tanzania';
 
 /*
  * Manual rider creation (spec §9.2). The owner adds an existing/new rider
@@ -37,8 +38,12 @@ export const manualRiderSchema = z.object({
   // bare .optional() enum rejects it with raw English zod text under a field
   // explicitly labelled optional (the createRiderManually action maps '' → null).
   gender: z.enum(['male', 'female']).optional().or(z.literal('')),
+  // The rider's PERSONAL/home location (#7). The motorcycle's OPERATIONAL
+  // location lives on the motorcycle record; the form copies it as a default
+  // and records which of the two this value came from.
   region: optionalText,
   district: optionalText,
+  locationSource: z.enum(['manual', 'motorcycle']).optional(),
   ward: optionalText,
   street: optionalText,
   fullAddress: z.string().trim().max(1000).optional().or(z.literal('')),
@@ -51,6 +56,26 @@ export const manualRiderSchema = z.object({
     .refine((v) => v === '' || !Number.isNaN(Date.parse(v)), { message: 'Invalid date' })
     .optional()
     .or(z.literal('')),
+});
+
+/*
+ * Region/district must be a real pair. Enforced HERE (so it runs server-side in
+ * createRiderManually too, not just in the dropdown) but tolerant of historical
+ * free-text values: a region the dataset does not know is left alone, because
+ * rows created before the dropdowns existed must stay editable. Only a
+ * recognised region with a district that does NOT belong to it is rejected —
+ * that combination can only come from a tampered request or a stale form.
+ */
+export const manualRiderSchemaWithGeo = manualRiderSchema.superRefine((v, ctx) => {
+  if (!v.region || !v.district) return;
+  if (!regionByName(v.region)) return; // legacy/unknown region — accept as typed
+  if (!isDistrictOfRegion(v.region, v.district)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['district'],
+      message: `${v.district} is not a district of ${v.region}`,
+    });
+  }
 });
 
 export type ManualRiderInput = z.infer<typeof manualRiderSchema>;

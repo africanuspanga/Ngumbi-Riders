@@ -15,6 +15,8 @@ import {
   UploadIcon,
   ActivityIcon,
   ScrollTextIcon,
+  UserCogIcon,
+  NotebookPenIcon,
 } from 'lucide-react';
 
 export type SidebarNavItem = {
@@ -69,10 +71,46 @@ export const navGroups: SidebarNavGroup[] = [
 export const footerNavLinks: SidebarNavItem[] = [
   { title: 'System health', path: '/owner/system', icon: <ActivityIcon /> },
   { title: 'Audit trail', path: '/owner/audit', icon: <ScrollTextIcon /> },
+  { title: 'Staff', path: '/owner/staff', icon: <UserCogIcon /> },
 ];
 
+/*
+ * Accountant-area navigation (build spec #10). Finance surfaces only — no
+ * applications, imports, announcements, system health or audit trail, and no
+ * rider/motorcycle/contract editing. Reports carries its own clear icon as the
+ * client asked. These links are a convenience: /accountant pages each call
+ * requireAccountant() and every action re-checks the permission server-side.
+ */
+export const accountantNavGroups: SidebarNavGroup[] = [
+  {
+    items: [{ title: 'Dashboard', path: '/accountant', icon: <LayoutGridIcon /> }],
+  },
+  {
+    label: 'Money',
+    items: [
+      { title: 'Reports', path: '/accountant/reports', icon: <BarChart3Icon /> },
+      { title: 'Payments', path: '/accountant/payments', icon: <BanknoteIcon /> },
+      { title: 'Record payment', path: '/accountant/payments/cash', icon: <ReceiptIcon /> },
+      { title: 'Outstanding', path: '/accountant/outstanding', icon: <ScaleIcon /> },
+    ],
+  },
+  {
+    label: 'Records',
+    items: [
+      { title: 'Riders', path: '/accountant/riders', icon: <UsersIcon /> },
+      { title: 'Motorcycles', path: '/accountant/motorcycles', icon: <BikeIcon /> },
+      { title: 'Contracts', path: '/accountant/contracts', icon: <FileTextIcon /> },
+      { title: 'Notes', path: '/accountant/notes', icon: <NotebookPenIcon /> },
+    ],
+  },
+];
+
+export const accountantFooterNavLinks: SidebarNavItem[] = [];
+
 const allItems: SidebarNavItem[] = [
-  ...navGroups.flatMap((g) => g.items.flatMap((i) => (i.subItems?.length ? [i, ...i.subItems] : [i]))),
+  ...[...navGroups, ...accountantNavGroups].flatMap((g) =>
+    g.items.flatMap((i) => (i.subItems?.length ? [i, ...i.subItems] : [i])),
+  ),
   ...footerNavLinks,
 ];
 
