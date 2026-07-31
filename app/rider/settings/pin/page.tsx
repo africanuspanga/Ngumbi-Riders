@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSessionProfile } from '@/lib/auth/session';
+import { homePathFor } from '@/lib/auth/roles';
 import { ChangePinForm } from './ChangePinForm';
 
 export default async function ChangePinPage({
@@ -10,7 +11,7 @@ export default async function ChangePinPage({
   const { forced } = await searchParams;
   const profile = await getSessionProfile();
   if (!profile) redirect('/login?next=/rider/settings/pin');
-  if (profile.role !== 'rider') redirect('/owner');
+  if (profile.role !== 'rider') redirect(homePathFor(profile.role));
 
   return (
     <div className="flex flex-col gap-4">

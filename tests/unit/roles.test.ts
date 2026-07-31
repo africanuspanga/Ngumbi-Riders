@@ -102,3 +102,32 @@ describe('role permission matrix (spec #10)', () => {
     expect(isStaffRole(null)).toBe(false);
   });
 });
+
+/*
+ * Regression: the ERR_TOO_MANY_REDIRECTS loop an accountant hit on the live
+ * site (31/07/2026). app/owner/layout.tsx bounced "not owner" to /rider and
+ * app/rider/layout.tsx bounced "not rider" to /owner, so an accountant who
+ * landed on /owner ping-ponged between the two forever. Both now route through
+ * homePathFor, and this locks the invariant that makes a cycle impossible:
+ * the home a role is sent to must be a path that same role may STAY on.
+ */
+describe('role home paths cannot loop', () => {
+  const ROLES = ['owner', 'accountant', 'rider'] as const;
+
+  it.each(ROLES)('%s can remain on its own home path', (role) => {
+    expect(canAccessPath(role, homePathFor(role))).toBe(true);
+  });
+
+  it('gives every role a distinct home', () => {
+    const homes = ROLES.map(homePathFor);
+    expect(new Set(homes).size).toBe(ROLES.length);
+  });
+
+  it('sends a signed-out/unknown role to a public page, not a gated area', () => {
+    // '/login' is outside /owner, /accountant and /rider, so it can never
+    // redirect back and restart the cycle.
+    const home = homePathFor(null);
+    expect(ROLES.some((r) => canAccessPath(r, home))).toBe(false);
+    expect(home).toBe('/login');
+  });
+});

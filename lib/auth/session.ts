@@ -71,7 +71,8 @@ export async function getSessionProfile(): Promise<SessionProfile | null> {
 
 export async function requireOwner(): Promise<SessionProfile> {
   const profile = await getSessionProfile();
-  if (!profile) redirect('/login?next=/owner');
+  // Staff use the email/password entrance; /login is the rider phone+PIN page.
+  if (!profile) redirect('/login/owner?next=/owner');
   if (profile.role !== 'owner') redirect(homePathFor(profile.role));
   return profile;
 }

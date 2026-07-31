@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSessionProfile } from '@/lib/auth/session';
+import { homePathFor } from '@/lib/auth/roles';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { RiderHeader } from '@/components/rider/rider-header';
 import { RiderNav } from '@/components/rider/rider-nav';
@@ -14,7 +15,9 @@ export default async function RiderLayout({
 }) {
   const profile = await getSessionProfile();
   if (!profile) redirect('/login?next=/rider');
-  if (profile.role !== 'rider') redirect('/owner');
+  // Their own area, via homePathFor — a hardcoded '/owner' sent an accountant
+  // into an infinite /owner ↔ /rider bounce (see app/owner/layout.tsx).
+  if (profile.role !== 'rider') redirect(homePathFor(profile.role));
 
   const supabase = await createServerSupabase();
 
