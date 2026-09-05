@@ -26,6 +26,10 @@ const FORBIDDEN_FOR_ACCOUNTANT: Permission[] = [
   'audit.read',
   'system.read',
   'expenses.write',
+  // An accountant may ASK to buy motorcycles; approving the purchase is the
+  // Managing Director's decision alone, so they can never approve their own
+  // request (client feedback 2026-09-05).
+  'requisitions.decide',
 ];
 
 describe('role permission matrix (spec #10)', () => {
@@ -50,6 +54,8 @@ describe('role permission matrix (spec #10)', () => {
       'notes.read',
       'notes.write',
       'exemptions.read',
+      'requisitions.read',
+      'requisitions.write',
     ];
     for (const p of allowed) expect(can('accountant', p), p).toBe(true);
   });
@@ -58,6 +64,16 @@ describe('role permission matrix (spec #10)', () => {
     for (const p of FORBIDDEN_FOR_ACCOUNTANT) {
       expect(can('accountant', p), p).toBe(false);
     }
+  });
+
+  it('separates raising a purchase request from approving one', () => {
+    // The whole point of the requisition workflow: the person who asks is
+    // never the person who authorises.
+    expect(can('accountant', 'requisitions.write')).toBe(true);
+    expect(can('accountant', 'requisitions.decide')).toBe(false);
+    expect(can('owner', 'requisitions.decide')).toBe(true);
+    expect(can('rider', 'requisitions.read')).toBe(false);
+    expect(can('rider', 'requisitions.write')).toBe(false);
   });
 
   it('gives riders no back-office permission at all', () => {

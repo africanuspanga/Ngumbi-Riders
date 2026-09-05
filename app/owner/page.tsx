@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireOwner } from '@/lib/auth/session';
 import { getOwnerDashboard, getCollectionsSeries, getRiderBalances } from '@/lib/dashboard/queries';
 import { listCashRequests } from '@/lib/payments/queries';
+import { listRequisitionsForDashboard } from '@/lib/requisitions/queries';
 import { formatTZS } from '@/lib/money/format';
 import {
   Card,
@@ -23,18 +24,24 @@ import {
 import { CollectionsChart } from '@/components/owner/collections-chart';
 import { BalanceChart } from '@/components/owner/balance-chart';
 import { LiveClock, formatClockDate, formatClockTime } from '@/components/owner/live-clock';
-import { TriangleAlertIcon, ArrowRightIcon, BanknoteIcon } from 'lucide-react';
+import {
+  TriangleAlertIcon,
+  ArrowRightIcon,
+  BanknoteIcon,
+  ClipboardCheckIcon,
+} from 'lucide-react';
 import { formatDate } from '@/lib/dates/format';
 
 export const metadata = { title: 'Dashboard' };
 
 export default async function OwnerHome() {
   const profile = await requireOwner();
-  const [d, series, balances, pendingCash] = await Promise.all([
+  const [d, series, balances, pendingCash, pendingRequisitions] = await Promise.all([
     getOwnerDashboard(),
     getCollectionsSeries(14),
     getRiderBalances(12),
     listCashRequests(['pending']),
+    listRequisitionsForDashboard({ statuses: ['submitted'] }),
   ]);
   const rate = d.kpis.collectionRate === null ? '—' : `${Math.round(d.kpis.collectionRate * 100)}%`;
   // Rendered on the server for the first paint; LiveClock takes over on mount.
@@ -66,6 +73,23 @@ export default async function OwnerHome() {
             {pendingCash.length} cash payment{pendingCash.length === 1 ? '' : 's'} awaiting your
             confirmation ·{' '}
             {formatTZS(pendingCash.reduce((s, r) => s + r.amount, 0))}
+          </span>
+          <span className="flex shrink-0 items-center gap-1 font-semibold">
+            Review <ArrowRightIcon className="size-3.5" />
+          </span>
+        </Link>
+      )}
+
+      {pendingRequisitions.length > 0 && (
+        <Link
+          href="/owner/requisitions"
+          className="flex items-center justify-between gap-3 rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 px-4 py-3 text-sm text-amber-900 hover:bg-amber-100"
+        >
+          <span className="flex items-center gap-2 font-medium">
+            <ClipboardCheckIcon className="size-4 shrink-0" />
+            {pendingRequisitions.length} purchase request
+            {pendingRequisitions.length === 1 ? '' : 's'} awaiting your approval ·{' '}
+            {formatTZS(pendingRequisitions.reduce((s, r) => s + r.total, 0))}
           </span>
           <span className="flex shrink-0 items-center gap-1 font-semibold">
             Review <ArrowRightIcon className="size-3.5" />

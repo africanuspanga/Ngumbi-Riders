@@ -1692,6 +1692,91 @@ export type Database = {
           },
         ]
       }
+      purchase_requisitions: {
+        Row: {
+          approver_id: string | null
+          created_at: string
+          currency: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          department: string
+          description: string | null
+          fiscal_year: number
+          id: string
+          payment_information: string | null
+          request_date: string
+          requested_by: string
+          requisition_number: string
+          status: Database["public"]["Enums"]["requisition_status"]
+          submitted_at: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approver_id?: string | null
+          created_at?: string
+          currency?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          department: string
+          description?: string | null
+          fiscal_year: number
+          id?: string
+          payment_information?: string | null
+          request_date: string
+          requested_by: string
+          requisition_number: string
+          status?: Database["public"]["Enums"]["requisition_status"]
+          submitted_at?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          approver_id?: string | null
+          created_at?: string
+          currency?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          department?: string
+          description?: string | null
+          fiscal_year?: number
+          id?: string
+          payment_information?: string | null
+          request_date?: string
+          requested_by?: string
+          requisition_number?: string
+          status?: Database["public"]["Enums"]["requisition_status"]
+          submitted_at?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_requisitions_approver_id_fkey"
+            columns: ["approver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requisitions_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requisitions_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_subscriptions: {
         Row: {
           auth: string
@@ -1779,6 +1864,104 @@ export type Database = {
             columns: ["payment_id"]
             isOneToOne: true
             referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      requisition_documents: {
+        Row: {
+          created_at: string
+          file_name: string
+          id: string
+          mime_type: string
+          requisition_id: string
+          sha256_hash: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          id?: string
+          mime_type: string
+          requisition_id: string
+          sha256_hash: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          id?: string
+          mime_type?: string
+          requisition_id?: string
+          sha256_hash?: string
+          size_bytes?: number
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requisition_documents_requisition_id_fkey"
+            columns: ["requisition_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requisitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisition_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      requisition_items: {
+        Row: {
+          budget_cover: string
+          category: string
+          created_at: string
+          description: string
+          id: string
+          position: number
+          quantity: number
+          requisition_id: string
+          unit: string
+          unit_price: number
+        }
+        Insert: {
+          budget_cover: string
+          category: string
+          created_at?: string
+          description: string
+          id?: string
+          position: number
+          quantity: number
+          requisition_id: string
+          unit: string
+          unit_price: number
+        }
+        Update: {
+          budget_cover?: string
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          position?: number
+          quantity?: number
+          requisition_id?: string
+          unit?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requisition_items_requisition_id_fkey"
+            columns: ["requisition_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requisitions"
             referencedColumns: ["id"]
           },
         ]
@@ -2221,6 +2404,12 @@ export type Database = {
         | "cancelled"
         | "reversed"
       phone_loan_status: "pending" | "active" | "completed" | "cancelled"
+      requisition_status:
+        | "draft"
+        | "submitted"
+        | "approved"
+        | "rejected"
+        | "cancelled"
       rider_status:
         | "onboarding"
         | "active"
@@ -2894,6 +3083,13 @@ export const Constants = {
         "reversed",
       ],
       phone_loan_status: ["pending", "active", "completed", "cancelled"],
+      requisition_status: [
+        "draft",
+        "submitted",
+        "approved",
+        "rejected",
+        "cancelled",
+      ],
       rider_status: [
         "onboarding",
         "active",

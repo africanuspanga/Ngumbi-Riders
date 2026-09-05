@@ -19,6 +19,7 @@ import {
   NotebookPenIcon,
   CheckCheckIcon,
   ListIcon,
+  ClipboardCheckIcon,
 } from 'lucide-react';
 
 export type SidebarNavItem = {
@@ -62,6 +63,7 @@ export const navGroups: SidebarNavGroup[] = [
           { title: 'All transactions', path: '/owner/payments/transactions', icon: <ListIcon /> },
         ],
       },
+      { title: 'Purchase requests', path: '/owner/requisitions', icon: <ClipboardCheckIcon /> },
       { title: 'Reconciliation', path: '/owner/reconciliation', icon: <ScaleIcon /> },
       { title: 'Expenses', path: '/owner/expenses', icon: <ReceiptIcon /> },
       { title: 'Reports', path: '/owner/reports', icon: <BarChart3Icon /> },
@@ -103,6 +105,7 @@ export const accountantNavGroups: SidebarNavGroup[] = [
       { title: 'Record payment', path: '/accountant/payments/cash', icon: <ReceiptIcon /> },
       { title: 'Awaiting confirmation', path: '/accountant/payments/approvals', icon: <CheckCheckIcon /> },
       { title: 'Outstanding', path: '/accountant/outstanding', icon: <ScaleIcon /> },
+      { title: 'Purchase requests', path: '/accountant/requisitions', icon: <ClipboardCheckIcon /> },
     ],
   },
   {

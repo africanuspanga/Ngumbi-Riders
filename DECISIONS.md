@@ -5,6 +5,50 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-036 · The person who asks to spend is never the person who authorises it (2026-09-05)
+
+Purchase requisitions (migration `0028`). The accountant raises a request to
+buy motorcycles, spare parts, fuel or anything else; the Managing Director
+approves or rejects it. Five decisions bind from here:
+
+1. **`requisitions.decide` is owner-only, by construction.** The accountant
+   holds `requisitions.write` and NOT `requisitions.decide`, so they cannot
+   approve their own request — the separation is in the permission matrix
+   (`lib/auth/roles.ts`, unit-tested), not in which button the UI renders.
+
+2. **A requisition is NOT ledger money.** It authorises a purchase; it never
+   creates a payment, an obligation or an allocation, and it does not touch
+   the rider payment tables at all. What it borrows from them is the
+   discipline: integer TZS, writes only through the service role after a
+   server-side permission check, and a decided record that cannot be altered.
+
+3. **No stored total.** A line's amount is `quantity × unit_price` and the
+   requisition total is the sum of its lines, both computed on read
+   (`lib/requisitions/compute.ts`). There is no `total_amount` column, so an
+   approved figure can never drift from the lines that produced it — D-034
+   rule 3 applied to procurement.
+
+4. **A decided request is frozen in the DATABASE, not just the app.** Triggers
+   in 0028 refuse any update to an approved/rejected/cancelled requisition,
+   refuse to delete anything past draft, and refuse to add or change lines and
+   documents unless the parent is still a draft. Without that, an accountant
+   could add a line to an already-approved request and the Director's approval
+   would silently cover money they never saw (spec rule 6).
+
+5. **Numbering is max-based, per month.** `REQ/YYYY/MM/NNNN` from the highest
+   number issued that month. A DRAFT can be deleted by its author, which is
+   exactly the failure mode that broke `count(*)+1` rider numbering after the
+   demo accounts were removed (see `lib/riders/numbering.ts`).
+
+Adaptations of the client's reference form to this business: **currency is TZS
+only** (spec rule 11), **GIF is not accepted** because the magic-byte sniffer
+every upload is validated with does not recognise it, and the per-file cap is
+**4 MiB not 10 MB** because Vercel rejects a larger body with an opaque 413
+(D-030). Departments, item categories, units and budget covers use this
+project's words — motorcycles, spare parts, fuel, phones, rider collections.
+
+---
+
 ## D-035 · Cash needs a decision, not a record; and derived money keeps being derived (2026-09-05)
 
 The second client-feedback build (migration `0026`). Six decisions bind from

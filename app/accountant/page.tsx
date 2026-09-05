@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { requireAccountant } from '@/lib/auth/session';
 import { getOwnerDashboard } from '@/lib/dashboard/queries';
+import { listRequisitionsForDashboard } from '@/lib/requisitions/queries';
+import { StatusBadge } from '@/components/requisitions/StatusBadge';
 import { formatTZS } from '@/lib/money/format';
 import { formatDate, formatDateTime } from '@/lib/dates/format';
 
@@ -12,8 +14,15 @@ export const metadata = { title: 'Accountant dashboard' };
  * system-administration entry points.
  */
 export default async function AccountantDashboard() {
-  await requireAccountant();
-  const d = await getOwnerDashboard();
+  const profile = await requireAccountant();
+  const [d, requisitions] = await Promise.all([
+    getOwnerDashboard(),
+    listRequisitionsForDashboard(
+      profile.role === 'owner'
+        ? { statuses: ['draft', 'submitted'], limit: 8 }
+        : { statuses: ['draft', 'submitted'], authorId: profile.userId, limit: 8 },
+    ),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -63,12 +72,49 @@ export default async function AccountantDashboard() {
         </Card>
       </section>
 
+      <Card
+        title="Purchase requests"
+        href="/accountant/requisitions"
+        cta="All requests"
+      >
+        {requisitions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Nothing open. Raise a request to ask the Managing Director to approve a
+            purchase.
+          </p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-border text-sm">
+            {requisitions.map((r) => (
+              <li key={r.id} className="flex items-center justify-between gap-3 py-2">
+                <Link
+                  href={`/accountant/requisitions/${r.id}`}
+                  className="min-w-0 flex-1 truncate underline"
+                >
+                  {r.title}
+                  <span className="text-muted-foreground block font-mono text-xs">
+                    {r.requisitionNumber}
+                  </span>
+                </Link>
+                <span className="font-semibold whitespace-nowrap">{formatTZS(r.total)}</span>
+                <StatusBadge status={r.status} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
       <section className="flex flex-wrap gap-2">
         <Link
           href="/accountant/payments/cash"
           className="rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
         >
           Record a payment
+        </Link>
+        <Link
+          href="/accountant/requisitions/new"
+          className="rounded-[--radius-card] border border-border bg-white px-4 py-2.5 font-semibold text-primary-dark hover:bg-surface"
+        >
+          New purchase request
         </Link>
         <Link
           href="/accountant/reports"

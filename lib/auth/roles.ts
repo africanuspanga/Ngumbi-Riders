@@ -32,6 +32,7 @@ export type Permission =
   | 'reports.read'
   | 'reports.export'
   | 'notes.read'
+  | 'requisitions.read'
   | 'applications.read'
   | 'incidents.read'
   | 'exemptions.read'
@@ -44,6 +45,8 @@ export type Permission =
   | 'contracts.write'
   | 'payments.record'
   | 'notes.write'
+  | 'requisitions.write'
+  | 'requisitions.decide'
   | 'expenses.write'
   | 'applications.write'
   | 'incidents.write'
@@ -74,11 +77,16 @@ const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   'reports.read',
   'reports.export',
   'notes.read',
+  'requisitions.read',
   'exemptions.read',
-  // The two things they may change: record an authorised manual payment, and
-  // add an internal financial note (append-only).
+  // The three things they may change: record an authorised manual payment, add
+  // an internal financial note (append-only), and raise a purchase requisition
+  // for the Managing Director to decide. Note what is NOT here:
+  // 'requisitions.decide' — an accountant may ask to buy motorcycles, never
+  // approve the purchase, not even their own request.
   'payments.record',
   'notes.write',
+  'requisitions.write',
 ] as const;
 
 const RIDER_PERMISSIONS: readonly Permission[] = [] as const;

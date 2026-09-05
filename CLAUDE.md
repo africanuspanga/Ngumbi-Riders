@@ -37,6 +37,41 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
 
+**🆕 PURCHASE REQUISITIONS (2026-09-05, migration `0028`, APPLIED LIVE; D-036).**
+The accountant can now ask the Managing Director to approve a purchase —
+new motorcycles, spare parts, fuel, phones, anything. Modelled on the client's
+reference form and on the 0026 cash-approval workflow: the accountant PREPARES,
+the Director DECIDES.
+
+- **Flow.** `/accountant/requisitions` → **New request** (`…/new`): request
+  number (auto `REQ/2026/09/0030`), date, title, description, department,
+  fiscal year, currency (TZS), payment information, then **request items**
+  (description · category · qty · UOM · unit price · amount · budget cover)
+  with a live total, **supporting documents** (≤10, PDF/JPG/PNG/WebP, 4 MiB
+  each), and the **Managing Director** to approve. **Save as draft** or
+  **Submit request**. The Director's queue is `/owner/requisitions`, where they
+  Approve (with an optional note) or Reject (reason required); the accountant
+  is notified either way and can withdraw a request while it is undecided.
+- **Separation of duties is in the permission matrix.** The accountant holds
+  `requisitions.write` and NOT `requisitions.decide`, so they can never approve
+  their own request. `requisitions.read` is staff-only; riders hold neither.
+- **Not ledger money.** A requisition authorises a purchase — it never creates
+  a payment, obligation or allocation, and touches none of the money tables.
+- **Nothing derived is stored.** Line amount = qty × unit price, total = sum of
+  lines, both computed on read (`lib/requisitions/compute.ts`). No total column
+  exists, so an approved figure cannot drift from its lines (D-034 rule 3).
+- **A decided request is frozen in the DB.** 0028 triggers refuse to update an
+  approved/rejected/cancelled requisition, to delete anything past draft, or to
+  add/change lines and documents unless the parent is still a draft.
+- Verified live: 3 tables + enum + private `requisition-documents` bucket, RLS
+  on all three, staff-read policies, **zero write grants to anon/authenticated**
+  (service role only), and a **rollback-only dry run** that priced a 2-line
+  request at 16,450,000 TZS and had **all 3 immutability guards fire**, with a
+  negative control proving the assertions actually ran. Types regenerated and
+  diffed against the live schema.
+
+Verified: **398 unit tests** (+22), typecheck ✅, lint ✅, `npm run build` ✅.
+
 **🆕 CLIENT-FEEDBACK BUILD #2 (2026-09-05, migrations `0026`+`0027`, APPLIED
 LIVE; D-035).** Nine more client-requested changes. Types regenerated from the
 live schema. Verified live: 2 new tables, 12 new columns, 5 new policies, the
@@ -531,6 +566,8 @@ app/accountant/      gated accountant area (spec #10) — dashboard, reports,
                      payments (+record), outstanding, riders, motorcycles,
                      contracts, notes
 app/owner/staff/     owner-only accountant account management
+app/accountant/requisitions/  purchase requests (raise, edit draft, submit)
+app/owner/requisitions/       Managing Director's approve / reject queue
 
 lib/env.ts           validated env (public vs server-only)
 lib/supabase/        client (browser) · server (SSR) · admin (service role, server-only) · proxy · types
@@ -539,6 +576,8 @@ lib/auth/            phone (E.164) · pin (validation) · pin-derive (HMAC, serv
                      provision (Admin API) · roles (permission matrix, pure)
 lib/staff/           accountant account create/activate/deactivate/reset (owner-only)
 lib/notes/           internal financial notes (append-only)
+lib/requisitions/    constants · compute (pure totals + status machine) ·
+                     numbering (REQ/YYYY/MM/NNNN) · validation · actions · queries
 lib/contracts/       actions · queries · validation · pdf · duration (#9) · status (#8)
 lib/obligations/     schedule (cadence engine) · plan (bulk generator, #1) · transitions
 lib/riders/          actions · queries · validation · numbering · directory (#2, pure) ·
@@ -547,7 +586,7 @@ lib/dates/           tz (timezone primitives) · format (DD/MM/YYYY, the shared 
 lib/security/        request (client IP)     lib/audit/  audit writer
 lib/money/ dates/ i18n/ validation/          domain utilities
 
-supabase/migrations/ 0001..0025 + seed.sql    supabase/config.toml
+supabase/migrations/ 0001..0028 + seed.sql    supabase/config.toml
 scripts/seed.ts      owner + demo rider seeding
 tests/unit/          phone, pin, lockout, money
 tests/integration/rls/ isolation suite (opt-in via RLS_TEST_ENABLED)
