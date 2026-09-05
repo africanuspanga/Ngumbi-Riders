@@ -37,6 +37,38 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
 
+**🆕 RIDER EDIT + DELETE, AND TWO LIVE DATA FIXES (2026-09-05, no migration).**
+The owner can now correct a rider's details (`/owner/riders/[id]/edit`, linked
+from the rider page and the riders table) and delete a rider outright.
+
+- **Changing a rider's phone RESETS THEIR PIN, by necessity.** The Supabase
+  password is `HMAC(pepper, canonical_phone + ':' + pin)`, so the number is
+  part of the credential — a new number makes the old PIN derive a different
+  password. The raw PIN is unrecoverable by design, so `updateRider` issues a
+  fresh temp PIN, forces a change at next login and shows it once. The form
+  warns BEFORE saving. If the auth update fails, the rider row's phone is
+  rolled back so record and login never disagree.
+- **Delete is two-step and refuses settled money.** The first click reports
+  what would be destroyed (contracts, payment days, payments, assignments);
+  only the second deletes. A rider with any completed payment or receipt
+  CANNOT be deleted (rule 6) — the UI explains this and points at
+  deactivation. Deletion order mirrors `scripts/demo-cleanup.ts`.
+- Identity numbers are written only when actually typed, so a blank licence
+  box cannot erase one on file.
+
+**Live data fixed the same day (owner-approved):**
+- **ALFREDY MSANGI (NGR-R-0020)** could not pay because his only contract
+  `NGR-C-0012` was activated on 18/08 at 13:25 and **terminated 3 minutes
+  later at 13:28** — `getRiderPayView` requires an `active` contract, so the
+  rider app showed him no Lipa Sasa at all while he still owed 20,000.
+  Reactivated (the 0026 reactivation path, replicated in SQL + audited):
+  status `active`, 20 cancelled weeks restored, due/overdue re-swept →
+  **4 overdue (40,000) + 18 scheduled (180,000)**. He can pay again.
+- **All 4 demo riders DELETED** via `npm run demo:cleanup` (Juma, Neema,
+  Baraka, Rehema "Mtihani" + their 4 DEMOCHS motorcycles, contract, 31
+  obligations, demo payment + receipt). Verified: 0 demo rows, **0 orphans**,
+  12 real riders remain. The live register is now real riders only.
+
 **🆕 PURCHASE REQUISITIONS (2026-09-05, migration `0028`, APPLIED LIVE; D-036).**
 The accountant can now ask the Managing Director to approve a purchase —
 new motorcycles, spare parts, fuel, phones, anything. Modelled on the client's
