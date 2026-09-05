@@ -10,15 +10,17 @@ Everything below is **committed on `main`** and the working tree is clean.
 DB migrations `0019`–`0025` are **applied to the live database** and recorded
 in `supabase_migrations.schema_migrations`.
 
-> **⚠ 2026-09-05 — CLIENT-FEEDBACK BUILD #2 (migration `0026`, NOT YET
-> APPLIED).** Nine client-reported items shipped in one pass. The code is
-> committed and verified (376 unit tests, typecheck, lint, `npm run build`), but
-> **migration `0026` must be applied to the live database BEFORE deploying** —
-> the new code reads columns and tables that do not exist yet (`payments.received_by`,
-> `payment_obligations.kind`, `contracts.daily_rate`, `cash_payment_requests`,
-> `phone_loans`, …). Order: apply 0026 → regenerate
-> `lib/supabase/types.gen.ts` → delete `lib/supabase/types.pending.ts` and its
-> re-export in `types.ts` → deploy.
+> **2026-09-05 — CLIENT-FEEDBACK BUILD #2 (migrations `0026`+`0027`, APPLIED
+> LIVE).** Nine client-reported items shipped in one pass; code committed and
+> verified (376 unit tests, typecheck, lint, `npm run build`), migrations
+> applied to the live DB and recorded in `schema_migrations`, and
+> `lib/supabase/types.gen.ts` regenerated from the live schema.
+> **`0027` closes a pre-existing hole found while verifying `0026`: every
+> `authenticated` user — every RIDER — held TRUNCATE on `payments`,
+> `payment_obligations`, `payment_allocations`, `receipts` and `audit_logs`.**
+> 0016 revoked INSERT/UPDATE/DELETE but not TRUNCATE, which ignores RLS
+> entirely. Now revoked on all money/audit/signed tables.
+> **▶ Deploy to Vercel is the remaining step.**
 >
 > What shipped: **(1)** live date/time top-right of the dashboard + a two-colour
 > stacked bar (green = owed now, red = remaining to finish);

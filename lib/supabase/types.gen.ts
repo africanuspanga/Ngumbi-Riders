@@ -227,6 +227,106 @@ export type Database = {
         }
         Relationships: []
       }
+      cash_payment_requests: {
+        Row: {
+          amount: number
+          contract_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          id: string
+          note: string | null
+          obligation_ids: string[]
+          payment_date: string
+          payment_id: string | null
+          received_by: string
+          requested_by: string
+          rider_id: string
+          status: Database["public"]["Enums"]["cash_request_status"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          contract_id: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: string
+          note?: string | null
+          obligation_ids: string[]
+          payment_date: string
+          payment_id?: string | null
+          received_by: string
+          requested_by: string
+          rider_id: string
+          status?: Database["public"]["Enums"]["cash_request_status"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          contract_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: string
+          note?: string | null
+          obligation_ids?: string[]
+          payment_date?: string
+          payment_id?: string | null
+          received_by?: string
+          requested_by?: string
+          rider_id?: string
+          status?: Database["public"]["Enums"]["cash_request_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_payment_requests_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_payment_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_payment_requests_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_payment_requests_received_by_fkey"
+            columns: ["received_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_payment_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_payment_requests_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_documents: {
         Row: {
           contract_id: string
@@ -437,6 +537,7 @@ export type Database = {
           created_at: string
           currency: string
           current_version: number
+          daily_rate: number | null
           due_day_of_month: number | null
           duration_days: number
           duration_months: number | null
@@ -446,13 +547,18 @@ export type Database = {
           end_date_source: string
           id: string
           installment_amount: number
+          last_edited_at: string | null
+          last_edited_by: string | null
+          lease_start_date: string | null
           motorcycle_id: string
           ownership_transfer_notes: string | null
           ownership_transfers: boolean
+          payment_days_target: number | null
           payment_deadline_time: string
           payment_frequency: string | null
           payment_plan: Json | null
           payment_plan_generated_at: string | null
+          phone_loan_id: string | null
           rider_id: string
           schedule_type: Database["public"]["Enums"]["schedule_type"]
           selected_weekdays: number[]
@@ -469,6 +575,7 @@ export type Database = {
           created_at?: string
           currency?: string
           current_version?: number
+          daily_rate?: number | null
           due_day_of_month?: number | null
           duration_days?: number
           duration_months?: number | null
@@ -478,13 +585,18 @@ export type Database = {
           end_date_source?: string
           id?: string
           installment_amount?: number
+          last_edited_at?: string | null
+          last_edited_by?: string | null
+          lease_start_date?: string | null
           motorcycle_id: string
           ownership_transfer_notes?: string | null
           ownership_transfers?: boolean
+          payment_days_target?: number | null
           payment_deadline_time?: string
           payment_frequency?: string | null
           payment_plan?: Json | null
           payment_plan_generated_at?: string | null
+          phone_loan_id?: string | null
           rider_id: string
           schedule_type?: Database["public"]["Enums"]["schedule_type"]
           selected_weekdays?: number[]
@@ -501,6 +613,7 @@ export type Database = {
           created_at?: string
           currency?: string
           current_version?: number
+          daily_rate?: number | null
           due_day_of_month?: number | null
           duration_days?: number
           duration_months?: number | null
@@ -510,13 +623,18 @@ export type Database = {
           end_date_source?: string
           id?: string
           installment_amount?: number
+          last_edited_at?: string | null
+          last_edited_by?: string | null
+          lease_start_date?: string | null
           motorcycle_id?: string
           ownership_transfer_notes?: string | null
           ownership_transfers?: boolean
+          payment_days_target?: number | null
           payment_deadline_time?: string
           payment_frequency?: string | null
           payment_plan?: Json | null
           payment_plan_generated_at?: string | null
+          phone_loan_id?: string | null
           rider_id?: string
           schedule_type?: Database["public"]["Enums"]["schedule_type"]
           selected_weekdays?: number[]
@@ -535,10 +653,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "contracts_last_edited_by_fkey"
+            columns: ["last_edited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "contracts_motorcycle_id_fkey"
             columns: ["motorcycle_id"]
             isOneToOne: false
             referencedRelation: "motorcycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_phone_loan_id_fkey"
+            columns: ["phone_loan_id"]
+            isOneToOne: false
+            referencedRelation: "phone_loans"
             referencedColumns: ["id"]
           },
           {
@@ -1229,9 +1361,11 @@ export type Database = {
           due_date: string
           exemption_id: string | null
           id: string
+          kind: Database["public"]["Enums"]["obligation_kind"]
           local_due_time: string
           motorcycle_id: string
           paid_in_advance_at: string | null
+          phone_loan_id: string | null
           rider_id: string
           settled_at: string | null
           status: Database["public"]["Enums"]["obligation_status"]
@@ -1246,9 +1380,11 @@ export type Database = {
           due_date: string
           exemption_id?: string | null
           id?: string
+          kind?: Database["public"]["Enums"]["obligation_kind"]
           local_due_time: string
           motorcycle_id: string
           paid_in_advance_at?: string | null
+          phone_loan_id?: string | null
           rider_id: string
           settled_at?: string | null
           status?: Database["public"]["Enums"]["obligation_status"]
@@ -1263,9 +1399,11 @@ export type Database = {
           due_date?: string
           exemption_id?: string | null
           id?: string
+          kind?: Database["public"]["Enums"]["obligation_kind"]
           local_due_time?: string
           motorcycle_id?: string
           paid_in_advance_at?: string | null
+          phone_loan_id?: string | null
           rider_id?: string
           settled_at?: string | null
           status?: Database["public"]["Enums"]["obligation_status"]
@@ -1291,6 +1429,13 @@ export type Database = {
             columns: ["motorcycle_id"]
             isOneToOne: false
             referencedRelation: "motorcycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_obligations_phone_loan_id_fkey"
+            columns: ["phone_loan_id"]
+            isOneToOne: false
+            referencedRelation: "phone_loans"
             referencedColumns: ["id"]
           },
           {
@@ -1354,8 +1499,10 @@ export type Database = {
           id: string
           idempotency_key: string
           method: Database["public"]["Enums"]["payment_method"]
+          note: string | null
           payer_phone: string | null
           provider_payment_id: string | null
+          received_by: string | null
           rider_id: string
           snippe_reference: string | null
           status: Database["public"]["Enums"]["payment_status"]
@@ -1370,8 +1517,10 @@ export type Database = {
           id?: string
           idempotency_key: string
           method: Database["public"]["Enums"]["payment_method"]
+          note?: string | null
           payer_phone?: string | null
           provider_payment_id?: string | null
+          received_by?: string | null
           rider_id: string
           snippe_reference?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
@@ -1386,8 +1535,10 @@ export type Database = {
           id?: string
           idempotency_key?: string
           method?: Database["public"]["Enums"]["payment_method"]
+          note?: string | null
           payer_phone?: string | null
           provider_payment_id?: string | null
+          received_by?: string | null
           rider_id?: string
           snippe_reference?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
@@ -1409,7 +1560,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payments_received_by_fkey"
+            columns: ["received_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "payments_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      phone_loans: {
+        Row: {
+          contract_id: string | null
+          created_at: string
+          created_by: string | null
+          device_description: string | null
+          id: string
+          interest_amount: number
+          interest_bps: number
+          principal: number
+          rider_id: string
+          status: Database["public"]["Enums"]["phone_loan_status"]
+          term_months: number
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          contract_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          device_description?: string | null
+          id?: string
+          interest_amount: number
+          interest_bps?: number
+          principal: number
+          rider_id: string
+          status?: Database["public"]["Enums"]["phone_loan_status"]
+          term_months: number
+          total_amount: number
+          updated_at?: string
+        }
+        Update: {
+          contract_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          device_description?: string | null
+          id?: string
+          interest_amount?: number
+          interest_bps?: number
+          principal?: number
+          rider_id?: string
+          status?: Database["public"]["Enums"]["phone_loan_status"]
+          term_months?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phone_loans_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phone_loans_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phone_loans_rider_id_fkey"
             columns: ["rider_id"]
             isOneToOne: false
             referencedRelation: "riders"
@@ -1576,6 +1804,7 @@ export type Database = {
           last_name: string
           middle_name: string | null
           nida_number_encrypted: string | null
+          phone_loan_amount: number | null
           previous_experience: string | null
           primary_phone: string
           reference: string
@@ -1586,6 +1815,7 @@ export type Database = {
           submitted_at: string | null
           updated_at: string
           voter_id_encrypted: string | null
+          wants_phone_loan: boolean
           ward: string | null
         }
         Insert: {
@@ -1608,6 +1838,7 @@ export type Database = {
           last_name: string
           middle_name?: string | null
           nida_number_encrypted?: string | null
+          phone_loan_amount?: number | null
           previous_experience?: string | null
           primary_phone: string
           reference: string
@@ -1618,6 +1849,7 @@ export type Database = {
           submitted_at?: string | null
           updated_at?: string
           voter_id_encrypted?: string | null
+          wants_phone_loan?: boolean
           ward?: string | null
         }
         Update: {
@@ -1640,6 +1872,7 @@ export type Database = {
           last_name?: string
           middle_name?: string | null
           nida_number_encrypted?: string | null
+          phone_loan_amount?: number | null
           previous_experience?: string | null
           primary_phone?: string
           reference?: string
@@ -1650,6 +1883,7 @@ export type Database = {
           submitted_at?: string | null
           updated_at?: string
           voter_id_encrypted?: string | null
+          wants_phone_loan?: boolean
           ward?: string | null
         }
         Relationships: [
@@ -1933,6 +2167,7 @@ export type Database = {
         | "waitlisted"
         | "withdrawn"
         | "converted_to_rider"
+      cash_request_status: "pending" | "approved" | "rejected" | "cancelled"
       contract_status:
         | "draft"
         | "awaiting_signatures"
@@ -1966,6 +2201,7 @@ export type Database = {
         | "rate_limited"
         | "unknown_phone"
       motorcycle_status: "available" | "assigned" | "inactive"
+      obligation_kind: "lease" | "phone_loan"
       obligation_status:
         | "scheduled"
         | "due"
@@ -1984,6 +2220,7 @@ export type Database = {
         | "expired"
         | "cancelled"
         | "reversed"
+      phone_loan_status: "pending" | "active" | "completed" | "cancelled"
       rider_status:
         | "onboarding"
         | "active"
@@ -2013,6 +2250,7 @@ export type Database = {
           public: boolean | null
           type: Database["storage"]["Enums"]["buckettype"]
           updated_at: string | null
+          versioning_status: string
         }
         Insert: {
           allowed_mime_types?: string[] | null
@@ -2026,6 +2264,7 @@ export type Database = {
           public?: boolean | null
           type?: Database["storage"]["Enums"]["buckettype"]
           updated_at?: string | null
+          versioning_status?: string
         }
         Update: {
           allowed_mime_types?: string[] | null
@@ -2039,6 +2278,7 @@ export type Database = {
           public?: boolean | null
           type?: Database["storage"]["Enums"]["buckettype"]
           updated_at?: string | null
+          versioning_status?: string
         }
         Relationships: []
       }
@@ -2116,9 +2356,12 @@ export type Database = {
       }
       objects: {
         Row: {
+          archived_at: string | null
           bucket_id: string | null
           created_at: string | null
           id: string
+          is_delete_marker: boolean
+          is_versioned: boolean
           last_accessed_at: string | null
           metadata: Json | null
           name: string | null
@@ -2130,9 +2373,12 @@ export type Database = {
           version: string | null
         }
         Insert: {
+          archived_at?: string | null
           bucket_id?: string | null
           created_at?: string | null
           id?: string
+          is_delete_marker?: boolean
+          is_versioned?: boolean
           last_accessed_at?: string | null
           metadata?: Json | null
           name?: string | null
@@ -2144,9 +2390,12 @@ export type Database = {
           version?: string | null
         }
         Update: {
+          archived_at?: string | null
           bucket_id?: string | null
           created_at?: string | null
           id?: string
+          is_delete_marker?: boolean
+          is_versioned?: boolean
           last_accessed_at?: string | null
           metadata?: Json | null
           name?: string | null
@@ -2458,12 +2707,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2487,11 +2736,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2512,11 +2761,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2537,11 +2786,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2554,11 +2803,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2585,6 +2834,7 @@ export const Constants = {
         "withdrawn",
         "converted_to_rider",
       ],
+      cash_request_status: ["pending", "approved", "rejected", "cancelled"],
       contract_status: [
         "draft",
         "awaiting_signatures",
@@ -2622,6 +2872,7 @@ export const Constants = {
         "unknown_phone",
       ],
       motorcycle_status: ["available", "assigned", "inactive"],
+      obligation_kind: ["lease", "phone_loan"],
       obligation_status: [
         "scheduled",
         "due",
@@ -2642,6 +2893,7 @@ export const Constants = {
         "cancelled",
         "reversed",
       ],
+      phone_loan_status: ["pending", "active", "completed", "cancelled"],
       rider_status: [
         "onboarding",
         "active",

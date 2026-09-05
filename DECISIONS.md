@@ -40,6 +40,15 @@ here:
    (green), remaining-to-finish (red) and a pace-based completion date; it
    refuses to print a date at all rather than extrapolating an absurd one.
 
+Also settled (migration `0027`, found while verifying `0026`): **TRUNCATE is
+part of the money write-lock.** 0016 revoked INSERT/UPDATE/DELETE on the money
+tables but not TRUNCATE, and Supabase grants it by default — so every
+`authenticated` user, every rider included, held the one privilege that ignores
+RLS and could erase the whole ledger in a single statement. No route in this app
+issues TRUNCATE and PostgREST exposes no verb for it, so there was no known
+reachable exploit; "not currently reachable" is not a boundary. Revoked on all
+money, signed-record and audit tables.
+
 Also settled: a phone loan is an ordinary obligation with a `kind`, not a
 parallel ledger — so it inherits settlement, receipts, oldest-first allocation
 and every guard for free, and "pay for the phone first" needs no special casing.

@@ -37,11 +37,13 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
 
-**🆕 CLIENT-FEEDBACK BUILD #2 (2026-09-05, migration `0026` — WRITTEN, NOT YET
-APPLIED; D-035).** Nine more client-requested changes. ⚠ **Apply `0026` to the
-live DB before deploying**: the code reads columns/tables it adds. Then
-regenerate `lib/supabase/types.gen.ts` and delete the temporary overlay
-`lib/supabase/types.pending.ts` (+ its re-export in `types.ts`). Headlines:
+**🆕 CLIENT-FEEDBACK BUILD #2 (2026-09-05, migrations `0026`+`0027`, APPLIED
+LIVE; D-035).** Nine more client-requested changes. Types regenerated from the
+live schema. Verified live: 2 new tables, 12 new columns, 5 new policies, the
+activation function carries the obligation `kind` with all 0018/0025 guards
+intact, and a **rollback-only dry run settled a phone-loan obligation**
+end-to-end (paid + receipt + one allocation, with a negative control proving
+the assertions ran). ⚠ **Deploy to Vercel is the remaining step.** Headlines:
 
 - **Cash needs the Director's decision.** An accountant recording cash now
   raises a `cash_payment_requests` row; NOTHING touches `payments` until the
