@@ -1,6 +1,9 @@
 import 'server-only';
 
 import { createServerSupabase } from '@/lib/supabase/server';
+import { fetchAllPages } from '@/lib/supabase/fetch-all';
+import { localDateString } from '@/lib/dates/tz';
+import { computeContractProgress, type ContractProgress } from '@/lib/contracts/completion';
 import type { ContractStatus, ScheduleType } from '@/lib/supabase/types';
 
 export type ContractListItem = {
@@ -36,11 +39,30 @@ export type ContractDetail = {
   duration_years: number | null;
   duration_weeks: number | null;
   duration_days: number | null;
-  end_date_source: 'duration' | 'exact';
+  end_date_source: 'duration' | 'exact' | 'payment_days';
   schedule_type: ScheduleType;
   selected_weekdays: number[];
   due_day_of_month: number | null;
   installment_amount: number;
+  /** Agreed daily rate; weekly/monthly instalments are derived from it. */
+  daily_rate: number | null;
+  payment_days_target: number | null;
+  /** First lease obligation date — later than start_date when a phone is financed. */
+  lease_start_date: string | null;
+  phone_loan: {
+    id: string;
+    principal: number;
+    interestBps: number;
+    interestAmount: number;
+    totalAmount: number;
+    termMonths: number;
+    status: string;
+    deviceDescription: string | null;
+    /** Instalments still owed on the loan, from the obligation ledger. */
+    paidCount: number;
+    outstandingCount: number;
+    outstandingAmount: number;
+  } | null;
   payment_deadline_time: string;
   special_terms: string | null;
   current_version: number;
@@ -51,6 +73,8 @@ export type ContractDetail = {
   hasSignedDocument: boolean;
   documents: ContractDocument[];
   obligationStats: { total: number; paid: number; value: number; outstanding: number };
+  /** Green/red position + projected completion date (client feedback). */
+  progress: ContractProgress;
 };
 
 export type ContractDocument = {
@@ -117,16 +141,70 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
     .order('created_at', { ascending: false });
   const documents = (docs ?? []) as ContractDocument[];
 
-  const { data: obligations } = await supabase
-    .from('payment_obligations')
-    .select('status, amount_due')
-    .eq('contract_id', id);
+  const obligations = await fetchAllPages<{
+    status: string;
+    amount_due: number;
+    due_date: string;
+    kind: string | null;
+    settled_at: string | null;
+  }>(
+    (from, to) =>
+      supabase
+        .from('payment_obligations')
+        .select('status, amount_due, due_date, kind, settled_at')
+        .eq('contract_id', id)
+        .order('due_date', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    { label: 'contract obligations' },
+  );
 
-  const obs = (obligations ?? []) as { status: string; amount_due: number }[];
+  const obs = obligations;
   const raw = c as Record<string, unknown> & {
     riders: { first_name: string; last_name: string; rider_number: string } | null;
     motorcycles: { registration_number: string } | null;
   };
+
+  // Phone loan (when the rider took the motorcycle together with a phone). The
+  // outstanding balance is read from the OBLIGATION ledger, never stored on the
+  // loan row — a second copy of a money figure is a second source of truth.
+  let phoneLoan: ContractDetail['phone_loan'] = null;
+  if (raw.phone_loan_id) {
+    const { data: loan } = await supabase
+      .from('phone_loans')
+      .select('id, principal, interest_bps, interest_amount, total_amount, term_months, status, device_description')
+      .eq('id', raw.phone_loan_id as string)
+      .maybeSingle();
+    const l = loan as
+      | {
+          id: string;
+          principal: number;
+          interest_bps: number;
+          interest_amount: number;
+          total_amount: number;
+          term_months: number;
+          status: string;
+          device_description: string | null;
+        }
+      | null;
+    if (l) {
+      const loanRows = obs.filter((o) => o.kind === 'phone_loan');
+      const unpaid = loanRows.filter((o) => ['scheduled', 'due', 'overdue'].includes(o.status));
+      phoneLoan = {
+        id: l.id,
+        principal: l.principal,
+        interestBps: l.interest_bps,
+        interestAmount: l.interest_amount,
+        totalAmount: l.total_amount,
+        termMonths: l.term_months,
+        status: l.status,
+        deviceDescription: l.device_description,
+        paidCount: loanRows.filter((o) => ['paid', 'paid_in_advance'].includes(o.status)).length,
+        outstandingCount: unpaid.length,
+        outstandingAmount: unpaid.reduce((sum, o) => sum + o.amount_due, 0),
+      };
+    }
+  }
 
   return {
     id: raw.id as string,
@@ -142,11 +220,18 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
     duration_years: (raw.duration_years as number) ?? 0,
     duration_weeks: (raw.duration_weeks as number) ?? 0,
     duration_days: (raw.duration_days as number) ?? 0,
-    end_date_source: ((raw.end_date_source as string) ?? 'duration') as 'duration' | 'exact',
+    end_date_source: ((raw.end_date_source as string) ?? 'duration') as
+      | 'duration'
+      | 'exact'
+      | 'payment_days',
     schedule_type: raw.schedule_type as ScheduleType,
     selected_weekdays: (raw.selected_weekdays as number[]) ?? [],
     due_day_of_month: (raw.due_day_of_month as number | null) ?? null,
     installment_amount: raw.installment_amount as number,
+    daily_rate: (raw.daily_rate as number | null) ?? null,
+    payment_days_target: (raw.payment_days_target as number | null) ?? null,
+    lease_start_date: (raw.lease_start_date as string | null) ?? null,
+    phone_loan: phoneLoan,
     payment_deadline_time: String(raw.payment_deadline_time ?? '18:00:00').slice(0, 5),
     special_terms: (raw.special_terms as string) ?? null,
     current_version: (raw.current_version as number) ?? 1,
@@ -167,5 +252,14 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
       // Still owed — drives the "Contract Ended — Outstanding Balance" state (#8).
       outstanding: obs.filter((o) => ['scheduled', 'due', 'overdue'].includes(o.status)).length,
     },
+    progress: computeContractProgress(
+      obs.map((o) => ({
+        dueDate: o.due_date,
+        amountDue: o.amount_due,
+        status: o.status,
+        settledDate: o.settled_at ? localDateString(new Date(o.settled_at)) : null,
+      })),
+      localDateString(),
+    ),
   };
 }

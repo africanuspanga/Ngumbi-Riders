@@ -36,10 +36,23 @@ export type RiderDirectoryRow = {
   contractEndDate: string | null;
   /** Money, in integer TZS. */
   amountPaid: number;
+  /**
+   * RED — everything still to pay before the contract is finished, future
+   * instalments included. This is "the total amount remaining for the rider to
+   * completely finish the contract".
+   */
   amountOutstanding: number;
+  /**
+   * GREEN — what is owed RIGHT NOW: unpaid obligations dated today or earlier
+   * (accumulated arrears plus today's payment). Always <= amountOutstanding.
+   */
+  amountDueNow: number;
+  dueNowCount: number;
   outstandingCount: number;
   overdueCount: number;
   nextPaymentDate: string | null;
+  /** Expected completion date given the payments actually made (may be null). */
+  projectedEndDate: string | null;
 };
 
 export type RiderSort =

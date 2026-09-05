@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { requireOwner } from '@/lib/auth/session';
-import { getCollectionReport, getArrearsReport } from '@/lib/reports/queries';
+import { getCollectionReport, getArrearsReport, getFinancialReport } from '@/lib/reports/queries';
 import { localDateString } from '@/lib/dates/tz';
 import { formatTZS } from '@/lib/money/format';
+import { formatDate, formatDateRange } from '@/lib/dates/format';
+import { methodLabel } from '@/lib/payments/statement';
 
 export const metadata = { title: 'Reports' };
 
@@ -16,9 +18,10 @@ export default async function ReportsPage({
   const to = sp.to ?? localDateString();
   const from = sp.from ?? `${to.slice(0, 7)}-01`;
 
-  const [collections, arrears] = await Promise.all([
+  const [collections, arrears, financial] = await Promise.all([
     getCollectionReport(from, to),
     getArrearsReport(),
+    getFinancialReport(from, to),
   ]);
   const rate = collections.collectionRate === null ? '—' : `${Math.round(collections.collectionRate * 100)}%`;
   const q = `?from=${from}&to=${to}`;
@@ -61,6 +64,106 @@ export default async function ReportsPage({
           <Stat label="Arrears created" value={formatTZS(collections.arrearsCreated)} />
           <Stat label="Arrears recovered" value={formatTZS(collections.arrearsRecovered)} />
         </dl>
+      </section>
+
+      {/* General financial report — bank-statement style (client feedback) */}
+      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-primary-dark">
+            Financial statement{' '}
+            <span className="text-sm font-normal text-muted-foreground">
+              {formatDateRange(from, to)}
+            </span>
+          </h2>
+          <ExportLinks report="financial" q={q} />
+        </div>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm md:grid-cols-4">
+          <Stat label="Total collected" value={formatTZS(financial.totals.total)} />
+          <Stat label="Cash" value={formatTZS(financial.totals.cash)} />
+          <Stat label="Mobile money" value={formatTZS(financial.totals.mobile)} />
+          <Stat
+            label="Payments"
+            value={`${financial.totals.payments} from ${financial.totals.riders} rider${financial.totals.riders === 1 ? '' : 's'}`}
+          />
+        </dl>
+
+        {financial.contributions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No money was collected in this period.</p>
+        ) : (
+          <>
+            <h3 className="mt-2 text-sm font-semibold text-primary-dark">
+              What each rider contributed
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px] text-left text-sm">
+                <thead className="text-muted-foreground border-b border-border">
+                  <tr>
+                    <th className="py-1 pr-2 font-medium">Rider</th>
+                    <th className="py-1 pr-2 text-right font-medium">Payments</th>
+                    <th className="py-1 pr-2 text-right font-medium">Cash</th>
+                    <th className="py-1 pr-2 text-right font-medium">Mobile</th>
+                    <th className="py-1 text-right font-medium">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {financial.contributions.map((r) => (
+                    <tr key={r.riderId} className="border-t border-border">
+                      <td className="py-1 pr-2">
+                        <Link href={`/owner/payments/rider/${r.riderId}`} className="text-primary-dark underline">
+                          {r.riderName}
+                        </Link>
+                        <span className="block text-xs text-muted-foreground">{r.riderNumber}</span>
+                      </td>
+                      <td className="py-1 pr-2 text-right tabular-nums">{r.payments}</td>
+                      <td className="py-1 pr-2 text-right font-mono tabular-nums">{formatTZS(r.cash)}</td>
+                      <td className="py-1 pr-2 text-right font-mono tabular-nums">{formatTZS(r.mobile)}</td>
+                      <td className="py-1 text-right font-mono font-semibold tabular-nums">{formatTZS(r.total)}</td>
+                    </tr>
+                  ))}
+                  <tr className="border-t-2 border-border">
+                    <td className="py-1 pr-2 font-semibold">Total</td>
+                    <td className="py-1 pr-2 text-right font-semibold tabular-nums">{financial.totals.payments}</td>
+                    <td className="py-1 pr-2 text-right font-mono font-semibold tabular-nums">{formatTZS(financial.totals.cash)}</td>
+                    <td className="py-1 pr-2 text-right font-mono font-semibold tabular-nums">{formatTZS(financial.totals.mobile)}</td>
+                    <td className="py-1 text-right font-mono font-bold tabular-nums">{formatTZS(financial.totals.total)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <details className="mt-2">
+              <summary className="cursor-pointer text-sm font-semibold text-primary-dark">
+                Every transaction ({financial.transactions.length})
+              </summary>
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full min-w-[640px] text-left text-sm">
+                  <thead className="text-muted-foreground border-b border-border">
+                    <tr>
+                      <th className="py-1 pr-2 font-medium">Date</th>
+                      <th className="py-1 pr-2 font-medium">Rider</th>
+                      <th className="py-1 pr-2 font-medium">Method</th>
+                      <th className="py-1 pr-2 font-medium">Received by</th>
+                      <th className="py-1 pr-2 font-medium">Receipt</th>
+                      <th className="py-1 text-right font-medium">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {financial.transactions.map((t) => (
+                      <tr key={t.paymentId} className="border-t border-border">
+                        <td className="py-1 pr-2 whitespace-nowrap">{formatDate(t.date)}</td>
+                        <td className="py-1 pr-2">{t.riderName}</td>
+                        <td className="py-1 pr-2">{methodLabel(t.method)}</td>
+                        <td className="py-1 pr-2">{t.receivedByName ?? '—'}</td>
+                        <td className="py-1 pr-2 font-mono text-xs">{t.receiptNumber ?? '—'}</td>
+                        <td className="py-1 text-right font-mono tabular-nums">{formatTZS(t.amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </>
+        )}
       </section>
 
       {/* Arrears */}

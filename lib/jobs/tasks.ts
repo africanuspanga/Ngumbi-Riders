@@ -7,7 +7,7 @@ import { localDateString } from '@/lib/dates/tz';
 import { computeObligationTransitions, type TransitionObligation } from '@/lib/obligations/transitions';
 import { notifyRider, notifyOwner } from '@/lib/notifications/service';
 import { getPaymentStatus } from '@/lib/snippe/client';
-import { settlePaymentCompleted, markPaymentFailed } from '@/lib/payments/settle';
+import { settlePaymentCompleted, markPaymentFailed, expireStalePayment } from '@/lib/payments/settle';
 import { processOutbox } from '@/lib/messaging/outbox';
 import { recomputeRiskForRider } from '@/lib/risk/recompute';
 import { computeOwnerKpis, type KpiObligation } from '@/lib/dashboard/kpis';
@@ -256,7 +256,7 @@ export const reconcilePendingTask: CronTask = async () => {
 
   const { data, error } = await admin
     .from('payments')
-    .select('id, rider_id, amount, snippe_reference')
+    .select('id, rider_id, amount, snippe_reference, created_at')
     .eq('status', 'pending')
     .not('snippe_reference', 'is', null)
     .lt('created_at', cutoff)
@@ -267,8 +267,16 @@ export const reconcilePendingTask: CronTask = async () => {
   let settled = 0;
   let failed = 0;
   let unresolved = 0;
+  let expired = 0;
 
-  for (const p of (data ?? []) as { id: string; rider_id: string; amount: number; snippe_reference: string }[]) {
+  // A payment the provider never resolves used to stay 'pending' FOREVER, and
+  // the one-attempt-per-rider guard then refused every later attempt — one
+  // rider was locked out of paying for a month after mistyping their number.
+  // Anything older than this is dead weight and is expired locally (after the
+  // provider has been asked, so a real completion is never discarded).
+  const ABANDON_AFTER_MS = 6 * 60 * 60_000;
+
+  for (const p of (data ?? []) as { id: string; rider_id: string; amount: number; snippe_reference: string; created_at: string }[]) {
     const status = await getPaymentStatus(p.snippe_reference);
     if (!status.ok) {
       unresolved++;
@@ -288,11 +296,16 @@ export const reconcilePendingTask: CronTask = async () => {
       const mapped = status.data.status === 'failed' ? 'failed' : status.data.status === 'expired' ? 'expired' : 'cancelled';
       await markPaymentFailed(p.id, p.rider_id, mapped);
       failed++;
+    } else if (Date.now() - Date.parse(p.created_at) > ABANDON_AFTER_MS) {
+      // Still "pending" at the provider hours later = the payer never
+      // confirmed (often a mistyped number). Free the rider and their days.
+      if (await expireStalePayment(p.id)) expired++;
+      else unresolved++;
     } else {
       unresolved++;
     }
   }
-  return { settled, failed, unresolved };
+  return { settled, failed, unresolved, expired };
 };
 
 /** Release expired reservations / fail stale created payments (spec §12.5). */

@@ -1,5 +1,7 @@
 import { requireAccountant } from '@/lib/auth/session';
-import { getCollectionReport, getArrearsReport } from '@/lib/reports/queries';
+import Link from 'next/link';
+import { getCollectionReport, getArrearsReport, getFinancialReport } from '@/lib/reports/queries';
+import { methodLabel } from '@/lib/payments/statement';
 import { localDateString } from '@/lib/dates/tz';
 import { formatDate, formatDateRange } from '@/lib/dates/format';
 import { formatTZS } from '@/lib/money/format';
@@ -21,9 +23,10 @@ export default async function AccountantReportsPage({
   const to = sp.to ?? localDateString();
   const from = sp.from ?? `${to.slice(0, 7)}-01`;
 
-  const [collections, arrears] = await Promise.all([
+  const [collections, arrears, financial] = await Promise.all([
     getCollectionReport(from, to),
     getArrearsReport(),
+    getFinancialReport(from, to),
   ]);
   const rate =
     collections.collectionRate === null ? '—' : `${Math.round(collections.collectionRate * 100)}%`;
@@ -92,6 +95,86 @@ export default async function AccountantReportsPage({
           <Stat label="Cash" value={formatTZS(collections.cash)} />
           <Stat label="Mobile money" value={formatTZS(collections.mobile)} />
         </dl>
+      </section>
+
+      {/* General financial report — bank-statement style (client feedback). */}
+      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-primary-dark">
+            Financial statement ({formatDateRange(from, to)})
+          </h2>
+          <ExportLinks report="financial" q={q} />
+        </div>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm md:grid-cols-4">
+          <Stat label="Total collected" value={formatTZS(financial.totals.total)} />
+          <Stat label="Cash" value={formatTZS(financial.totals.cash)} />
+          <Stat label="Mobile money" value={formatTZS(financial.totals.mobile)} />
+          <Stat
+            label="Payments"
+            value={`${financial.totals.payments} from ${financial.totals.riders} rider${financial.totals.riders === 1 ? '' : 's'}`}
+          />
+        </dl>
+        {financial.contributions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No money was collected in this period.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[32rem] text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase text-muted-foreground">
+                  <th className="px-2 py-2">Rider</th>
+                  <th className="px-2 py-2 text-right">Payments</th>
+                  <th className="px-2 py-2 text-right">Cash</th>
+                  <th className="px-2 py-2 text-right">Mobile</th>
+                  <th className="px-2 py-2 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {financial.contributions.map((r) => (
+                  <tr key={r.riderId} className="border-t border-border">
+                    <td className="px-2 py-2">
+                      <Link href={`/accountant/payments/rider/${r.riderId}`} className="underline">
+                        {r.riderName}
+                      </Link>
+                    </td>
+                    <td className="px-2 py-2 text-right tabular-nums">{r.payments}</td>
+                    <td className="px-2 py-2 text-right font-mono tabular-nums">{formatTZS(r.cash)}</td>
+                    <td className="px-2 py-2 text-right font-mono tabular-nums">{formatTZS(r.mobile)}</td>
+                    <td className="px-2 py-2 text-right font-mono font-semibold tabular-nums">{formatTZS(r.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <details>
+          <summary className="cursor-pointer text-sm font-semibold text-primary-dark">
+            Every transaction ({financial.transactions.length})
+          </summary>
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full min-w-[36rem] text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase text-muted-foreground">
+                  <th className="px-2 py-2">Date</th>
+                  <th className="px-2 py-2">Rider</th>
+                  <th className="px-2 py-2">Method</th>
+                  <th className="px-2 py-2">Received by</th>
+                  <th className="px-2 py-2 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {financial.transactions.map((t) => (
+                  <tr key={t.paymentId} className="border-t border-border">
+                    <td className="px-2 py-2 whitespace-nowrap">{formatDate(t.date)}</td>
+                    <td className="px-2 py-2">{t.riderName}</td>
+                    <td className="px-2 py-2">{methodLabel(t.method)}</td>
+                    <td className="px-2 py-2">{t.receivedByName ?? '—'}</td>
+                    <td className="px-2 py-2 text-right font-mono tabular-nums">{formatTZS(t.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
       </section>
 
       <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">

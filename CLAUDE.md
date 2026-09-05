@@ -37,6 +37,60 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
 
+**🆕 CLIENT-FEEDBACK BUILD #2 (2026-09-05, migration `0026` — WRITTEN, NOT YET
+APPLIED; D-035).** Nine more client-requested changes. ⚠ **Apply `0026` to the
+live DB before deploying**: the code reads columns/tables it adds. Then
+regenerate `lib/supabase/types.gen.ts` and delete the temporary overlay
+`lib/supabase/types.pending.ts` (+ its re-export in `types.ts`). Headlines:
+
+- **Cash needs the Director's decision.** An accountant recording cash now
+  raises a `cash_payment_requests` row; NOTHING touches `payments` until the
+  owner confirms it at `/owner/payments/approvals`, where they can also edit
+  (which days it covers → which recomputes the amount) or reject with a reason.
+  Confirmation creates the payment, settles through the same
+  `record_completed_payment`, and notifies the rider in-app + by SMS (queued;
+  delivers when Mobishastra creds land). `payments.received_by` records WHO
+  took the money, separately from who typed it in.
+- **Payments is a rider directory, not a list** (`/owner/payments`,
+  `/accountant/payments`) reusing the tested `lib/riders/directory.ts` helpers.
+  Per-rider drill-down at `…/payments/rider/[id]`: full payment history (date,
+  method, cash receiver, receipt, days covered) plus a **bank-style statement**
+  with a running balance and a date range. Riders get their own at
+  `/rider/statement`. Flat ledger moved to `…/payments/transactions`.
+- **Green / red everywhere.** `lib/contracts/completion.ts` derives
+  outstanding-now (GREEN) and remaining-to-finish-the-contract (RED) from the
+  ledger — never stored (D-034 rule 3). The dashboard shows them as one
+  **stacked bar per rider**, and the date/time now ticks live top-right.
+- **Expected completion date** from the payments actually made, rendered
+  "Monday, 25 June 2030" (`formatLongDate`). Refuses to print a date rather
+  than extrapolating an absurd one.
+- **Stuck pending payments fixed.** A `pending` the provider never resolved
+  used to block EVERY later attempt forever (one rider was locked out for a
+  month after mistyping their number). The initiate route now reconciles with
+  the provider and expires a stale attempt; the reconcile cron abandons
+  pendings older than 6h.
+- **Phone loans** (`lib/loans/phone.ts`, `phone_loans`): principal + 50% flat
+  interest over ≤3 months, collected BEFORE the lease starts. Implemented as
+  ordinary obligations with `kind='phone_loan'`, so settlement, receipts and
+  oldest-first allocation all work unchanged. `/apply` now asks "motorcycle
+  only, or motorcycle + phone?" and the builder surfaces the answer.
+- **Contracts are editable** (`/owner/contracts/[id]/edit`) — motorcycle,
+  ownership, special terms and deadline always; term/schedule/price only before
+  activation (after it the obligations ARE the money record). A terminated or
+  completed contract can be **reactivated**, which also restores the obligations
+  termination cancelled and optionally extends the term.
+- **Weekly = daily × 7, monthly = daily × 30** (`lib/contracts/pricing.ts`):
+  the owner enters ONE daily rate. Custom weekdays extend the term until every
+  payment day has fallen (`lib/obligations/payment-days.ts`); a term can also be
+  denominated directly in payment days.
+- **`lib/contracts/term.ts` is the single term resolver** the builder preview
+  and the server both call, so the preview can never disagree with what is saved.
+- **General financial report** (bank-statement style) on both report pages:
+  total collected for a month/range, every transaction, and what each rider
+  contributed — with CSV/XLSX export.
+
+Verified: **376 unit tests** (+68), typecheck ✅, lint ✅, `npm run build` ✅.
+
 **🆕 CLIENT-FEEDBACK BUILD (2026-07-29, migrations `0024`+`0025`, applied live;
 D-034).** Nine client-requested changes shipped together. Headlines:
 

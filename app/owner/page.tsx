@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { requireOwner } from '@/lib/auth/session';
-import { getOwnerDashboard, getCollectionsSeries } from '@/lib/dashboard/queries';
+import { getOwnerDashboard, getCollectionsSeries, getRiderBalances } from '@/lib/dashboard/queries';
+import { listCashRequests } from '@/lib/payments/queries';
 import { formatTZS } from '@/lib/money/format';
-import { formatLocalDateTime } from '@/lib/dates/tz';
 import {
   Card,
   CardContent,
@@ -21,30 +21,57 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { CollectionsChart } from '@/components/owner/collections-chart';
-import { TriangleAlertIcon, ArrowRightIcon } from 'lucide-react';
+import { BalanceChart } from '@/components/owner/balance-chart';
+import { LiveClock, formatClockDate, formatClockTime } from '@/components/owner/live-clock';
+import { TriangleAlertIcon, ArrowRightIcon, BanknoteIcon } from 'lucide-react';
 import { formatDate } from '@/lib/dates/format';
 
 export const metadata = { title: 'Dashboard' };
 
 export default async function OwnerHome() {
   const profile = await requireOwner();
-  const [d, series] = await Promise.all([getOwnerDashboard(), getCollectionsSeries(14)]);
+  const [d, series, balances, pendingCash] = await Promise.all([
+    getOwnerDashboard(),
+    getCollectionsSeries(14),
+    getRiderBalances(12),
+    listCashRequests(['pending']),
+  ]);
   const rate = d.kpis.collectionRate === null ? '—' : `${Math.round(d.kpis.collectionRate * 100)}%`;
+  // Rendered on the server for the first paint; LiveClock takes over on mount.
+  const now = new Date();
 
   return (
     <div className="flex flex-col gap-4">
-      <header className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+      {/* Date + time sits top-RIGHT, as the owner asked, and ticks live. */}
+      <header className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">
             Karibu{profile.fullName ? ` Mr ${profile.fullName}` : ''}
           </h1>
-          <p className="text-muted-foreground text-sm">{formatLocalDateTime(new Date())} · Dar es Salaam</p>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+            <Badge variant="secondary">{d.activeRiders} active riders</Badge>
+            <Badge variant="secondary">{d.activeMotorcycles} motorcycles out</Badge>
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-sm">
-          <Badge variant="secondary">{d.activeRiders} active riders</Badge>
-          <Badge variant="secondary">{d.activeMotorcycles} motorcycles out</Badge>
-        </div>
+        <LiveClock initialDate={formatClockDate(now)} initialTime={formatClockTime(now)} />
       </header>
+
+      {pendingCash.length > 0 && (
+        <Link
+          href="/owner/payments/approvals"
+          className="flex items-center justify-between gap-3 rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 px-4 py-3 text-sm text-amber-900 hover:bg-amber-100"
+        >
+          <span className="flex items-center gap-2 font-medium">
+            <BanknoteIcon className="size-4 shrink-0" />
+            {pendingCash.length} cash payment{pendingCash.length === 1 ? '' : 's'} awaiting your
+            confirmation ·{' '}
+            {formatTZS(pendingCash.reduce((s, r) => s + r.amount, 0))}
+          </span>
+          <span className="flex shrink-0 items-center gap-1 font-semibold">
+            Review <ArrowRightIcon className="size-3.5" />
+          </span>
+        </Link>
+      )}
 
       {d.warnings.length > 0 && (
         <Card className="border-[color:var(--color-warning)]/40 bg-amber-50 shadow-none">
@@ -84,11 +111,18 @@ export default async function OwnerHome() {
         />
       </section>
 
+      <section className="grid gap-4 lg:grid-cols-2">
+        <BalanceChart
+          points={balances.points}
+          totalOutstandingNow={balances.totalOutstandingNow}
+          totalRemaining={balances.totalRemaining}
+          riderCount={balances.riderCount}
+        />
+        <CollectionsChart data={series} />
+      </section>
+
       <section className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <CollectionsChart data={series} />
-        </div>
-        <Card className="shadow-none">
+        <Card className="shadow-none lg:col-span-3">
           <CardHeader>
             <CardTitle>Arrears aging</CardTitle>
             <CardDescription>

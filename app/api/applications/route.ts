@@ -135,6 +135,13 @@ export async function POST(request: NextRequest) {
         driving_licence_encrypted: licenceEncrypted,
         voter_id_encrypted: voterEncrypted,
         previous_experience: data.previousExperience || null,
+        // Motorcycle only, or motorcycle + phone (client feedback 2026-09-05).
+        // Carried through conversion so the contract builder pre-selects it.
+        wants_phone_loan: data.packageChoice === 'motorcycle_and_phone',
+        phone_loan_amount:
+          data.packageChoice === 'motorcycle_and_phone' && data.phoneLoanAmount
+            ? Number(data.phoneLoanAmount) || null
+            : null,
         emergency_contact_name: data.emergencyContactName,
         emergency_contact_phone: data.emergencyContactPhone,
         emergency_contact_relationship: data.emergencyContactRelationship,

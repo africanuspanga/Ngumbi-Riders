@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation';
 import { requireOwner } from '@/lib/auth/session';
 import { getRider } from '@/lib/riders/queries';
 import { getRiderProfile } from '@/lib/riders/profile';
+import { getRiderPaymentHistory, getRiderStatement } from '@/lib/payments/queries';
+import { PaymentHistory } from '@/components/payments/PaymentHistory';
+import { StatementSummary } from '@/components/payments/StatementView';
 import { listAvailableMotorcycles } from '@/lib/motorcycles/queries';
 import { RiderProfileView } from '@/components/riders/RiderProfileView';
 import { formatDate } from '@/lib/dates/format';
@@ -28,10 +31,12 @@ export default async function RiderDetailPage({
 }) {
   await requireOwner();
   const { id } = await params;
-  const [profile, rider, motorcycles] = await Promise.all([
+  const [profile, rider, motorcycles, payments, statement] = await Promise.all([
     getRiderProfile(id, 'owner'),
     getRider(id),
     listAvailableMotorcycles(),
+    getRiderPaymentHistory(id),
+    getRiderStatement(id),
   ]);
   if (!profile || !rider) notFound();
 
@@ -61,6 +66,29 @@ export default async function RiderDetailPage({
         motorcycleHref={(mid) => `/owner/motorcycles/${mid}`}
         contractHref={(cid) => `/owner/contracts/${cid}`}
       />
+
+      {/* Payment history + money position (client feedback 2026-09-05) */}
+      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-primary-dark">Payments</h2>
+          <Link
+            href={`/owner/payments/rider/${id}`}
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            Full statement →
+          </Link>
+        </div>
+        {statement && <StatementSummary progress={statement.progress} />}
+        <PaymentHistory payments={payments.slice(0, 10)} receiptHref={null} />
+        {payments.length > 10 && (
+          <Link
+            href={`/owner/payments/rider/${id}`}
+            className="self-start text-sm font-medium text-primary hover:underline"
+          >
+            Showing the 10 most recent of {payments.length} — see all
+          </Link>
+        )}
+      </section>
 
       <Section title="Sensitive identifiers">
         <RiderRevealSecrets id={profile.id} />

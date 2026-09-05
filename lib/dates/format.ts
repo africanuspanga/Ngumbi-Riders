@@ -156,3 +156,26 @@ export function formatDateWithWeekday(value: DateInput, fallback = EMPTY_DATE): 
   });
   return `${weekday} ${formatDate(iso)}`;
 }
+
+/**
+ * "Monday, 25 June 2030" — the long, unambiguous form the owner asked for on
+ * projected contract-completion dates. DD/MM/YYYY stays the house format for
+ * tables and lists; this one is for the single headline date a person reads
+ * once and must not misread.
+ *
+ * Calendar dates are rendered from their own components in UTC (never
+ * timezone-converted, which would shift them a day); instants are reduced to
+ * their Dar es Salaam calendar day first.
+ */
+export function formatLongDate(value: DateInput, fallback = EMPTY_DATE): string {
+  const iso = toIsoDate(value);
+  if (!iso) return fallback;
+  const [y, m, d] = iso.split('-').map(Number);
+  const at = new Date(Date.UTC(y!, m! - 1, d!));
+  // Assembled by hand rather than via a single toLocaleDateString: en-GB
+  // renders "Monday 25 June 2030" with no comma, and the comma is what the
+  // owner asked for.
+  const weekday = at.toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' });
+  const month = at.toLocaleDateString('en-GB', { month: 'long', timeZone: 'UTC' });
+  return `${weekday}, ${d} ${month} ${y}`;
+}

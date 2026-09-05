@@ -3,7 +3,7 @@ import { requireRider } from '@/lib/auth/session';
 import { getRiderHome } from '@/lib/dashboard/queries';
 import { formatTZS } from '@/lib/money/format';
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card';
-import { formatDate } from '@/lib/dates/format';
+import { formatDate, formatLongDate } from '@/lib/dates/format';
 import {
   BikeIcon,
   CalendarDaysIcon,
@@ -86,6 +86,40 @@ export default async function RiderHome() {
             </Link>
           </div>
 
+          {/* Phone loan, when the rider took the motorcycle together with a phone */}
+          {home.phoneLoan && home.phoneLoan.outstandingCount > 0 && (
+            <Card className="shadow-none">
+              <CardHeader>
+                <CardTitle className="text-sm">Mkopo wa simu</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-1">
+                <p className="text-lg font-bold tabular-nums">
+                  {formatTZS(home.phoneLoan.outstandingAmount)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Umebakiza malipo {home.phoneLoan.outstandingCount} kati ya{' '}
+                  {home.phoneLoan.totalCount}. Malipo ya pikipiki yataanza baada ya kumaliza simu.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* The two figures the owner asked to see in green and red. */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-[color:var(--color-paid)]/40 bg-[color:var(--color-paid)]/5 p-3">
+              <p className="text-xs text-muted-foreground">Deni la sasa</p>
+              <p className="text-lg font-bold tabular-nums text-[color:var(--color-paid)]">
+                {formatTZS(home.progress.outstandingNow)}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[color:var(--color-overdue)]/40 bg-[color:var(--color-overdue)]/5 p-3">
+              <p className="text-xs text-muted-foreground">Kumaliza mkataba</p>
+              <p className="text-lg font-bold tabular-nums text-[color:var(--color-overdue)]">
+                {formatTZS(home.progress.totalRemaining)}
+              </p>
+            </div>
+          </div>
+
           {/* Contract progress */}
           <Card className="shadow-none">
             <CardHeader>
@@ -107,6 +141,14 @@ export default async function RiderHome() {
                 Zimelipwa {home.dashboard.paidCount}/{home.dashboard.totalObligations} · zilizobaki{' '}
                 {formatTZS(home.dashboard.remainingValue)}
               </p>
+              {home.progress.projectedEndDate && (
+                <p className="text-xs text-muted-foreground">
+                  Kwa mwendo wa sasa utamaliza:{' '}
+                  <strong className="text-foreground">
+                    {formatLongDate(home.progress.projectedEndDate)}
+                  </strong>
+                </p>
+              )}
             </CardContent>
           </Card>
 

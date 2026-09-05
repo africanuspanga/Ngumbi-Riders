@@ -122,7 +122,13 @@
       "gAddress": "Residential address",
       "gRelationship": "Relationship to applicant",
       "gOccupation": "Occupation",
-      "gEmployer": "Employer or business"
+      "gEmployer": "Employer or business",
+      "packageChoice": "What are you taking?",
+      "packageChoiceHint": "A phone helps you use the system. The phone loan is repaid first; motorcycle payments start once it is cleared.",
+      "packageMotorcycleOnly": "Motorcycle only",
+      "packageMotorcyclePhone": "Motorcycle together with a phone",
+      "phoneLoanAmount": "Phone loan amount (TZS)",
+      "phoneLoanAmountHint": "Optional — the owner confirms the amount when the contract is drawn up."
     },
     "docs": {
       "applicantHeading": "Applicant documents",

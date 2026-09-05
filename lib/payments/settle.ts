@@ -117,3 +117,52 @@ export async function reconcilePaymentWithProvider(paymentId: string): Promise<s
   }
   return 'pending';
 }
+
+/**
+ * How long a not-yet-confirmed mobile payment is treated as "probably live on
+ * the payer's handset". Snippe's USSD prompt times out long before this; after
+ * it, an unresolved attempt is dead weight and must never block the rider.
+ *
+ * 15 minutes is deliberately longer than the 10-minute window PayClient uses
+ * to decide whether to resume a waiting screen: resuming a screen is
+ * reversible, expiring a payment is not.
+ */
+export const STALE_PENDING_MS = 15 * 60_000;
+
+/**
+ * Expire a stale created/pending payment and release its obligations.
+ *
+ * THE STUCK-PENDING FIX (2026-09-05): before this, a payment the provider
+ * never resolved stayed 'pending' forever, and every guard that refuses a
+ * second concurrent attempt then refused the rider permanently. Callers must
+ * only reach here after asking the provider (`reconcilePaymentWithProvider`),
+ * so a genuinely completed payment is settled rather than expired.
+ *
+ * Conditional on the status still being created/pending, so a completion that
+ * lands in the same instant always wins. Returns whether anything changed.
+ */
+export async function expireStalePayment(paymentId: string): Promise<boolean> {
+  const admin = createAdminClient();
+  const { data: changed } = await admin
+    .from('payments')
+    .update({ status: 'expired' })
+    .eq('id', paymentId)
+    .in('status', ['created', 'pending'])
+    .select('id, rider_id');
+  const row = (changed ?? [])[0] as { id: string; rider_id: string } | undefined;
+  if (!row) return false;
+
+  await admin.from('payment_reservations').update({ is_active: false }).eq('payment_id', paymentId);
+  try {
+    await notifyRider(row.rider_id, {
+      type: 'payment_failed',
+      title: 'Malipo hayakukamilika',
+      body: 'Ombi lako la malipo lilipita muda. Unaweza kuanza upya kwa namba yoyote.',
+      deepLink: '/rider/pay',
+      dedupeKey: `payment_expired:${paymentId}`,
+    });
+  } catch {
+    /* the rider is unblocked either way */
+  }
+  return true;
+}

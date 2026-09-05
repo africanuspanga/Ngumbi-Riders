@@ -18,7 +18,12 @@ import {
   ActivateButton,
   LifecycleButtons,
   ContractDocuments,
+  ReactivateButton,
+  ExtendTermButton,
 } from './contract-actions';
+import { formatLongDate } from '@/lib/dates/format';
+import { describePhoneLoan } from '@/lib/loans/phone';
+import { ENDED_DISPLAY_STATUSES } from '@/lib/contracts/status';
 
 export const metadata = { title: 'Contract' };
 
@@ -74,12 +79,57 @@ export default async function ContractDetailPage({
             {c.rider_name} ({c.rider_number}) · {c.registration}
           </p>
         </div>
-        <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${CONTRACT_STATUS_TONE[displayStatus]}`}
-        >
-          {CONTRACT_STATUS_LABELS[displayStatus]}
-        </span>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/owner/contracts/${c.id}/edit`}
+            className="flex min-h-9 items-center rounded-[--radius-card] border border-border bg-white px-3 text-sm font-semibold text-primary-dark hover:bg-surface"
+          >
+            Edit
+          </Link>
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${CONTRACT_STATUS_TONE[displayStatus]}`}
+          >
+            {CONTRACT_STATUS_LABELS[displayStatus]}
+          </span>
+        </div>
       </header>
+
+      {/* Money position + expected completion (client feedback 2026-09-05) */}
+      {c.obligationStats.total > 0 && (
+        <section className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-[--radius-card] border border-[color:var(--color-paid)]/40 bg-[color:var(--color-paid)]/5 p-4">
+            <p className="text-xs text-muted-foreground">Outstanding now</p>
+            <p className="text-xl font-bold tabular-nums text-[color:var(--color-paid)]">
+              {formatTZS(c.progress.outstandingNow)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {c.progress.outstandingCount} payment(s) due or overdue
+            </p>
+          </div>
+          <div className="rounded-[--radius-card] border border-[color:var(--color-overdue)]/40 bg-[color:var(--color-overdue)]/5 p-4">
+            <p className="text-xs text-muted-foreground">Remaining to finish the contract</p>
+            <p className="text-xl font-bold tabular-nums text-[color:var(--color-overdue)]">
+              {formatTZS(c.progress.totalRemaining)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {c.progress.remainingCount} of {c.progress.totalCount} payments left
+            </p>
+          </div>
+          <div className="rounded-[--radius-card] border border-border bg-white p-4">
+            <p className="text-xs text-muted-foreground">Expected completion</p>
+            <p className="text-base font-semibold">
+              {c.progress.projectedEndDate
+                ? formatLongDate(c.progress.projectedEndDate)
+                : 'Not enough payments yet'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {c.progress.projectionBasis === 'pace' && c.progress.daysBehindSchedule > 0
+                ? `${c.progress.daysBehindSchedule} day(s) later than scheduled at the current pace`
+                : `Scheduled end ${formatDate(c.progress.scheduledEndDate)}`}
+            </p>
+          </div>
+        </section>
+      )}
 
       {displayStatus === 'ended_outstanding' && (
         <p className="rounded-[--radius-card] border border-[color:var(--color-overdue)] bg-red-50 p-3 text-sm font-semibold text-[color:var(--color-overdue)]">
@@ -91,11 +141,27 @@ export default async function ContractDetailPage({
       <Section title="Terms">
         <Grid>
           <Info label="Installment" value={formatTZS(c.installment_amount)} />
+          <Info
+            label="Daily rate"
+            value={c.daily_rate ? formatTZS(c.daily_rate) : 'not recorded'}
+          />
           <Info label="Deadline" value={c.payment_deadline_time} />
           <Info label="Start" value={formatDate(c.start_date)} />
           <Info label="End" value={formatDate(c.end_date)} />
           <Info label="Duration" value={durationLabel} />
-          <Info label="End date set by" value={c.end_date_source === 'exact' ? 'Exact date' : 'Duration'} />
+          <Info
+            label="End date set by"
+            value={
+              c.end_date_source === 'exact'
+                ? 'Exact date'
+                : c.end_date_source === 'payment_days'
+                  ? `${c.payment_days_target ?? '—'} payment days`
+                  : 'Duration'
+            }
+          />
+          {c.lease_start_date && c.lease_start_date !== c.start_date && (
+            <Info label="Motorcycle payments start" value={formatDate(c.lease_start_date)} />
+          )}
           <Info
             label="Schedule"
             value={scheduleLabel(c.schedule_type, c.selected_weekdays, c.due_day_of_month)}
@@ -104,6 +170,37 @@ export default async function ContractDetailPage({
         </Grid>
         {c.special_terms && <Info label="Special terms" value={c.special_terms} />}
       </Section>
+
+      {c.phone_loan && (
+        <Section title="Phone loan">
+          <p className="text-sm font-semibold text-primary-dark">
+            {describePhoneLoan({
+              principal: c.phone_loan.principal,
+              interestBps: c.phone_loan.interestBps,
+              interestAmount: c.phone_loan.interestAmount,
+              totalAmount: c.phone_loan.totalAmount,
+              termMonths: c.phone_loan.termMonths,
+              instalments: [],
+            })}
+          </p>
+          <Grid>
+            <Info label="Status" value={c.phone_loan.status} />
+            <Info label="Device" value={c.phone_loan.deviceDescription} />
+            <Info
+              label="Instalments paid"
+              value={`${c.phone_loan.paidCount} of ${c.phone_loan.termMonths}`}
+            />
+            <Info
+              label="Still owed on the phone"
+              value={formatTZS(c.phone_loan.outstandingAmount)}
+            />
+          </Grid>
+          <p className="text-xs text-muted-foreground">
+            Phone instalments are collected before the motorcycle lease starts — they sit at the
+            front of the payment calendar, so oldest-first allocation clears them first.
+          </p>
+        </Section>
+      )}
 
       <Section title="Contract document">
         <ContractDocuments contractId={c.id} documents={c.documents} />
@@ -163,7 +260,22 @@ export default async function ContractDetailPage({
 
       {(c.status === 'active' || c.status === 'paused') && (
         <Section title="Lifecycle">
-          <LifecycleButtons contractId={c.id} status={c.status} />
+          <div className="flex flex-col gap-4">
+            <LifecycleButtons contractId={c.id} status={c.status} />
+            <ExtendTermButton contractId={c.id} currentEndDate={c.end_date} />
+          </div>
+        </Section>
+      )}
+
+      {/* A terminated/completed contract can come back — the client's report
+          was that a terminated rider could no longer pay at all. */}
+      {ENDED_DISPLAY_STATUSES.includes(displayStatus) && c.obligationStats.total > 0 && (
+        <Section title="Reactivate">
+          <ReactivateButton
+            contractId={c.id}
+            currentEndDate={c.end_date}
+            termExpired={Boolean(c.end_date && c.end_date < localDateString())}
+          />
         </Section>
       )}
     </div>

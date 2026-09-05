@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { fetchAllPages } from '@/lib/supabase/fetch-all';
 import { localDateString } from '@/lib/dates/tz';
 import { deriveContractDisplayStatus } from '@/lib/contracts/status';
+import { computeContractProgress, type ProgressObligation } from '@/lib/contracts/completion';
 import type { RiderDirectoryRow } from './directory';
 import type { ContractStatus, RiderStatus, RiskLevel } from '@/lib/supabase/types';
 
@@ -209,26 +210,39 @@ export async function listRiderDirectory(): Promise<RiderDirectoryRow[]> {
   type Money = {
     paid: number;
     outstanding: number;
+    dueNow: number;
+    dueNowCount: number;
     outstandingCount: number;
     overdueCount: number;
     nextDate: string | null;
   };
   const money = new Map<string, Money>();
+  // Kept per rider so the projected completion date can be computed from the
+  // same single obligations fetch (client feedback 2026-09-05).
+  const progressRows = new Map<string, ProgressObligation[]>();
   for (const o of obligations) {
     const m =
       money.get(o.rider_id) ??
-      { paid: 0, outstanding: 0, outstandingCount: 0, overdueCount: 0, nextDate: null };
+      { paid: 0, outstanding: 0, dueNow: 0, dueNowCount: 0, outstandingCount: 0, overdueCount: 0, nextDate: null };
     if (SETTLED.has(o.status)) {
       m.paid += o.amount_due;
     } else if (OUTSTANDING.has(o.status)) {
       m.outstanding += o.amount_due;
       m.outstandingCount++;
+      // GREEN: owed already (arrears + today). RED is the whole `outstanding`.
+      if (o.due_date <= today) {
+        m.dueNow += o.amount_due;
+        m.dueNowCount++;
+      }
       if (o.status === 'overdue' || o.due_date < today) m.overdueCount++;
       if (o.due_date >= today && (m.nextDate === null || o.due_date < m.nextDate)) {
         m.nextDate = o.due_date;
       }
     }
     money.set(o.rider_id, m);
+    const list = progressRows.get(o.rider_id) ?? [];
+    list.push({ dueDate: o.due_date, amountDue: o.amount_due, status: o.status });
+    progressRows.set(o.rider_id, list);
   }
 
   return riders.map((r) => {
@@ -237,10 +251,14 @@ export async function listRiderDirectory(): Promise<RiderDirectoryRow[]> {
     const m = money.get(r.id) ?? {
       paid: 0,
       outstanding: 0,
+      dueNow: 0,
+      dueNowCount: 0,
       outstandingCount: 0,
       overdueCount: 0,
       nextDate: null,
     };
+    const rows = progressRows.get(r.id) ?? [];
+    const projected = rows.length > 0 ? computeContractProgress(rows, today).projectedEndDate : null;
     return {
       id: r.id,
       riderNumber: r.rider_number,
@@ -278,9 +296,12 @@ export async function listRiderDirectory(): Promise<RiderDirectoryRow[]> {
       contractEndDate: c?.end_date ?? null,
       amountPaid: m.paid,
       amountOutstanding: m.outstanding,
+      amountDueNow: m.dueNow,
+      dueNowCount: m.dueNowCount,
       outstandingCount: m.outstandingCount,
       overdueCount: m.overdueCount,
       nextPaymentDate: m.nextDate,
+      projectedEndDate: projected,
     };
   });
 }

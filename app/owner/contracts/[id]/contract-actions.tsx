@@ -10,6 +10,8 @@ import {
   contractLifecycle,
   generateContractPdf,
   getContractDocumentUrl,
+  reactivateContract,
+  extendContractTerm,
 } from '@/lib/contracts/actions';
 import type { ContractDocument } from '@/lib/contracts/queries';
 import { formatLocalDateTime } from '@/lib/dates/tz';
@@ -297,6 +299,187 @@ export function LifecycleButtons({
           {error}
         </p>
       )}
+    </div>
+  );
+}
+
+/*
+ * Reactivate a terminated / completed contract (client feedback 2026-09-05).
+ *
+ * The client's report: "I tried terminating a contract and later activating it
+ * again, but the system does not allow the contract to return to Active. This
+ * is very important because the rider cannot make payments."
+ *
+ * Reactivation restores the status AND the obligations termination cancelled —
+ * flipping only the status would leave the rider with an empty calendar and
+ * still nothing to pay. If the term has already passed, a new end date is
+ * required, otherwise the nightly completion job would close it again tonight.
+ */
+const REACTIVATE_ERRORS: Record<string, string> = {
+  invalid_status: 'This contract is not in a state that can be reactivated — reload the page.',
+  term_expired:
+    'The contract term has already ended. Enter a new end date to extend it as part of reactivating.',
+  missing_dates: 'This contract has no start or end date — edit it first.',
+  invalid_date: 'That end date is not valid.',
+  not_an_extension: 'The new end date must be after the current one.',
+  restore_failed: 'The status changed but the payment days could not be restored — retry.',
+  update_failed: 'The contract could not be updated. Reload and try again.',
+};
+
+export function ReactivateButton({
+  contractId,
+  currentEndDate,
+  termExpired,
+}: {
+  contractId: string;
+  currentEndDate: string | null;
+  termExpired: boolean;
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [newEndDate, setNewEndDate] = useState('');
+  const [open, setOpen] = useState(false);
+
+  function run() {
+    setError(null);
+    start(async () => {
+      try {
+        const res = await reactivateContract(contractId, {
+          newEndDate: newEndDate || null,
+        });
+        if (res.ok) {
+          router.refresh();
+          setOpen(false);
+        } else {
+          setError(REACTIVATE_ERRORS[res.error] ?? `Could not reactivate this contract (${res.error}).`);
+        }
+      } catch {
+        setError('Network error — reload the contract before retrying.');
+      }
+    });
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="self-start rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover"
+      >
+        Reactivate contract
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-muted-foreground">
+        Reactivating puts the contract back to <strong>Active</strong> and restores the payment days
+        that were cancelled when it ended. Payments already made are untouched.
+      </p>
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="font-medium">
+          New end date{' '}
+          <span className="text-muted-foreground font-normal">
+            {termExpired ? '(required — the current term has ended)' : '(optional — leave blank to keep the current end date)'}
+          </span>
+        </span>
+        <input
+          type="date"
+          className="input"
+          min={currentEndDate ?? undefined}
+          value={newEndDate}
+          onChange={(e) => setNewEndDate(e.target.value)}
+        />
+      </label>
+      {error && <p role="alert" className="text-sm font-medium text-overdue">{error}</p>}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={run}
+          disabled={pending}
+          className="min-h-11 rounded-[--radius-card] bg-primary px-4 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+        >
+          {pending ? 'Reactivating…' : 'Confirm reactivation'}
+        </button>
+        <button
+          type="button"
+          onClick={() => { setOpen(false); setError(null); }}
+          className="min-h-11 rounded-[--radius-card] border border-border px-4 font-semibold"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Extend a live contract's term and generate the extra obligations. */
+export function ExtendTermButton({
+  contractId,
+  currentEndDate,
+}: {
+  contractId: string;
+  currentEndDate: string | null;
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [newEndDate, setNewEndDate] = useState('');
+
+  function run() {
+    if (!newEndDate) {
+      setError('Choose the new end date.');
+      return;
+    }
+    setError(null);
+    setNote(null);
+    start(async () => {
+      try {
+        const res = await extendContractTerm(contractId, newEndDate);
+        if (res.ok && res.data) {
+          setNote(`Extended to ${res.data.endDate} — ${res.data.generated} extra payment day(s) generated.`);
+          setNewEndDate('');
+          router.refresh();
+        } else if (!res.ok) {
+          setError(REACTIVATE_ERRORS[res.error] ?? `Could not extend the contract (${res.error}).`);
+        }
+      } catch {
+        setError('Network error — reload the contract before retrying.');
+      }
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium">Extend to</span>
+          <input
+            type="date"
+            className="input"
+            min={currentEndDate ?? undefined}
+            value={newEndDate}
+            onChange={(e) => setNewEndDate(e.target.value)}
+          />
+        </label>
+        <button
+          type="button"
+          onClick={run}
+          disabled={pending}
+          className="min-h-11 rounded-[--radius-card] border border-border bg-white px-4 font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+        >
+          {pending ? 'Extending…' : 'Extend term'}
+        </button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Adds payment days after the current end date using this contract&rsquo;s own schedule and
+        instalment. Existing days are never changed.
+      </p>
+      {note && <p className="text-sm font-medium text-[color:var(--color-paid)]">{note}</p>}
+      {error && <p role="alert" className="text-sm font-medium text-overdue">{error}</p>}
     </div>
   );
 }

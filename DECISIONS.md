@@ -5,6 +5,49 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-035 · Cash needs a decision, not a record; and derived money keeps being derived (2026-09-05)
+
+The second client-feedback build (migration `0026`). Six decisions bind from
+here:
+
+1. **An accountant's cash entry is a REQUEST, not a payment.** Nothing is
+   written to `payments` while it is pending — a payment row that "doesn't
+   count yet" is the half-recorded-money failure mode this codebase has already
+   been bitten by. `cash_payment_requests` holds the intent; the Director's
+   confirmation is what creates the `payments` row and calls
+   `record_completed_payment`. Rejection leaves no money behind, and the
+   selection is RE-VALIDATED at confirmation time because the world may have
+   moved since the request was raised.
+2. **"Edit the amount" means "edit which days it covers."** Accounting is
+   whole-obligation, so the amount is always recomputed from the selected days.
+   There is no free-text amount field anywhere, and there never should be.
+3. **Who received the cash is a stored fact** (`payments.received_by`),
+   separate from who typed it in (`created_by`). With two accountants those are
+   not the same question. Staff can read each other's profile names (and only
+   staff rows) so the answer renders for both roles.
+4. **The daily rate is the agreed number; every other instalment is derived.**
+   `contracts.daily_rate` × 7 = weekly, × 30 = monthly. A month is priced as a
+   flat 30 days on purpose — a rider must be able to memorise one figure —
+   while the calendar arithmetic for WHEN a payment is due stays exact.
+5. **A term can be denominated in payment days.** With custom weekdays the
+   contract runs until every payment day has fallen, not until a calendar date
+   passes. `lib/obligations/payment-days.ts` is the single tested implementation
+   and `lib/contracts/term.ts` is the ONE resolver both the builder preview and
+   the server call — a preview that can disagree with what is saved is a bug
+   waiting to be reported as a money error.
+6. **The expected completion date is computed from the ledger, never stored**
+   (extending D-034 rule 3). `computeContractProgress` derives outstanding-now
+   (green), remaining-to-finish (red) and a pace-based completion date; it
+   refuses to print a date at all rather than extrapolating an absurd one.
+
+Also settled: a phone loan is an ordinary obligation with a `kind`, not a
+parallel ledger — so it inherits settlement, receipts, oldest-first allocation
+and every guard for free, and "pay for the phone first" needs no special casing.
+And a stuck `pending` mobile payment now EXPIRES: the one-attempt-per-rider
+guard must never be able to lock a rider out of paying (it did, for a month).
+
+---
+
 ## D-034 · Roles get a permission matrix + live probe; derived money state is never stored (2026-07-29)
 
 The client-feedback build added the **accountant** role (migrations 0024/0025),

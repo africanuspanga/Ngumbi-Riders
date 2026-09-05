@@ -5,6 +5,8 @@ import { fetchAllPages } from '@/lib/supabase/fetch-all';
 import { presetOptions, outstanding, type SelectableObligation, type PaymentOption, type PaymentCadence } from './selection';
 import { localDateString } from '@/lib/dates/tz';
 import type { PaymentStatus } from '@/lib/supabase/types';
+import { buildStatement, type Statement } from './statement';
+import { computeContractProgress, type ContractProgress } from '@/lib/contracts/completion';
 
 /* Rider-facing pay view (reads own data under RLS). */
 export type RiderPayView = {
@@ -285,4 +287,362 @@ export async function reconciliationSummary(): Promise<{
     completedToday: doneRes.count ?? 0,
     stalePending: (staleRes.data ?? []) as unknown as PaymentListItem[],
   };
+}
+
+/* =========================================================================
+ * Per-rider payment history + statement (client feedback 2026-09-05)
+ * ========================================================================= */
+
+export type RiderPaymentRow = {
+  id: string;
+  amount: number;
+  method: string;
+  status: string;
+  createdAt: string;
+  completedAt: string | null;
+  /** Local (EAT) calendar day the money landed — what a statement shows. */
+  completedDate: string | null;
+  receiptNumber: string | null;
+  /** Staff member who took the cash. Null for mobile money. */
+  receivedByName: string | null;
+  recordedByName: string | null;
+  note: string | null;
+  payerPhone: string | null;
+  /** Obligation due dates this payment settled. */
+  coveredDates: string[];
+};
+
+/** Resolve profile ids → display names in one round trip. */
+async function profileNames(
+  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
+  ids: (string | null | undefined)[],
+): Promise<Map<string, string>> {
+  const unique = [...new Set(ids.filter((v): v is string => Boolean(v)))];
+  if (unique.length === 0) return new Map();
+  const { data } = await supabase.from('profiles').select('id, full_name, email').in('id', unique);
+  const out = new Map<string, string>();
+  for (const p of (data ?? []) as { id: string; full_name: string | null; email: string | null }[]) {
+    out.set(p.id, p.full_name || p.email || 'Staff');
+  }
+  return out;
+}
+
+/**
+ * Every payment a rider has ever made — when, how much, by which method, and
+ * for cash, WHO received it. The Director may have two accountants, so the
+ * receiver is shown explicitly rather than inferred from who typed it in.
+ */
+export async function getRiderPaymentHistory(riderId: string): Promise<RiderPaymentRow[]> {
+  const supabase = await createServerSupabase();
+
+  const payments = await fetchAllPages<{
+    id: string;
+    amount: number;
+    method: string;
+    status: string;
+    created_at: string;
+    completed_at: string | null;
+    received_by: string | null;
+    created_by: string | null;
+    note: string | null;
+    payer_phone: string | null;
+  }>(
+    (from, to) =>
+      supabase
+        .from('payments')
+        .select('id, amount, method, status, created_at, completed_at, received_by, created_by, note, payer_phone')
+        .eq('rider_id', riderId)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(from, to),
+    { label: 'rider payment history' },
+  );
+  if (payments.length === 0) return [];
+
+  const ids = payments.map((p) => p.id);
+  const [receiptRows, allocRows, names] = await Promise.all([
+    fetchAllPages<{ payment_id: string; receipt_number: string }>(
+      (from, to) =>
+        supabase
+          .from('receipts')
+          .select('payment_id, receipt_number')
+          .in('payment_id', ids)
+          .order('payment_id', { ascending: true })
+          .range(from, to),
+      { label: 'rider payment receipts' },
+    ),
+    fetchAllPages<{ payment_id: string; payment_obligations: { due_date: string } | null }>(
+      (from, to) =>
+        supabase
+          .from('payment_allocations')
+          .select('payment_id, payment_obligations(due_date)')
+          .in('payment_id', ids)
+          .order('payment_id', { ascending: true })
+          .range(from, to) as unknown as PromiseLike<{
+          data: { payment_id: string; payment_obligations: { due_date: string } | null }[] | null;
+          error: { message: string } | null;
+        }>,
+      { label: 'rider payment allocations' },
+    ),
+    profileNames(supabase, payments.flatMap((p) => [p.received_by, p.created_by])),
+  ]);
+
+  const receiptByPayment = new Map(receiptRows.map((r) => [r.payment_id, r.receipt_number]));
+  const datesByPayment = new Map<string, string[]>();
+  for (const a of allocRows) {
+    const d = a.payment_obligations?.due_date;
+    if (!d) continue;
+    const list = datesByPayment.get(a.payment_id) ?? [];
+    list.push(d);
+    datesByPayment.set(a.payment_id, list);
+  }
+
+  return payments.map((p) => ({
+    id: p.id,
+    amount: p.amount,
+    method: p.method,
+    status: p.status,
+    createdAt: p.created_at,
+    completedAt: p.completed_at,
+    completedDate: p.completed_at ? localDateString(new Date(p.completed_at)) : null,
+    receiptNumber: receiptByPayment.get(p.id) ?? null,
+    receivedByName: p.method === 'cash' ? (p.received_by ? (names.get(p.received_by) ?? null) : null) : null,
+    recordedByName: p.created_by ? (names.get(p.created_by) ?? null) : null,
+    note: p.note,
+    payerPhone: p.payer_phone,
+    coveredDates: (datesByPayment.get(p.id) ?? []).sort(),
+  }));
+}
+
+export type RiderStatementView = {
+  riderId: string;
+  riderName: string;
+  riderNumber: string;
+  contractNumber: string | null;
+  statement: Statement;
+  progress: ContractProgress;
+  from: string | null;
+  to: string | null;
+};
+
+/**
+ * Bank-statement view for one rider: every charge, every receipt, a running
+ * balance, plus the green/red position and the projected completion date.
+ */
+export async function getRiderStatement(
+  riderId: string,
+  range?: { from?: string | null; to?: string | null },
+): Promise<RiderStatementView | null> {
+  const supabase = await createServerSupabase();
+  const today = localDateString();
+
+  const { data: riderRow } = await supabase
+    .from('riders')
+    .select('id, first_name, last_name, rider_number')
+    .eq('id', riderId)
+    .maybeSingle();
+  const rider = riderRow as
+    | { id: string; first_name: string; last_name: string; rider_number: string }
+    | null;
+  if (!rider) return null;
+
+  const [obligations, payments, contract] = await Promise.all([
+    fetchAllPages<{ due_date: string; amount_due: number; status: string; kind: string | null; settled_at: string | null }>(
+      (from, to) =>
+        supabase
+          .from('payment_obligations')
+          .select('due_date, amount_due, status, kind, settled_at')
+          .eq('rider_id', riderId)
+          .order('due_date', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to),
+      { label: 'rider statement obligations' },
+    ),
+    getRiderPaymentHistory(riderId),
+    supabase
+      .from('contracts')
+      .select('contract_number, status, created_at')
+      .eq('rider_id', riderId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const statement = buildStatement(
+    obligations.map((o) => ({
+      date: o.due_date,
+      amount: o.amount_due,
+      status: o.status,
+      kind: o.kind ?? 'lease',
+    })),
+    payments
+      .filter((p) => p.status === 'completed' && p.completedDate)
+      .map((p) => ({
+        date: p.completedDate!,
+        amount: p.amount,
+        method: p.method,
+        paymentId: p.id,
+        receiptNumber: p.receiptNumber,
+        receivedByName: p.receivedByName,
+        note: p.note,
+      })),
+    range,
+  );
+
+  const progress = computeContractProgress(
+    obligations.map((o) => ({
+      dueDate: o.due_date,
+      amountDue: o.amount_due,
+      status: o.status,
+      settledDate: o.settled_at ? localDateString(new Date(o.settled_at)) : null,
+    })),
+    today,
+  );
+
+  return {
+    riderId,
+    riderName: `${rider.first_name} ${rider.last_name}`,
+    riderNumber: rider.rider_number,
+    contractNumber: (contract.data as { contract_number: string } | null)?.contract_number ?? null,
+    statement,
+    progress,
+    from: range?.from ?? null,
+    to: range?.to ?? null,
+  };
+}
+
+/* =========================================================================
+ * Cash-approval queue (client feedback 2026-09-05)
+ * ========================================================================= */
+
+export type CashRequestRow = {
+  id: string;
+  riderId: string;
+  riderName: string;
+  contractId: string;
+  amount: number;
+  paymentDate: string;
+  obligationIds: string[];
+  obligationDates: string[];
+  note: string | null;
+  status: string;
+  receivedByName: string;
+  requestedByName: string;
+  decidedByName: string | null;
+  decisionNote: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+  paymentId: string | null;
+};
+
+export type CashRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
+export async function listCashRequests(
+  statuses: CashRequestStatus[] = ['pending'],
+  limit = 200,
+): Promise<CashRequestRow[]> {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from('cash_payment_requests')
+    .select(
+      'id, rider_id, contract_id, obligation_ids, amount, payment_date, note, status, received_by, requested_by, decided_by, decision_note, created_at, decided_at, payment_id, riders(first_name, last_name)',
+    )
+    .in('status', statuses)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  // The approval queue is money waiting for a decision — an error rendering as
+  // "nothing to approve" is the worst possible outcome, so fail loudly.
+  if (error) throw new Error(`cash request list failed: ${error.message}`);
+
+  type Raw = {
+    id: string;
+    rider_id: string;
+    contract_id: string;
+    obligation_ids: string[];
+    amount: number;
+    payment_date: string;
+    note: string | null;
+    status: string;
+    received_by: string;
+    requested_by: string;
+    decided_by: string | null;
+    decision_note: string | null;
+    created_at: string;
+    decided_at: string | null;
+    payment_id: string | null;
+    riders: { first_name: string; last_name: string } | null;
+  };
+  const rows = (data ?? []) as unknown as Raw[];
+  if (rows.length === 0) return [];
+
+  const [names, obligationDates] = await Promise.all([
+    profileNames(supabase, rows.flatMap((r) => [r.received_by, r.requested_by, r.decided_by])),
+    (async () => {
+      const ids = [...new Set(rows.flatMap((r) => r.obligation_ids))];
+      if (ids.length === 0) return new Map<string, string>();
+      const dates = await fetchAllPages<{ id: string; due_date: string }>(
+        (from, to) =>
+          supabase
+            .from('payment_obligations')
+            .select('id, due_date')
+            .in('id', ids)
+            .order('due_date', { ascending: true })
+            .range(from, to),
+        { label: 'cash request obligation dates' },
+      );
+      return new Map(dates.map((d) => [d.id, d.due_date]));
+    })(),
+  ]);
+
+  return rows.map((r) => ({
+    id: r.id,
+    riderId: r.rider_id,
+    riderName: r.riders ? `${r.riders.first_name} ${r.riders.last_name}` : '—',
+    contractId: r.contract_id,
+    amount: r.amount,
+    paymentDate: r.payment_date,
+    obligationIds: r.obligation_ids,
+    obligationDates: r.obligation_ids
+      .map((id) => obligationDates.get(id))
+      .filter((d): d is string => Boolean(d))
+      .sort(),
+    note: r.note,
+    status: r.status,
+    receivedByName: names.get(r.received_by) ?? 'Staff',
+    requestedByName: names.get(r.requested_by) ?? 'Staff',
+    decidedByName: r.decided_by ? (names.get(r.decided_by) ?? null) : null,
+    decisionNote: r.decision_note,
+    createdAt: r.created_at,
+    decidedAt: r.decided_at,
+    paymentId: r.payment_id,
+  }));
+}
+
+export type StaffReceiver = { id: string; name: string; role: string };
+
+/** Active staff who may be recorded as having received cash. */
+export async function listStaffReceivers(): Promise<StaffReceiver[]> {
+  const supabase = await createServerSupabase();
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, full_name, email, role, is_active')
+    .in('role', ['owner', 'accountant'])
+    .order('role', { ascending: true });
+  return ((data ?? []) as { id: string; full_name: string | null; email: string | null; role: string; is_active: boolean | null }[])
+    .filter((p) => p.role === 'owner' || p.is_active !== false)
+    .map((p) => ({ id: p.id, name: p.full_name || p.email || 'Staff', role: p.role }));
+}
+
+/** Obligations already claimed by a pending request, so the form can hide them. */
+export async function pendingRequestObligationIds(): Promise<Set<string>> {
+  const supabase = await createServerSupabase();
+  const { data } = await supabase
+    .from('cash_payment_requests')
+    .select('obligation_ids')
+    .eq('status', 'pending');
+  const out = new Set<string>();
+  for (const r of (data ?? []) as { obligation_ids: string[] }[]) {
+    for (const id of r.obligation_ids) out.add(id);
+  }
+  return out;
 }

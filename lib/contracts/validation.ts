@@ -43,8 +43,17 @@ export const contractBuilderSchema = z
     durationYears: z.coerce.number().int().min(0).max(10).default(0),
     durationWeeks: z.coerce.number().int().min(0).max(520).default(0),
     durationDays: z.coerce.number().int().min(0).max(3650).default(0),
-    // 'exact' = the owner typed an end date and it wins over the components.
-    endDateMode: z.enum(['duration', 'exact']).default('duration'),
+    // 'exact'        = the owner typed an end date and it wins over everything.
+    // 'payment_days' = the owner sold the lease as N PAYMENT DAYS; the end date
+    //                  is computed by counting those days forward.
+    endDateMode: z.enum(['duration', 'exact', 'payment_days']).default('duration'),
+    paymentDaysTarget: z.preprocess(
+      (v) => (v === '' || v === null ? undefined : v),
+      z.coerce.number().int().min(1).max(3650).optional(),
+    ),
+    // Custom weekdays: run the term on until every payment day has fallen
+    // (a 28-payment-day lease paid 6 days a week takes longer than 28 days).
+    extendForPaymentDays: z.boolean().default(true),
     exactEndDate: z.preprocess(
       (v) => (v === '' || v === null ? undefined : v),
       z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid end date').optional(),
@@ -67,7 +76,25 @@ export const contractBuilderSchema = z
       (v) => (v === '' || v === null ? undefined : v),
       z.coerce.number().int().min(1).max(31).optional(),
     ),
+    // The agreed DAILY rate. When present the instalment is DERIVED from it
+    // server-side (daily x 7 for weekly, x 30 for monthly) so the owner never
+    // types the weekly/monthly figure by hand.
+    dailyRate: z.preprocess(
+      (v) => (v === '' || v === null ? undefined : v),
+      z.coerce.number().int().positive().max(100_000_000).optional(),
+    ),
     installmentAmount: z.coerce.number().int().positive('Amount must be greater than 0'),
+    // Phone loan (motorcycle + phone). Fixed 50% interest, max 3 months.
+    includePhoneLoan: z.boolean().default(false),
+    phoneLoanAmount: z.preprocess(
+      (v) => (v === '' || v === null ? undefined : v),
+      z.coerce.number().int().positive().max(100_000_000).optional(),
+    ),
+    phoneLoanMonths: z.preprocess(
+      (v) => (v === '' || v === null ? undefined : v),
+      z.coerce.number().int().min(1).max(3).optional(),
+    ),
+    phoneDescription: z.string().trim().max(200).optional().or(z.literal('')),
     paymentDeadlineTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Invalid time'),
     specialTerms: z.string().trim().max(2000).optional().or(z.literal('')),
     // The owner-edited schedule (#1). Absent → derive from the cadence.
@@ -75,10 +102,18 @@ export const contractBuilderSchema = z
   })
   .refine(
     (v) =>
-      v.endDateMode === 'exact' ||
+      v.endDateMode !== 'duration' ||
       v.durationYears + v.durationMonths + v.durationWeeks + v.durationDays > 0,
     { message: 'Enter a duration (years, months, weeks or days)', path: ['durationMonths'] },
   )
+  .refine((v) => v.endDateMode !== 'payment_days' || Boolean(v.paymentDaysTarget), {
+    message: 'Enter how many payment days the contract runs for',
+    path: ['paymentDaysTarget'],
+  })
+  .refine((v) => !v.includePhoneLoan || Boolean(v.phoneLoanAmount), {
+    message: 'Enter the phone loan amount',
+    path: ['phoneLoanAmount'],
+  })
   .refine((v) => v.endDateMode !== 'exact' || Boolean(v.exactEndDate), {
     message: 'Enter the contract end date',
     path: ['exactEndDate'],
@@ -133,3 +168,66 @@ export function scheduleLabel(
       return selectedWeekdays.map((d) => WEEKDAY_LABELS[d]).join(', ');
   }
 }
+
+/*
+ * Contract EDITING (client feedback 2026-09-05): "I should be able to edit an
+ * existing contract and its details — for example I may not have entered the
+ * correct motorcycle plate number."
+ *
+ * What may be edited depends on whether the contract has a live ledger:
+ *
+ *   • Always — the motorcycle, ownership transfer, special terms and the daily
+ *     payment deadline. None of these change what anyone owes.
+ *   • Before activation only — the term, the schedule and the amounts. Once
+ *     obligations exist they ARE the money record; changing the price or the
+ *     cadence underneath them would silently restate settled history, so the
+ *     server refuses (spec rule 6) and the owner extends or re-issues instead.
+ */
+export const contractEditSchema = z.object({
+  motorcycleId: z.string().uuid().optional(),
+  ownershipTransfers: z.boolean().optional(),
+  ownershipTransferNotes: z.string().trim().max(1000).optional().or(z.literal('')),
+  specialTerms: z.string().trim().max(2000).optional().or(z.literal('')),
+  paymentDeadlineTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Invalid time')
+    .optional(),
+
+  // Pre-activation only (rejected with `locked_after_activation` otherwise).
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  durationYears: z.coerce.number().int().min(0).max(10).optional(),
+  durationMonths: z.coerce.number().int().min(0).max(600).optional(),
+  durationWeeks: z.coerce.number().int().min(0).max(520).optional(),
+  durationDays: z.coerce.number().int().min(0).max(3650).optional(),
+  endDateMode: z.enum(['duration', 'exact', 'payment_days']).optional(),
+  exactEndDate: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  ),
+  paymentDaysTarget: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.coerce.number().int().min(1).max(3650).optional(),
+  ),
+  extendForPaymentDays: z.boolean().optional(),
+  scheduleType: z.enum(['daily', 'selected_weekdays', 'weekly', 'monthly']).optional(),
+  selectedWeekdays: z.array(z.number().int().min(0).max(6)).optional(),
+  weeklyWeekday: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.coerce.number().int().min(0).max(6).optional(),
+  ),
+  dueDayOfMonth: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.coerce.number().int().min(1).max(31).optional(),
+  ),
+  dailyRate: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.coerce.number().int().positive().max(100_000_000).optional(),
+  ),
+  installmentAmount: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.coerce.number().int().positive().optional(),
+  ),
+});
+
+export type ContractEditInput = z.infer<typeof contractEditSchema>;
+export type ContractEditFormInput = z.input<typeof contractEditSchema>;

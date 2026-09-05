@@ -14,11 +14,14 @@ import {
 import { createContract } from '@/lib/contracts/actions';
 import { scheduleSummary } from '@/lib/obligations/schedule';
 import {
-  contractEndDateFor,
   formatDuration,
   monthlyInstalmentCount,
   normalizeDuration,
 } from '@/lib/contracts/duration';
+import { resolveContractTerm, endDateWithoutPhoneLoan, type TermInput } from '@/lib/contracts/term';
+import { instalmentFromDailyRate, explainInstalment } from '@/lib/contracts/pricing';
+import { describePhoneLoan } from '@/lib/loans/phone';
+import { formatLongDate } from '@/lib/dates/format';
 import { summarizePlan, type PlanEntry, type PlanFrequency } from '@/lib/obligations/plan';
 import { formatTZS } from '@/lib/money/format';
 import { formatDate } from '@/lib/dates/format';
@@ -34,6 +37,8 @@ const CONTRACT_ERRORS: Record<string, string> = {
   motorcycle_not_found: 'That motorcycle no longer exists — reload and try again.',
   invalid_duration:
     'That term could not be turned into an end date. Check the duration or enter an exact end date.',
+  invalid_amount: 'Enter the daily rate (or an instalment amount greater than 0).',
+  phone_loan_failed: 'The phone loan could not be created. Nothing was saved — try again.',
   plan_empty: 'The payment plan has no payments selected.',
   plan_out_of_term: 'The plan has payment dates outside the contract term.',
   plan_duplicate_dates: 'The plan has two payments on the same date.',
@@ -52,10 +57,13 @@ export function ContractBuilder({
   riders,
   motorcycles,
   defaultAmount,
+  phoneLoanByRider = {},
 }: {
   riders: Option[];
   motorcycles: MotoOption[];
   defaultAmount: number;
+  /** riderId → requested phone-loan amount (null = asked but no amount given). */
+  phoneLoanByRider?: Record<string, number | null>;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +86,9 @@ export function ContractBuilder({
       durationWeeks: 0,
       durationDays: 0,
       endDateMode: 'duration',
+      extendForPaymentDays: true,
+      includePhoneLoan: false,
+      phoneLoanMonths: 3,
     },
   });
 
@@ -113,6 +124,13 @@ export function ContractBuilder({
     }
   }, [scheduleType, values.startDate, values.weeklyWeekday, setValue]);
 
+  // The applicant answered "motorcycle + phone" on their application — surface
+  // it the moment that rider is selected, rather than relying on the owner to
+  // remember what someone asked for weeks earlier.
+  const selectedRiderWantsPhone =
+    values.riderId !== undefined && values.riderId in phoneLoanByRider;
+  const requestedPhoneAmount = values.riderId ? phoneLoanByRider[values.riderId] : null;
+
   // A bike already assigned to a rider can only be leased to THAT rider, so it
   // only appears once that rider is selected. Available (unassigned) bikes
   // always appear. Bikes assigned to a different rider are surfaced as a hint.
@@ -131,22 +149,6 @@ export function ContractBuilder({
     setValue('selectedWeekdays', next, { shouldValidate: true });
   }
 
-  // The contract's inclusive end date — from the duration components, or the
-  // owner's exact date (#9). Recomputed on every change, so the preview always
-  // reflects what will be saved.
-  let computedEndDate: string | null = null;
-  try {
-    if (values.startDate) {
-      computedEndDate = contractEndDateFor({
-        startDate: values.startDate,
-        duration,
-        exactEndDate: endDateMode === 'exact' ? (values.exactEndDate as string) || null : null,
-      });
-    }
-  } catch {
-    computedEndDate = null;
-  }
-
   const scheduleWeekdays =
     scheduleType === 'weekly'
       ? values.weeklyWeekday === undefined || (values.weeklyWeekday as unknown) === ''
@@ -155,6 +157,52 @@ export function ContractBuilder({
       : weekdays;
   const frequency: PlanFrequency =
     scheduleType === 'selected_weekdays' ? 'custom' : (scheduleType as PlanFrequency);
+
+  // The instalment is DERIVED from the daily rate: 10,000/day → 70,000/week,
+  // 300,000/month. The owner enters one number, not two (client feedback).
+  const dailyRate = Number(values.dailyRate) || 0;
+  const derivedInstalment = instalmentFromDailyRate(dailyRate, scheduleType);
+  const pricingHint = explainInstalment(dailyRate, scheduleType);
+  useEffect(() => {
+    if (derivedInstalment > 0 && Number(values.installmentAmount) !== derivedInstalment) {
+      setValue('installmentAmount', derivedInstalment, { shouldValidate: true });
+    }
+  }, [derivedInstalment, values.installmentAmount, setValue]);
+
+  // The whole term — duration, phone loan and payment-day extension — resolved
+  // by the SAME function the server calls, so the preview cannot disagree with
+  // what gets saved.
+  const phoneLoanInput =
+    values.includePhoneLoan && Number(values.phoneLoanAmount) > 0
+      ? {
+          principal: Number(values.phoneLoanAmount),
+          termMonths: Number(values.phoneLoanMonths) || 3,
+        }
+      : null;
+  const termInput: TermInput | null = values.startDate
+    ? {
+        startDate: values.startDate,
+        duration,
+        endDateMode,
+        exactEndDate: (values.exactEndDate as string) || null,
+        paymentDaysTarget: Number(values.paymentDaysTarget) || null,
+        scheduleType,
+        selectedWeekdays: scheduleWeekdays,
+        extendForPaymentDays: values.extendForPaymentDays ?? true,
+        phoneLoan: phoneLoanInput,
+      }
+    : null;
+
+  let term: ReturnType<typeof resolveContractTerm> | null = null;
+  let termError: string | null = null;
+  try {
+    term = termInput ? resolveContractTerm(termInput) : null;
+  } catch (e) {
+    term = null;
+    termError = e instanceof Error ? e.message : null;
+  }
+  const computedEndDate = term?.endDate ?? null;
+  const withoutPhone = termInput && phoneLoanInput ? endDateWithoutPhoneLoan(termInput) : null;
 
   // Live preview (spec §10.3 step 3). An edited plan is authoritative; otherwise
   // the cadence engine is asked. Both throw until fully specified → no preview.
@@ -170,7 +218,7 @@ export function ContractBuilder({
         const dueDay = scheduleType === 'monthly' ? Number(values.dueDayOfMonth) : undefined;
         const { count, total } = scheduleSummary(
           {
-            startDate: values.startDate,
+            startDate: term?.leaseStartDate ?? values.startDate,
             endDate: computedEndDate,
             scheduleType,
             selectedWeekdays: scheduleWeekdays,
@@ -178,7 +226,7 @@ export function ContractBuilder({
             monthlyCount:
               scheduleType === 'monthly' && dueDay
                 ? monthlyInstalmentCount({
-                    startDate: values.startDate,
+                    startDate: term?.leaseStartDate ?? values.startDate,
                     endDate: computedEndDate,
                     duration,
                     dueDayOfMonth: dueDay,
@@ -277,10 +325,29 @@ export function ContractBuilder({
 
         <SelectField label="Set the end date by" {...register('endDateMode')}>
           <option value="duration">Duration (years / months / weeks / days)</option>
+          <option value="payment_days">Number of payment days</option>
           <option value="exact">Exact end date</option>
         </SelectField>
 
-        {endDateMode === 'duration' ? (
+        {endDateMode === 'payment_days' ? (
+          <>
+            <TextField
+              label="Payment days"
+              type="number"
+              min={1}
+              max={3650}
+              required
+              error={errors.paymentDaysTarget?.message}
+              {...register('paymentDaysTarget')}
+            />
+            <p className="text-xs text-muted-foreground">
+              The contract runs until this many PAYMENT DAYS have fallen. With
+              custom weekdays that is longer than the same number of calendar
+              days — e.g. 28 payment days paid six days a week ends four days
+              later than 28 calendar days would.
+            </p>
+          </>
+        ) : endDateMode === 'duration' ? (
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <TextField label="Years" type="number" min={0} max={10} error={errors.durationYears?.message} {...register('durationYears')} />
@@ -306,19 +373,39 @@ export function ContractBuilder({
           />
         )}
 
-        <p className="rounded-[--radius-card] bg-surface p-2 text-sm">
-          {computedEndDate ? (
+        <div className="rounded-[--radius-card] bg-surface p-2 text-sm">
+          {computedEndDate && term ? (
             <>
-              Term: <strong className="text-primary-dark">{formatDate(values.startDate)}</strong> →{' '}
-              <strong className="text-primary-dark">{formatDate(computedEndDate)}</strong>
-              {endDateMode === 'duration' && ` · ${formatDuration(duration)}`}
+              <p>
+                Term: <strong className="text-primary-dark">{formatDate(values.startDate)}</strong> →{' '}
+                <strong className="text-primary-dark">{formatDate(computedEndDate)}</strong>
+                {endDateMode === 'duration' && ` · ${formatDuration(duration)}`}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Ends {formatLongDate(computedEndDate)}.
+              </p>
+              {term.leaseStartDate !== term.startDate && (
+                <p className="mt-1 text-xs text-primary-dark">
+                  Phone loan is collected first · motorcycle payments start{' '}
+                  <strong>{formatDate(term.leaseStartDate)}</strong>
+                  {withoutPhone ? ` (without the phone the contract would end ${formatDate(withoutPhone)})` : ''}.
+                </p>
+              )}
+              {term.paymentDays && term.paymentDays.extraCalendarDays > 0 && (
+                <p className="mt-1 text-xs text-primary-dark">
+                  {term.paymentDays.targetDays} payment days on the chosen weekdays takes{' '}
+                  {term.paymentDays.extraCalendarDays} extra calendar day
+                  {term.paymentDays.extraCalendarDays === 1 ? '' : 's'} — the end date has been
+                  extended from {formatDate(term.baseEndDate)}.
+                </p>
+              )}
             </>
           ) : (
             <span className="text-muted-foreground">
-              Enter a start date and a term to see the calculated end date.
+              {termError ?? 'Enter a start date and a term to see the calculated end date.'}
             </span>
           )}
-        </p>
+        </div>
       </fieldset>
 
       <SelectField label="Payment frequency" required error={errors.scheduleType?.message} {...register('scheduleType')}>
@@ -348,6 +435,17 @@ export function ContractBuilder({
           {errors.selectedWeekdays && (
             <span className="text-xs text-overdue">{errors.selectedWeekdays.message}</span>
           )}
+          <label className="mt-1 flex items-start gap-2 text-sm">
+            <input type="checkbox" className="mt-0.5 h-5 w-5" {...register('extendForPaymentDays')} />
+            <span>
+              Extend the end date until every payment day has been collected
+              <span className="block text-xs text-muted-foreground">
+                {weekdays.length > 0
+                  ? `${weekdays.length} payment day${weekdays.length === 1 ? '' : 's'} a week — the term runs on until the full number of payment days has fallen.`
+                  : 'Choose the weekdays above.'}
+              </span>
+            </span>
+          </label>
         </div>
       )}
 
@@ -377,10 +475,104 @@ export function ContractBuilder({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
-        <TextField label="Installment amount (TZS)" type="number" min={1} required error={errors.installmentAmount?.message} {...register('installmentAmount')} />
+      <fieldset className="flex flex-col gap-3 rounded-[--radius-card] border border-border p-3">
+        <legend className="px-1 text-sm font-semibold text-muted-foreground">Payment amount</legend>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField
+            label="Daily rate (TZS)"
+            type="number"
+            min={1}
+            error={errors.dailyRate?.message}
+            hint="The agreed rate per day. Weekly and monthly instalments are calculated from it."
+            {...register('dailyRate')}
+          />
+          <TextField
+            label={
+              scheduleType === 'weekly'
+                ? 'Weekly instalment (TZS)'
+                : scheduleType === 'monthly'
+                  ? 'Monthly instalment (TZS)'
+                  : 'Instalment amount (TZS)'
+            }
+            type="number"
+            min={1}
+            required
+            error={errors.installmentAmount?.message}
+            {...register('installmentAmount')}
+          />
+        </div>
+        {pricingHint && (
+          <p className="rounded-[--radius-card] bg-surface p-2 text-xs text-primary-dark">
+            {pricingHint}
+          </p>
+        )}
         <TextField label="Payment deadline" type="time" required error={errors.paymentDeadlineTime?.message} {...register('paymentDeadlineTime')} />
-      </div>
+      </fieldset>
+
+      {/* Phone loan — motorcycle only, or motorcycle + phone? */}
+      <fieldset className="flex flex-col gap-3 rounded-[--radius-card] border border-border p-3">
+        <legend className="px-1 text-sm font-semibold text-muted-foreground">Phone loan</legend>
+        {selectedRiderWantsPhone && !values.includePhoneLoan && (
+          <p className="rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 p-2 text-xs text-amber-900">
+            This rider asked for a motorcycle <strong>and a phone</strong> on their application
+            {requestedPhoneAmount ? ` (${formatTZS(requestedPhoneAmount)})` : ''}. Tick the box below
+            to add the phone loan.
+          </p>
+        )}
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" className="mt-0.5 h-5 w-5" {...register('includePhoneLoan')} />
+          <span>
+            Motorcycle <strong>and</strong> phone
+            <span className="block text-xs text-muted-foreground">
+              The phone loan is repaid first; motorcycle payments start once it is cleared.
+            </span>
+          </span>
+        </label>
+        {values.includePhoneLoan && (
+          <>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <TextField
+                label="Loan amount (TZS)"
+                type="number"
+                min={1}
+                required
+                error={errors.phoneLoanAmount?.message}
+                {...register('phoneLoanAmount')}
+              />
+              <TextField
+                label="Repayment (months)"
+                type="number"
+                min={1}
+                max={3}
+                error={errors.phoneLoanMonths?.message}
+                hint="Maximum 3"
+                {...register('phoneLoanMonths')}
+              />
+              <TextField
+                label="Phone (optional)"
+                error={errors.phoneDescription?.message}
+                {...register('phoneDescription')}
+              />
+            </div>
+            {term?.phoneLoan && (
+              <div className="rounded-[--radius-card] bg-surface p-2 text-xs">
+                <p className="font-semibold text-primary-dark">{describePhoneLoan(term.phoneLoan)}</p>
+                <ul className="mt-1 flex flex-col gap-0.5 text-muted-foreground">
+                  {term.phoneInstalments.map((i) => (
+                    <li key={i.dueDate}>
+                      Instalment {i.index}: {formatDate(i.dueDate)} · {formatTZS(i.amount)}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-primary-dark">
+                  Adds {term.phoneLoanExtraMonths} month
+                  {term.phoneLoanExtraMonths === 1 ? '' : 's'} to the contract.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </fieldset>
 
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" className="h-5 w-5" {...register('ownershipTransfers')} />
@@ -393,7 +585,7 @@ export function ContractBuilder({
 
       {/* Bulk payment-plan generator (#1) */}
       <PaymentPlanBuilder
-        startDate={values.startDate ?? ''}
+        startDate={term?.leaseStartDate ?? values.startDate ?? ''}
         endDate={computedEndDate ?? ''}
         amount={Number(values.installmentAmount) || 0}
         frequency={frequency}

@@ -122,7 +122,13 @@
       "gAddress": "Anuani ya makazi",
       "gRelationship": "Uhusiano na muombaji",
       "gOccupation": "Kazi",
-      "gEmployer": "Mwajiri au biashara"
+      "gEmployer": "Mwajiri au biashara",
+      "packageChoice": "Unachukua nini?",
+      "packageChoiceHint": "Simu husaidia kutumia mfumo. Mkopo wa simu hulipwa kwanza kabla ya malipo ya pikipiki kuanza.",
+      "packageMotorcycleOnly": "Pikipiki peke yake",
+      "packageMotorcyclePhone": "Pikipiki pamoja na simu",
+      "phoneLoanAmount": "Kiasi cha mkopo wa simu (TZS)",
+      "phoneLoanAmountHint": "Si lazima — mmiliki atathibitisha kiasi wakati wa mkataba."
     },
     "docs": {
       "applicantHeading": "Nyaraka za muombaji",

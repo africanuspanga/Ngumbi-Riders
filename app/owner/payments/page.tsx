@@ -1,59 +1,65 @@
 import Link from 'next/link';
 import { requireOwner } from '@/lib/auth/session';
-import { listAllPayments } from '@/lib/payments/queries';
-import { PAYMENT_STATUS_LABELS_EN } from '@/lib/payments/labels';
+import { listRiderDirectory } from '@/lib/riders/queries';
+import { listCashRequests } from '@/lib/payments/queries';
+import { PaymentsDirectory } from '@/components/payments/PaymentsDirectory';
 import { formatTZS } from '@/lib/money/format';
-import { localDateString } from '@/lib/dates/tz';
+import { BanknoteIcon, ArrowRightIcon, ListIcon } from 'lucide-react';
 
 export const metadata = { title: 'Payments' };
 
-const TONE: Record<string, string> = {
-  completed: 'text-[color:var(--color-paid)]',
-  pending: 'text-[color:var(--color-warning)]',
-  failed: 'text-[color:var(--color-overdue)]',
-  expired: 'text-muted-foreground',
-  cancelled: 'text-muted-foreground',
-  reversed: 'text-[color:var(--color-overdue)]',
-};
-
+/**
+ * Payments landing page (client feedback 2026-09-05): a rider directory, not
+ * one long list of transactions. The flat ledger lives at ./transactions.
+ */
 export default async function OwnerPaymentsPage() {
   await requireOwner();
-  const payments = await listAllPayments();
+  const [riders, pending] = await Promise.all([
+    listRiderDirectory(),
+    listCashRequests(['pending']),
+  ]);
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex items-center justify-between">
+    <div className="flex flex-col gap-4">
+      <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-primary-dark">Payments</h1>
-          <p className="text-sm text-muted-foreground">All mobile-money and cash transactions.</p>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Payments</h1>
+          <p className="text-muted-foreground text-sm">
+            Every rider&rsquo;s position, history and statement.
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/owner/payments/cash" className="rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover">
-            Record cash
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/owner/payments/cash"
+            className="flex min-h-11 items-center gap-2 rounded-[--radius-card] bg-primary px-4 font-semibold text-white hover:bg-primary-hover"
+          >
+            <BanknoteIcon className="size-4" /> Record cash
           </Link>
-          <Link href="/owner/reconciliation" className="rounded-[--radius-card] border border-border bg-white px-4 py-2.5 font-semibold text-primary-dark hover:bg-surface">
-            Reconcile
+          <Link
+            href="/owner/payments/transactions"
+            className="flex min-h-11 items-center gap-2 rounded-[--radius-card] border border-border bg-white px-4 font-semibold text-primary-dark hover:bg-surface"
+          >
+            <ListIcon className="size-4" /> All transactions
           </Link>
         </div>
       </header>
 
-      {payments.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">No payments yet.</p>
-      ) : (
-        <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border bg-white">
-          {payments.map((p) => (
-            <li key={p.id} className="flex items-center justify-between px-4 py-3">
-              <div className="flex flex-col">
-                <span className="font-semibold">{p.rider_name} · {formatTZS(p.amount)}</span>
-                <span className="text-xs text-muted-foreground">
-                  {localDateString(new Date(p.completed_at ?? p.created_at))} · {p.method === 'cash' ? 'Cash' : 'Mobile money'}
-                </span>
-              </div>
-              <span className={`text-sm font-semibold ${TONE[p.status] ?? 'text-muted-foreground'}`}>{PAYMENT_STATUS_LABELS_EN[p.status] ?? p.status}</span>
-            </li>
-          ))}
-        </ul>
+      {pending.length > 0 && (
+        <Link
+          href="/owner/payments/approvals"
+          className="flex items-center justify-between gap-3 rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 px-4 py-3 text-sm text-amber-900 hover:bg-amber-100"
+        >
+          <span className="font-medium">
+            {pending.length} cash payment{pending.length === 1 ? '' : 's'} awaiting your confirmation ·{' '}
+            {formatTZS(pending.reduce((s, r) => s + r.amount, 0))}
+          </span>
+          <span className="flex shrink-0 items-center gap-1 font-semibold">
+            Review <ArrowRightIcon className="size-3.5" />
+          </span>
+        </Link>
       )}
+
+      <PaymentsDirectory riders={riders} basePath="/owner/payments" />
     </div>
   );
 }

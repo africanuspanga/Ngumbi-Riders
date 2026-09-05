@@ -145,7 +145,9 @@ export async function convertToRider(
     .maybeSingle();
   if (!app) return { ok: false, error: 'not_found' };
 
-  const a = app as Record<string, string | null> & { status: ApplicationStatus };
+  // `select('*')` now includes non-string columns (wants_phone_loan), so the
+  // old string-only index signature no longer overlaps — go through unknown.
+  const a = app as unknown as Record<string, string | null> & { status: ApplicationStatus };
   if (!canTransition(a.status, 'converted_to_rider')) {
     return { ok: false, error: 'not_approved' };
   }

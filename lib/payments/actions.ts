@@ -7,6 +7,9 @@ import { writeAudit } from '@/lib/audit/audit';
 import { newIdempotencyKey } from './idempotency';
 import { triggerPush } from '@/lib/snippe/client';
 import { localDateString } from '@/lib/dates/tz';
+import { formatDate } from '@/lib/dates/format';
+import { formatTZS } from '@/lib/money/format';
+import { notifyRider } from '@/lib/notifications/service';
 
 export type ActionResult<T = undefined> =
   | { ok: true; data?: T }
@@ -26,6 +29,13 @@ export async function recordCashPayment(input: {
   obligationIds: string[];
   paymentDate: string;
   note?: string;
+  /**
+   * Staff member who physically received the cash. The Director may have two
+   * accountants and needs the payment history to say which one took the money,
+   * so this is recorded separately from `created_by` (who typed it in).
+   * Defaults to the actor. Never trusted from the client without a check.
+   */
+  receivedById?: string;
 }): Promise<ActionResult<{ paymentId: string }>> {
   // Server-side permission check — the accountant's UI hiding a button is not
   // access control. A deactivated accountant fails here too.
@@ -107,6 +117,25 @@ export async function recordCashPayment(input: {
     return { ok: false, error: 'not_oldest_first' };
   }
 
+  // "Received by" must be an active owner/accountant account — an arbitrary
+  // profile id here would make the cash-receiver record worthless.
+  let receivedBy = ownerId;
+  if (input.receivedById && input.receivedById !== ownerId) {
+    const { data: staff } = await admin
+      .from('profiles')
+      .select('id, role, is_active')
+      .eq('id', input.receivedById)
+      .maybeSingle();
+    const sp = staff as { id: string; role: string; is_active: boolean | null } | null;
+    if (!sp || (sp.role !== 'owner' && sp.role !== 'accountant')) {
+      return { ok: false, error: 'invalid_receiver' };
+    }
+    if (sp.role === 'accountant' && sp.is_active === false) {
+      return { ok: false, error: 'invalid_receiver' };
+    }
+    receivedBy = sp.id;
+  }
+
   const { data: payment, error: payErr } = await admin
     .from('payments')
     .insert({
@@ -116,6 +145,8 @@ export async function recordCashPayment(input: {
       amount,
       status: 'created',
       created_by: ownerId,
+      received_by: receivedBy,
+      note: input.note?.trim() || null,
       idempotency_key: newIdempotencyKey(),
     })
     .select('id')
@@ -140,8 +171,24 @@ export async function recordCashPayment(input: {
     action: 'payment.cash_recorded',
     entityType: 'payment',
     entityId: paymentId,
-    metadata: { amount, obligations: input.obligationIds.length, note: input.note ?? null },
+    metadata: { amount, obligations: input.obligationIds.length, note: input.note ?? null, receivedBy },
   });
+
+  // The rider is told their cash is on record — the same confirmation the
+  // approval path sends, so the rider's experience does not depend on WHO
+  // recorded it. Best-effort: the money is already settled and committed.
+  try {
+    await notifyRider(input.riderId, {
+      type: 'payment_completed',
+      title: 'Malipo ya fedha taslimu yamepokelewa',
+      body: `Malipo yako ya ${formatTZS(amount)} ya tarehe ${formatDate(input.paymentDate)} yamerekodiwa. Asante.`,
+      deepLink: `/rider/payments/${paymentId}`,
+      dedupeKey: `cash_confirmed:${paymentId}`,
+    });
+  } catch {
+    /* notification is never load-bearing for settled money */
+  }
+
   revalidatePath('/owner/payments');
   revalidatePath(`/owner/riders/${input.riderId}`);
   revalidatePath('/accountant/payments');

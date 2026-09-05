@@ -10,6 +10,35 @@ Everything below is **committed on `main`** and the working tree is clean.
 DB migrations `0019`–`0025` are **applied to the live database** and recorded
 in `supabase_migrations.schema_migrations`.
 
+> **⚠ 2026-09-05 — CLIENT-FEEDBACK BUILD #2 (migration `0026`, NOT YET
+> APPLIED).** Nine client-reported items shipped in one pass. The code is
+> committed and verified (376 unit tests, typecheck, lint, `npm run build`), but
+> **migration `0026` must be applied to the live database BEFORE deploying** —
+> the new code reads columns and tables that do not exist yet (`payments.received_by`,
+> `payment_obligations.kind`, `contracts.daily_rate`, `cash_payment_requests`,
+> `phone_loans`, …). Order: apply 0026 → regenerate
+> `lib/supabase/types.gen.ts` → delete `lib/supabase/types.pending.ts` and its
+> re-export in `types.ts` → deploy.
+>
+> What shipped: **(1)** live date/time top-right of the dashboard + a two-colour
+> stacked bar (green = owed now, red = remaining to finish);
+> **(2)** per-rider payment history showing method AND who received cash;
+> **(3)** bank-style statements with a running balance (owner / accountant /
+> rider) + CSV/XLSX export;
+> **(4)** the payments area is now a rider DIRECTORY, not one long list;
+> **(5)** accountant cash entries become REQUESTS the Director confirms, edits
+> or rejects — the rider is notified (in-app now, SMS when Mobishastra creds
+> land) only on confirmation;
+> **(6)** stuck `pending` payments now expire instead of locking a rider out of
+> paying (the reported month-long lockout);
+> **(7)** expected completion date computed from the payments actually made,
+> shown as "Monday, 25 June 2030";
+> **(8)** phone loans (principal + 50%, ≤3 months, collected before the lease
+> starts; the application now asks "motorcycle only, or motorcycle + phone?");
+> **(9)** contract editing, reactivation of a terminated contract, weekly =
+> daily × 7 / monthly = daily × 30, and custom-weekday terms that extend until
+> every payment day has fallen. See D-035.
+
 > **2026-07-29 — CLIENT-FEEDBACK BUILD (migrations `0024`+`0025`, applied
 > live; D-034).** Nine client-requested changes shipped in one pass:
 > **(1)** bulk payment-plan generator (start+end+amount+frequency → whole

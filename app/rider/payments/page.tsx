@@ -3,7 +3,7 @@ import { requireRider } from '@/lib/auth/session';
 import { listRiderPayments } from '@/lib/payments/queries';
 import { PAYMENT_STATUS_LABELS_SW as STATUS_LABEL } from '@/lib/payments/labels';
 import { formatTZS } from '@/lib/money/format';
-import { localDateString } from '@/lib/dates/tz';
+import { formatDate } from '@/lib/dates/format';
 
 export const metadata = { title: 'Malipo' };
 
@@ -21,7 +21,15 @@ export default async function RiderPaymentsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-bold text-primary-dark">Malipo yangu</h1>
+      <header className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl font-bold text-primary-dark">Malipo yangu</h1>
+        <Link
+          href="/rider/statement"
+          className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark"
+        >
+          Taarifa kamili
+        </Link>
+      </header>
       {payments.length === 0 ? (
         <p className="text-muted-foreground">Bado hujafanya malipo.</p>
       ) : (
@@ -32,7 +40,7 @@ export default async function RiderPaymentsPage() {
                 <div className="flex flex-col">
                   <span className="font-semibold">{formatTZS(p.amount)}</span>
                   <span className="text-xs text-muted-foreground">
-                    {localDateString(new Date(p.completed_at ?? p.created_at))} · {p.method === 'cash' ? 'Taslimu' : 'Pesa za simu'}
+                    {formatDate(p.completed_at ?? p.created_at)} · {p.method === 'cash' ? 'Taslimu' : 'Pesa za simu'}
                   </span>
                 </div>
                 <span className={`text-sm font-semibold ${TONE[p.status] ?? 'text-muted-foreground'}`}>{STATUS_LABEL[p.status] ?? p.status}</span>

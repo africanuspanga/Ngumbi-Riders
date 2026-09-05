@@ -11,14 +11,34 @@ export default async function NewContractPage() {
   await requireOwner();
   const supabase = await createServerSupabase();
 
-  const [riders, motorcycles, settings] = await Promise.all([
+  const [riders, motorcycles, settings, phoneRequests] = await Promise.all([
     listRiders(),
     listContractableMotorcycles(),
     supabase.from('app_settings').select('default_installment_amount').maybeSingle(),
+    // What each rider ASKED FOR on their application: motorcycle only, or
+    // motorcycle + phone (client feedback 2026-09-05). Pre-selecting it means
+    // the owner does not have to remember, and the applicant's answer is not
+    // quietly lost between application and contract.
+    supabase
+      .from('rider_applications')
+      .select('converted_rider_id, wants_phone_loan, phone_loan_amount')
+      .eq('wants_phone_loan', true)
+      .not('converted_rider_id', 'is', null),
   ]);
 
   const defaultAmount =
     (settings.data as { default_installment_amount: number } | null)?.default_installment_amount ?? 0;
+
+  const phoneLoanByRider = Object.fromEntries(
+    (
+      (phoneRequests.data ?? []) as {
+        converted_rider_id: string | null;
+        phone_loan_amount: number | null;
+      }[]
+    )
+      .filter((r) => r.converted_rider_id)
+      .map((r) => [r.converted_rider_id as string, r.phone_loan_amount ?? null]),
+  );
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6">
@@ -38,6 +58,7 @@ export default async function NewContractPage() {
           .map((r) => ({ id: r.id, label: `${r.first_name} ${r.last_name} (${r.rider_number})` }))}
         motorcycles={motorcycles}
         defaultAmount={defaultAmount}
+        phoneLoanByRider={phoneLoanByRider}
       />
     </div>
   );

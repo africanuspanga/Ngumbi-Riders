@@ -55,6 +55,10 @@ export const genderValues = ['male', 'female'] as const;
 // one option, but is NEVER mandatory: an applicant can submit with NIDA or Voter
 // ID alone.
 export const identityTypeValues = ['nida', 'driving_licence', 'voter_id'] as const;
+
+/** "Are you taking only the motorcycle, or the motorcycle together with a phone?" */
+export const packageChoiceValues = ['motorcycle_only', 'motorcycle_and_phone'] as const;
+export type PackageChoice = (typeof packageChoiceValues)[number];
 export type IdentityType = (typeof identityTypeValues)[number];
 
 /** Per-type validity of the primary identity number (NIDA = 20 digits). */
@@ -106,6 +110,27 @@ export const applicationSchema = z
       .or(z.literal('')),
     // Step 4 — experience & emergency
     previousExperience: z.string().trim().max(1000).optional().or(z.literal('')),
+    // Motorcycle only, or motorcycle + phone? (client feedback 2026-09-05).
+    // The phone is financed as a short loan collected before the lease starts;
+    // the amount is optional here because the owner sets the final figure when
+    // the contract is drawn up.
+    // `.optional()` rather than `.default()`: a default makes the schema's INPUT
+    // type differ from its OUTPUT, which breaks this form's single-generic RHF
+    // resolver (the class of bug that silently killed the wizard once already).
+    // Optional also means a stale cached client bundle that predates this
+    // question still submits successfully — the server reads a missing value as
+    // "motorcycle only", which is the honest default.
+    packageChoice: z.enum(packageChoiceValues).optional(),
+    // Kept as a STRING (digits only) rather than a coerced number: this form is
+    // typed with a single RHF generic, and a z.coerce/preprocess field makes the
+    // schema's input type `unknown`, which breaks the resolver's type — the
+    // exact shape of the bug that silently killed the wizard once already.
+    phoneLoanAmount: z
+      .string()
+      .trim()
+      .regex(/^\d{0,9}$/, 'amount')
+      .optional()
+      .or(z.literal('')),
     emergencyContactName: name,
     emergencyContactPhone: phone,
     emergencyContactRelationship: shortText,
@@ -146,7 +171,14 @@ export const STEP_FIELDS = [
   ['firstName', 'middleName', 'lastName', 'dateOfBirth', 'gender'],
   ['primaryPhone', 'alternativePhone', 'email', 'region', 'district', 'ward', 'street', 'fullAddress'],
   ['identityType', 'identityNumber', 'drivingLicenceNumber'],
-  ['previousExperience', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelationship'],
+  [
+    'previousExperience',
+    'packageChoice',
+    'phoneLoanAmount',
+    'emergencyContactName',
+    'emergencyContactPhone',
+    'emergencyContactRelationship',
+  ],
   ['guarantor'],
   [], // documents step — validated separately (files, not RHF fields)
   ['declarationAccepted', 'signature'],

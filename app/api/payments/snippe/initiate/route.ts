@@ -9,6 +9,7 @@ import { selectOldest } from '@/lib/payments/selection';
 import { newIdempotencyKey } from '@/lib/payments/idempotency';
 import { createMobilePayment } from '@/lib/snippe/client';
 import { writeAudit } from '@/lib/audit/audit';
+import { reconcilePaymentWithProvider, expireStalePayment, STALE_PENDING_MS } from '@/lib/payments/settle';
 
 // Rider payment initiation (spec §12.2). Entirely server-side: the server
 // recomputes the selected obligations and amount, reserves them, and creates the
@@ -51,15 +52,58 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
 
   // One active pending attempt per rider+contract (spec §12.5).
+  //
+  // THE STUCK-PENDING DEAD END (fixed 2026-09-05). A rider who typed the wrong
+  // payment number got a USSD push nobody would ever confirm. Snippe keeps
+  // reporting that intent as "pending" indefinitely, so the local payment
+  // stayed 'pending' forever and EVERY later attempt was rejected here with
+  // `pending_exists` — one rider was locked out of paying for a month.
+  //
+  // Nothing must ever leave a rider unable to pay. So before refusing:
+  //   1. ask the provider whether the old attempt actually resolved (a
+  //      completed payment must never be thrown away), and
+  //   2. if it is still unresolved and older than the live-prompt window,
+  //      expire it locally and release its obligations so this attempt can run.
+  //
+  // A FRESH pending is still refused: it very likely has a live PIN prompt on
+  // the payer's phone, and firing a second push manufactures a double charge.
   const { data: existing } = await admin
     .from('payments')
-    .select('id')
+    .select('id, status, created_at')
     .eq('rider_id', ctx.riderId)
     .eq('contract_id', ctx.contractId)
     .in('status', ['created', 'pending'])
+    .order('created_at', { ascending: false })
     .limit(1);
-  if (existing && existing.length > 0) {
-    return NextResponse.json({ error: 'pending_exists' }, { status: 409 });
+  const stuck = (existing ?? [])[0] as { id: string; status: string; created_at: string } | undefined;
+  if (stuck) {
+    const ageMs = Date.now() - Date.parse(stuck.created_at);
+    let resolved = stuck.status;
+    if (stuck.status === 'pending') {
+      try {
+        resolved = await reconcilePaymentWithProvider(stuck.id);
+      } catch (err) {
+        console.error('[pay/initiate] reconcile of stuck payment failed', stuck.id, err);
+      }
+    }
+    if (['created', 'pending'].includes(resolved)) {
+      if (ageMs < STALE_PENDING_MS) {
+        return NextResponse.json({ error: 'pending_exists' }, { status: 409 });
+      }
+      const expired = await expireStalePayment(stuck.id);
+      if (!expired) {
+        // Something else moved it to a terminal state — re-read on the retry.
+        return NextResponse.json({ error: 'pending_exists' }, { status: 409 });
+      }
+      await writeAudit({
+        actorId: user.id,
+        actorRole: 'rider',
+        action: 'payment.stale_pending_expired',
+        entityType: 'payment',
+        entityId: stuck.id,
+        metadata: { ageMinutes: Math.round(ageMs / 60_000) },
+      });
+    }
   }
 
   // Server recomputes obligations + amount (oldest-first).

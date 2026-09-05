@@ -92,10 +92,18 @@ export function ApplicationForm() {
     mode: 'onTouched',
     // signature is a canvas, not a registered input — seed it so an un-drawn
     // signature validates as '' ("required") instead of undefined.
-    defaultValues: { gender: undefined, signature: '', identityType: 'nida', region: '', district: '' },
+    defaultValues: {
+      gender: undefined,
+      signature: '',
+      identityType: 'nida',
+      region: '',
+      district: '',
+      packageChoice: 'motorcycle_only',
+    },
   });
 
   const identityType = (watch('identityType') as IdentityType) ?? 'nida';
+  const packageChoice = (watch('packageChoice') as string) ?? 'motorcycle_only';
   const region = watch('region') ?? '';
 
   useEffect(() => {
@@ -225,7 +233,15 @@ export function ApplicationForm() {
           <ContactStep t={t} te={te} register={register} errors={errors} region={region} setValue={setValue} />
         )}
         {step === 2 && <IdentityStep t={t} te={te} register={register} errors={errors} identityType={identityType} />}
-        {step === 3 && <ExperienceStep t={t} te={te} register={register} errors={errors} />}
+        {step === 3 && (
+          <ExperienceStep
+            t={t}
+            te={te}
+            register={register}
+            errors={errors}
+            packageChoice={packageChoice}
+          />
+        )}
         {step === 4 && <GuarantorStep t={t} te={te} register={register} errors={errors} />}
         {step === 5 && (
           <DocumentsStep t={t} files={files} setFile={setFile} error={docError} identityType={identityType} />
@@ -373,9 +389,31 @@ function IdentityStep({
   );
 }
 
-function ExperienceStep({ t, te, register, errors }: StepProps) {
+function ExperienceStep({ t, te, register, errors, packageChoice }: StepProps & { packageChoice: string }) {
   return (
     <>
+      {/* Motorcycle only, or motorcycle + phone? (client feedback 2026-09-05) */}
+      <SelectField
+        label={t('fields.packageChoice')}
+        required
+        hint={t('fields.packageChoiceHint')}
+        error={te(errors.packageChoice)}
+        {...register('packageChoice')}
+      >
+        <option value="motorcycle_only">{t('fields.packageMotorcycleOnly')}</option>
+        <option value="motorcycle_and_phone">{t('fields.packageMotorcyclePhone')}</option>
+      </SelectField>
+      {packageChoice === 'motorcycle_and_phone' && (
+        <TextField
+          label={t('fields.phoneLoanAmount')}
+          type="number"
+          inputMode="numeric"
+          min={1}
+          hint={t('fields.phoneLoanAmountHint')}
+          error={te(errors.phoneLoanAmount)}
+          {...register('phoneLoanAmount')}
+        />
+      )}
       <TextAreaField label={t('fields.experience')} error={te(errors.previousExperience)} {...register('previousExperience')} />
       <TextField label={t('fields.emergencyName')} required error={te(errors.emergencyContactName)} {...register('emergencyContactName')} />
       <TextField label={t('fields.emergencyPhone')} type="tel" inputMode="tel" required error={te(errors.emergencyContactPhone)} {...register('emergencyContactPhone')} />

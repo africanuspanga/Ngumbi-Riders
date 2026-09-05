@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { createServerSupabase } from '@/lib/supabase/server';
-import { fetchAllPages } from '@/lib/supabase/fetch-all';
+import { fetchAllPages, chunkIds } from '@/lib/supabase/fetch-all';
 import { isSnippeConfigured } from '@/lib/snippe/client';
 import { localDateString } from '@/lib/dates/tz';
 import {
@@ -11,6 +11,7 @@ import {
   type OwnerKpis,
   type AgingBuckets,
 } from './kpis';
+import { computeContractProgress, type ContractProgress, type ProgressObligation } from '@/lib/contracts/completion';
 import {
   computeRiderDashboard,
   riderCalendar,
@@ -155,8 +156,12 @@ export async function getOwnerDashboard(): Promise<OwnerDashboard> {
 // ---- Rider dashboard -----------------------------------------------------
 export type RiderHome = {
   dashboard: RiderDashboard;
+  /** Green/red position + expected completion date (client feedback). */
+  progress: ContractProgress;
+  /** Phone-loan instalments still owed, when the rider financed a phone. */
+  phoneLoan: { outstandingCount: number; outstandingAmount: number; totalCount: number } | null;
   motorcycle: { code: string; registration: string | null; model: string | null } | null;
-  recentPayments: { id: string; amount: number; status: string; date: string }[];
+  recentPayments: { id: string; amount: number; status: string; date: string; method: string }[];
   unreadNotifications: number;
 };
 
@@ -184,14 +189,22 @@ export async function getRiderHome(): Promise<RiderHome | null> {
     .maybeSingle();
 
   let obligations: RiderObligation[] = [];
+  let progressRows: ProgressObligation[] = [];
+  let phoneLoan: RiderHome['phoneLoan'] = null;
   if (contract) {
     // Paginated: a full-length daily contract exceeds the 1000-row cap and a
     // truncated set would understate the rider's own arrears/progress.
-    const obs = await fetchAllPages<{ due_date: string; amount_due: number; status: string }>(
+    const obs = await fetchAllPages<{
+      due_date: string;
+      amount_due: number;
+      status: string;
+      kind: string | null;
+      settled_at: string | null;
+    }>(
       (from, to) =>
         supabase
           .from('payment_obligations')
-          .select('due_date, amount_due, status')
+          .select('due_date, amount_due, status, kind, settled_at')
           .eq('contract_id', (contract as { id: string }).id)
           .order('due_date', { ascending: true })
           .order('id', { ascending: true })
@@ -199,6 +212,21 @@ export async function getRiderHome(): Promise<RiderHome | null> {
       { label: 'rider home obligations' },
     );
     obligations = obs.map((o) => ({ dueDate: o.due_date, amountDue: o.amount_due, status: o.status }));
+    progressRows = obs.map((o) => ({
+      dueDate: o.due_date,
+      amountDue: o.amount_due,
+      status: o.status,
+      settledDate: o.settled_at ? localDateString(new Date(o.settled_at)) : null,
+    }));
+    const loanRows = obs.filter((o) => o.kind === 'phone_loan');
+    if (loanRows.length > 0) {
+      const unpaid = loanRows.filter((o) => ['scheduled', 'due', 'overdue'].includes(o.status));
+      phoneLoan = {
+        totalCount: loanRows.length,
+        outstandingCount: unpaid.length,
+        outstandingAmount: unpaid.reduce((sum, o) => sum + o.amount_due, 0),
+      };
+    }
   }
 
   const { data: assignment } = await supabase
@@ -213,7 +241,7 @@ export async function getRiderHome(): Promise<RiderHome | null> {
 
   const { data: pays } = await supabase
     .from('payments')
-    .select('id, amount, status, completed_at, created_at')
+    .select('id, amount, status, method, completed_at, created_at')
     .order('created_at', { ascending: false })
     .limit(5);
 
@@ -224,13 +252,30 @@ export async function getRiderHome(): Promise<RiderHome | null> {
 
   return {
     dashboard: computeRiderDashboard(obligations, today),
+    progress: computeContractProgress(progressRows, today),
+    phoneLoan,
     motorcycle: moto
       ? { code: moto.motorcycle_number, registration: moto.registration_number, model: moto.model }
       : null,
-    recentPayments: ((pays ?? []) as { id: string; amount: number; status: string; completed_at: string | null; created_at: string }[]).map(
+    recentPayments: (
+      (pays ?? []) as {
+        id: string;
+        amount: number;
+        status: string;
+        method: string;
+        completed_at: string | null;
+        created_at: string;
+      }[]
+    ).map(
       // EAT calendar date, not the UTC slice — a payment completed 00:00–03:00
       // EAT would otherwise display the previous day.
-      (p) => ({ id: p.id, amount: p.amount, status: p.status, date: localDateString(new Date(p.completed_at ?? p.created_at)) }),
+      (p) => ({
+        id: p.id,
+        amount: p.amount,
+        status: p.status,
+        method: p.method,
+        date: localDateString(new Date(p.completed_at ?? p.created_at)),
+      }),
     ),
     unreadNotifications: (notifs ?? []).length,
   };
@@ -301,4 +346,97 @@ export async function getCollectionsSeries(days = 14): Promise<CollectionsPoint[
     if (byDay.has(day)) byDay.set(day, (byDay.get(day) ?? 0) + p.amount);
   }
   return dates.map((date) => ({ date, collected: byDay.get(date) ?? 0 }));
+}
+
+/* =========================================================================
+ * Outstanding vs remaining balance, per rider (client feedback 2026-09-05)
+ * ========================================================================= */
+
+export type RiderBalancePoint = {
+  riderId: string;
+  name: string;
+  /** GREEN — owed right now (arrears + today). */
+  outstandingNow: number;
+  /** RED — the rest of the contract, on top of what is owed now. */
+  remainingLater: number;
+  /** outstandingNow + remainingLater. */
+  totalRemaining: number;
+};
+
+export type RiderBalances = {
+  points: RiderBalancePoint[];
+  totalOutstandingNow: number;
+  totalRemaining: number;
+  riderCount: number;
+};
+
+/**
+ * Every rider with money still to pay, split into the two figures the Director
+ * asked to see as one two-colour bar: what is owed NOW (green) and the whole
+ * remaining contract balance (red). Sorted by what is owed now, worst first,
+ * because that is the list the owner acts on.
+ */
+export async function getRiderBalances(limit = 12): Promise<RiderBalances> {
+  const supabase = await createServerSupabase();
+  const today = localDateString();
+
+  const rows = await fetchAllPages<{
+    rider_id: string;
+    due_date: string;
+    amount_due: number;
+    status: string;
+  }>(
+    (from, to) =>
+      supabase
+        .from('payment_obligations')
+        .select('rider_id, due_date, amount_due, status')
+        .in('status', ['scheduled', 'due', 'overdue'])
+        .order('rider_id', { ascending: true })
+        .order('due_date', { ascending: true })
+        .range(from, to),
+    { label: 'rider balances' },
+  );
+
+  const byRider = new Map<string, { now: number; later: number }>();
+  for (const o of rows) {
+    const cur = byRider.get(o.rider_id) ?? { now: 0, later: 0 };
+    if (o.due_date <= today) cur.now += o.amount_due;
+    else cur.later += o.amount_due;
+    byRider.set(o.rider_id, cur);
+  }
+  if (byRider.size === 0) {
+    return { points: [], totalOutstandingNow: 0, totalRemaining: 0, riderCount: 0 };
+  }
+
+  const names = new Map<string, string>();
+  const ids = [...byRider.keys()];
+  for (const chunk of chunkIds(ids)) {
+    const { data } = await supabase
+      .from('riders')
+      .select('id, first_name, last_name')
+      .in('id', chunk);
+    for (const r of (data ?? []) as { id: string; first_name: string; last_name: string }[]) {
+      names.set(r.id, `${r.first_name} ${r.last_name}`);
+    }
+  }
+
+  const all: RiderBalancePoint[] = ids.map((id) => {
+    const v = byRider.get(id)!;
+    return {
+      riderId: id,
+      name: names.get(id) ?? '—',
+      outstandingNow: v.now,
+      remainingLater: v.later,
+      totalRemaining: v.now + v.later,
+    };
+  });
+
+  return {
+    points: [...all]
+      .sort((a, b) => b.outstandingNow - a.outstandingNow || b.totalRemaining - a.totalRemaining)
+      .slice(0, limit),
+    totalOutstandingNow: all.reduce((s, p) => s + p.outstandingNow, 0),
+    totalRemaining: all.reduce((s, p) => s + p.totalRemaining, 0),
+    riderCount: all.length,
+  };
 }

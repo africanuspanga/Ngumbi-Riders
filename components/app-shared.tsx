@@ -17,6 +17,8 @@ import {
   ScrollTextIcon,
   UserCogIcon,
   NotebookPenIcon,
+  CheckCheckIcon,
+  ListIcon,
 } from 'lucide-react';
 
 export type SidebarNavItem = {
@@ -51,7 +53,15 @@ export const navGroups: SidebarNavGroup[] = [
   {
     label: 'Money',
     items: [
-      { title: 'Payments', path: '/owner/payments', icon: <BanknoteIcon /> },
+      {
+        title: 'Payments',
+        path: '/owner/payments',
+        icon: <BanknoteIcon />,
+        subItems: [
+          { title: 'Cash approvals', path: '/owner/payments/approvals', icon: <CheckCheckIcon /> },
+          { title: 'All transactions', path: '/owner/payments/transactions', icon: <ListIcon /> },
+        ],
+      },
       { title: 'Reconciliation', path: '/owner/reconciliation', icon: <ScaleIcon /> },
       { title: 'Expenses', path: '/owner/expenses', icon: <ReceiptIcon /> },
       { title: 'Reports', path: '/owner/reports', icon: <BarChart3Icon /> },
@@ -91,6 +101,7 @@ export const accountantNavGroups: SidebarNavGroup[] = [
       { title: 'Reports', path: '/accountant/reports', icon: <BarChart3Icon /> },
       { title: 'Payments', path: '/accountant/payments', icon: <BanknoteIcon /> },
       { title: 'Record payment', path: '/accountant/payments/cash', icon: <ReceiptIcon /> },
+      { title: 'Awaiting confirmation', path: '/accountant/payments/approvals', icon: <CheckCheckIcon /> },
       { title: 'Outstanding', path: '/accountant/outstanding', icon: <ScaleIcon /> },
     ],
   },

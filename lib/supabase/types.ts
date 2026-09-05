@@ -98,4 +98,8 @@ export type LoginOutcome =
   | 'unknown_phone';
 
 // ---- Precise generated types (from the live database) -------------------
-export type { Database, Json } from './types.gen';
+// `Database` = the generated types PLUS the not-yet-regenerated additions from
+// migration 0026 (see types.pending.ts, which explains how to remove it once
+// the types are regenerated against the live schema).
+export type { Json } from './types.gen';
+export type { DatabaseWithPending as Database } from './types.pending';
