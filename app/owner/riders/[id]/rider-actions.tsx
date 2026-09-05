@@ -2,7 +2,13 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { revealRiderSecrets, setRiderStatus, resetRiderPin } from '@/lib/riders/actions';
+import {
+  revealRiderSecrets,
+  setRiderStatus,
+  resetRiderPin,
+  deleteRider,
+  riderDeletionImpact,
+} from '@/lib/riders/actions';
 import {
   assignMotorcycle,
   transferMotorcycle,
@@ -330,6 +336,163 @@ export function AssignmentActions({
         </div>
       </div>
       {error && <p className="text-xs text-overdue">{error}</p>}
+    </div>
+  );
+}
+
+/*
+ * Permanent rider deletion (client request 2026-09-05).
+ *
+ * Two-step by design: the first click asks the server what would actually be
+ * destroyed and shows it, because "delete driver" reads like removing a name
+ * from a list and is in fact removing a contract history. Only the second
+ * click deletes.
+ *
+ * A rider with SETTLED money cannot be deleted at all — those are the
+ * business's financial records (spec rule 6). The server refuses; this panel
+ * explains why and points at deactivation, which revokes the login and keeps
+ * the books intact.
+ */
+export function RiderDelete({ id, name }: { id: string; name: string }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [impact, setImpact] = useState<{
+    riderNumber: string;
+    contracts: number;
+    obligations: number;
+    payments: number;
+    settledPayments: number;
+    receipts: number;
+    assignments: number;
+    blocked: boolean;
+  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function check() {
+    setError(null);
+    start(async () => {
+      try {
+        const res = await riderDeletionImpact(id);
+        if (res.ok && res.data) setImpact(res.data);
+        else setError('Could not check what deleting this rider would remove.');
+      } catch {
+        setError('Network error — try again.');
+      }
+    });
+  }
+
+  function confirmDelete() {
+    setError(null);
+    start(async () => {
+      try {
+        const res = await deleteRider(id);
+        if (res.ok) {
+          router.push('/owner/riders');
+          router.refresh();
+        } else if (res.error === 'has_financial_records') {
+          setError(
+            'This rider has settled payments on record, so they cannot be deleted. Set their status to inactive instead — that removes their access and keeps the payment history correct.',
+          );
+        } else if (res.error === 'dependents_failed') {
+          setError(
+            'Some of the rider’s records could not be removed, so nothing was deleted. Reload and try again.',
+          );
+        } else {
+          setError('Could not delete the rider.');
+        }
+      } catch {
+        setError('Network error — reload the rider register to check before retrying.');
+      }
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {error && (
+        <p
+          role="alert"
+          className="rounded-[--radius-card] border border-[color:var(--color-overdue)]/30 bg-[color:var(--color-overdue)]/10 px-3 py-2 text-sm font-medium text-[color:var(--color-overdue)]"
+        >
+          {error}
+        </p>
+      )}
+
+      {!impact ? (
+        <>
+          <p className="text-sm text-muted-foreground">
+            Permanently removes {name}, their login and their records. A rider with
+            settled payments cannot be deleted — deactivate them instead.
+          </p>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={check}
+            className="self-start rounded-[--radius-card] border border-[color:var(--color-overdue)] bg-white px-3 py-2 text-sm font-semibold text-[color:var(--color-overdue)] hover:bg-[color:var(--color-overdue)]/10 disabled:opacity-60"
+          >
+            {pending ? 'Checking…' : 'Delete this rider'}
+          </button>
+        </>
+      ) : impact.blocked ? (
+        <>
+          <p className="text-sm">
+            <strong>{name}</strong> has {impact.settledPayments} settled payment
+            {impact.settledPayments === 1 ? '' : 's'}
+            {impact.receipts > 0
+              ? ` and ${impact.receipts} receipt${impact.receipts === 1 ? '' : 's'}`
+              : ''}{' '}
+            on record, so they cannot be deleted — that money is part of the
+            business&rsquo;s books.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Set their status to <strong>inactive</strong> above instead. That revokes
+            their login immediately and keeps every payment correct.
+          </p>
+          <button
+            type="button"
+            onClick={() => setImpact(null)}
+            className="self-start rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold hover:bg-surface"
+          >
+            Close
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="text-sm">
+            This permanently deletes <strong>{name}</strong> ({impact.riderNumber}),
+            their login, and:
+          </p>
+          <ul className="list-inside list-disc text-sm text-muted-foreground">
+            <li>{impact.contracts} contract{impact.contracts === 1 ? '' : 's'}</li>
+            <li>{impact.obligations} payment day{impact.obligations === 1 ? '' : 's'}</li>
+            <li>
+              {impact.payments} payment record{impact.payments === 1 ? '' : 's'} (none
+              settled)
+            </li>
+            <li>{impact.assignments} motorcycle assignment{impact.assignments === 1 ? '' : 's'}</li>
+          </ul>
+          <p className="text-sm font-semibold text-[color:var(--color-overdue)]">
+            This cannot be undone.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={pending}
+              onClick={confirmDelete}
+              className="rounded-[--radius-card] bg-[color:var(--color-overdue)] px-3 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
+            >
+              {pending ? 'Deleting…' : `Yes, delete ${name} permanently`}
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => setImpact(null)}
+              className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold hover:bg-surface"
+            >
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

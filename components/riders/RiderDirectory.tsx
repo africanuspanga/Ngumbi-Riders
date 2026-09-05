@@ -309,6 +309,11 @@ export function RiderDirectory({
                 <th className="px-3 py-2">Contract</th>
                 <th className="px-3 py-2">Registered</th>
                 <th className="px-3 py-2 text-right">Outstanding</th>
+                {canCreate && (
+                  <th className="px-3 py-2 text-right">
+                    <span className="sr-only">Edit</span>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -342,6 +347,16 @@ export function RiderDirectory({
                   >
                     {formatTZS(r.amountOutstanding)}
                   </td>
+                  {canCreate && (
+                    <td className="px-3 py-2 text-right">
+                      <Link
+                        href={`${basePath}/${r.id}/edit`}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        Edit
+                      </Link>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

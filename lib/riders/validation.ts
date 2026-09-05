@@ -79,3 +79,34 @@ export const manualRiderSchemaWithGeo = manualRiderSchema.superRefine((v, ctx) =
 });
 
 export type ManualRiderInput = z.infer<typeof manualRiderSchema>;
+
+/*
+ * Owner edit of an existing rider (client request 2026-09-05: "on viewing all
+ * riders he should be able to edit driver information").
+ *
+ * Same fields as manual creation MINUS the ones that are not edits:
+ *   • `tempPin` — a PIN is reset through `resetRiderPin`, never typed here;
+ *   • `motorcycleId` / `assignmentStartDate` — assignment is its own action
+ *     with its own history, so editing a rider must not silently move a bike.
+ *
+ * `phone` stays editable because a mistyped number is the most common
+ * registration error — but changing it has a consequence the action handles
+ * explicitly: the Supabase password is derived from the phone
+ * (`HMAC(pepper, phone:pin)`), so a new number invalidates the rider's current
+ * PIN and forces a reset. See `updateRider`.
+ */
+export const editRiderSchema = manualRiderSchema
+  .omit({ tempPin: true, motorcycleId: true, assignmentStartDate: true })
+  .superRefine((v, ctx) => {
+    if (!v.region || !v.district) return;
+    if (!regionByName(v.region)) return; // legacy/unknown region — accept as typed
+    if (!isDistrictOfRegion(v.region, v.district)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['district'],
+        message: `${v.district} is not a district of ${v.region}`,
+      });
+    }
+  });
+
+export type EditRiderInput = z.infer<typeof editRiderSchema>;

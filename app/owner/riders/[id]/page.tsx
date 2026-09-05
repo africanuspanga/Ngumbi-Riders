@@ -15,6 +15,7 @@ import {
   RiderPinReset,
   AssignmentActions,
   RiskControls,
+  RiderDelete,
 } from './rider-actions';
 
 export const metadata = { title: 'Rider' };
@@ -48,9 +49,15 @@ export default async function RiderDetailPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href="/owner/riders" className="text-sm font-medium text-muted-foreground">
           ← Riders
+        </Link>
+        <Link
+          href={`/owner/riders/${id}/edit`}
+          className="rounded-[--radius-card] border border-border bg-white px-4 py-2 text-sm font-semibold text-primary-dark hover:bg-surface"
+        >
+          Edit rider information
         </Link>
       </div>
 
@@ -140,6 +147,12 @@ export default async function RiderDetailPage({
       <Section title="Status">
         <RiderStatusActions id={profile.id} current={rider.status} />
       </Section>
+
+      {/* Destructive, so it sits last and apart from everything else. */}
+      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-[color:var(--color-overdue)]/40 bg-white p-4">
+        <h2 className="font-semibold text-[color:var(--color-overdue)]">Delete rider</h2>
+        <RiderDelete id={profile.id} name={`${rider.first_name} ${rider.last_name}`} />
+      </section>
     </div>
   );
 }

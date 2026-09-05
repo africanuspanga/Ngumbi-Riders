@@ -368,3 +368,60 @@ export async function getRider(id: string): Promise<RiderDetail | null> {
     complianceWarnings: warnings,
   };
 }
+
+/**
+ * The editable shape of a rider, for the owner's edit form (client request
+ * 2026-09-05).
+ *
+ * Identity numbers are deliberately NOT included. They are encrypted at rest
+ * and reading them back is an audited `revealRiderSecrets` action, not
+ * something a page load should do — so the form leaves them blank and
+ * `updateRider` writes only the ones actually typed.
+ */
+export async function getRiderForEdit(id: string): Promise<
+  | {
+      id: string;
+      riderNumber: string;
+      firstName: string;
+      middleName: string;
+      lastName: string;
+      phone: string;
+      email: string;
+      dateOfBirth: string;
+      gender: '' | 'male' | 'female';
+      region: string;
+      district: string;
+      ward: string;
+      street: string;
+      fullAddress: string;
+    }
+  | null
+> {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from('riders')
+    .select(
+      'id, rider_number, first_name, middle_name, last_name, phone, email, date_of_birth, gender, region, district, ward, street, full_address',
+    )
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(`rider edit read failed: ${error.message}`);
+  if (!data) return null;
+  const r = data as Record<string, string | null>;
+  return {
+    id: r.id as string,
+    riderNumber: r.rider_number ?? '',
+    firstName: r.first_name ?? '',
+    middleName: r.middle_name ?? '',
+    lastName: r.last_name ?? '',
+    phone: r.phone ?? '',
+    email: r.email ?? '',
+    dateOfBirth: r.date_of_birth ?? '',
+    gender: (r.gender as 'male' | 'female' | null) ?? '',
+    region: r.region ?? '',
+    district: r.district ?? '',
+    ward: r.ward ?? '',
+    street: r.street ?? '',
+    fullAddress: r.full_address ?? '',
+  };
+}
