@@ -19,6 +19,15 @@
 > settlement-agnostic, an interim DB-level money-test technique, and
 > migration-discipline notes for a live money DB.
 >
+> **Extended 2026-09-05:** §19 added — the purchase-requisition build
+> (migration `0028`): approval workflows generalised into a reusable primitive
+> (§19.1), separation of duties as the first *negative* permission (§19.2),
+> derived-not-stored extended from status to amounts (§19.3), DB-level
+> immutability guards (§19.4), the schema-vs-code deploy window and how shared
+> surfaces must degrade (§19.5), migrations belonging in CI before the second
+> tenant (§19.6), and the dry run + negative control gaining permanent status
+> (§19.7).
+>
 > **Extended 2026-07-18:** §17 added — the full production-readiness review
 > (9-lens audit, 30+ fixes, migration 0023) and what it changes for this plan:
 > two new silent-failure bug classes for the SaaS bar (§17.2), the pilot-first
@@ -989,3 +998,239 @@ has bitten (the first was the `proxyConfig`→`config` matcher in §17).
 - Profile pictures live in the private `rider-documents` bucket behind
   per-request signed URLs. Per-tenant storage isolation (§10) must keep that
   property — a public bucket for "just avatars" would leak identity photos.
+
+---
+
+## 19. Purchase requisitions (2026-09-05, migration `0028`) — approval as a primitive
+
+The accountant can now raise a request to buy motorcycles, spare parts, fuel or
+phones, and the Managing Director approves or rejects it (D-036). It is the
+second approval workflow in the codebase — the first was cash confirmation
+(`0026`, D-035) — and the first feature that is **not ledger money at all**.
+Shipping it against an existing pattern is what makes it useful here: the
+things both flows needed are the things S0 should build once.
+
+### 19.1 Approval is a primitive, not a feature — extract it before the third one
+
+Cash confirmation and purchase requisitions were written a month apart by
+different reasoning, and converged on the same six mechanics. That convergence
+is the signal:
+
+1. **Nothing real exists while a request is pending.** No `payments` row for
+   unconfirmed cash; no purchase order, expense or ledger entry for an
+   unapproved requisition. A record that exists but "doesn't count yet" is the
+   half-recorded-money class this codebase has already been bitten by twice
+   (§16 settlement, §17 stuck pendings).
+2. **Re-validate at decision time, not submission time.** The world moves
+   between the ask and the answer — the rider may have paid those days by
+   mobile money in the meantime. Both flows re-run the full validation inside
+   the approve path and refuse rather than settle a stale request.
+3. **Claim by conditional update before doing anything irreversible.**
+   `.eq('status', 'pending')` / `.eq('status','submitted')` on the status
+   transition means a second approver racing the first finds the row already
+   decided and stops. This is the cheap substitute for a transaction across
+   two systems, and it is the only reason double-approval is impossible.
+4. **Restore on failure.** If the work after the claim fails, the claim is put
+   back so the decider can retry rather than losing the request.
+5. **Both sides are notified, and the decision is audited** with the actor,
+   the amount and the reason.
+6. **A decided record is terminal.** Re-deciding means raising a new request,
+   which leaves both on file.
+
+**S0 should implement one `approvals` primitive** — subject, proposer,
+approver, status machine, decision note, audit — with per-org policy on top
+(who approves what, above which amount, and whether a second approver is
+needed above a threshold). Two hand-rolled instances is the point at which the
+third one starts drifting. Note that per-org **approval thresholds** are a
+natural paid-plan boundary (§9): "multi-step approval" is a recognisable
+Business-tier feature and the data model above already supports it.
+
+### 19.2 Separation of duties is the first genuinely *negative* permission
+
+§18.1 established the permission matrix. Requisitions added something the
+accountant role did not have: a permission an actor is denied **on their own
+records**. `requisitions.write` lets them raise a request; `requisitions.decide`
+is absent, so they cannot approve what they asked for — not even their own
+draft, not even for one shilling.
+
+This matters for the SaaS because the natural multi-tenant shortcut is
+"org admins can do everything in their org". Separation of duties says
+otherwise: some actions must be denied to the person who initiated the record
+regardless of role. **S0's permission check therefore needs the actor's
+relationship to the subject, not just their role** — `can(role, permission)` is
+insufficient once "you may approve, but not your own" exists. Design for
+`can(actor, permission, subject)` now; retrofitting it across every call site
+later is the expensive version.
+
+The same idea already appears in the ownership check on the requisition itself:
+an accountant may read every row under RLS, but the page and the actions refuse
+a request they did not raise. **RLS gives row visibility; it does not express
+"whose record is this" for write intent.** Both layers are needed.
+
+### 19.3 Derived-not-stored, extended from status to amounts
+
+§18.2's rule was "if a status can be computed from the ledger, compute it".
+Requisitions extend it to money: there is **no `total_amount` column**. A
+line's amount is `quantity × unit_price` and the total is the sum of the lines,
+recomputed on every read by a pure, unit-tested module shared by the live
+form preview and the server.
+
+The stronger form of the rule, which S0 should adopt verbatim:
+
+> **Never store an aggregate that a human decision refers to. Freeze the
+> inputs instead.**
+
+An approved total that is stored can drift from the lines that produced it; an
+approved total that is *derived from frozen lines* cannot. Which is exactly why
+the immutability guards below are load-bearing rather than defensive — they are
+what makes derivation safe.
+
+### 19.4 Immutability must live in the database, because code paths multiply
+
+The app refuses to edit a decided requisition. The database refuses too, via
+triggers (`guard_requisition_decided`, `guard_requisition_child_rows`): no
+update to an approved/rejected/cancelled request, no delete past draft, and no
+inserting or changing lines and documents unless the parent is still a draft.
+
+The app-layer check alone would be adequate today, with one code path. It stops
+being adequate the moment a second path exists — and a multi-tenant product
+grows them continuously: support tooling, per-tenant imports, admin
+impersonation, bulk operations, an eventual public API. **Every one of those is
+a new way to reach the same table, and only the DB-level guard is on all of
+them.** This is the same reasoning behind 0016's money-table write revokes,
+applied to a non-money table for the first time.
+
+Two implementation notes worth carrying over:
+
+- **The child-row guard must tolerate the parent being gone.** When a draft is
+  deleted, the FK cascade deletes its lines, and the trigger fires with the
+  parent already removed. Reading a `null` parent status has to mean "the
+  cascade already passed the parent's own guard, allow it" — otherwise
+  legitimate draft deletion fails with a confusing error. Guard triggers on
+  child tables need this branch, and it is easy to miss because the happy path
+  never exercises it.
+- **A constraint you test against will catch you.** The first dry run used
+  `fiscal_year = 2999` and was rejected by the `between 2020 and 2100` check.
+  That is the constraint working, but it is also a reminder that **synthetic
+  test values must be inside the domain** or the test proves nothing about the
+  path it meant to exercise.
+
+### 19.5 Schema and code deploy on different clocks — plan for the window
+
+This build hit the seam directly: the migration could not be applied at the
+moment the code was ready, and both dashboards call the new query. Had it
+shipped unchanged, deploying would have taken out the owner's and accountant's
+home pages entirely — not the new feature, the *existing* ones.
+
+The resolution is a rule S0 needs permanently, because in a multi-tenant
+product with staged per-tenant rollouts the window never closes:
+
+- **A feature's own surfaces fail loudly.** The requisition list and the
+  approval queue still throw on any error — an approval queue rendering as
+  "nothing to approve" because a query failed is the §17 defect class.
+- **Shared surfaces degrade.** Dashboards, nav badges, global search and
+  anything else that aggregates across features use a variant
+  (`listRequisitionsForDashboard`) that swallows **exactly one** condition —
+  the relation not existing — and rethrows everything else. The tolerance is
+  narrow, named, and documented as dead code once the migration lands.
+
+Generalised: **every cross-feature read on a shared surface must have a
+"feature not provisioned for this tenant" answer**, and it must not be
+implemented by catching all errors. The difference between "degrade" and
+"swallow" is whether the caught condition is enumerated.
+
+### 19.6 Migrations must move to the pipeline before the second tenant
+
+The stored `SUPABASE_ACCESS_TOKEN` (§D-029's mechanism, in `.env.local` since
+2026-07-11) had been **revoked** — discovered only when the migration failed
+with a 401 mid-deploy, and resolved by the owner pasting a fresh token.
+
+That is survivable with one database and one developer. It is not a practice
+that survives multi-tenancy:
+
+- applying schema changes from a laptop with a **personal** access token means
+  the deploy is gated on one human's credential, with no expiry policy, no
+  rotation, no audit of who ran what, and no ordering guarantee against the
+  code deploy (§19.5 is the direct consequence);
+- with per-tenant databases or schemas, "run the migration" becomes a fan-out
+  operation that must be idempotent, resumable and observable.
+
+**S0 gate: migrations run in CI/CD against a service identity, ordered before
+the code deploy that depends on them, with a recorded run per tenant.** The
+`schema_migrations` bookkeeping this repo maintains by hand is the right ledger;
+it just needs a machine writing it. Until then, the pilot practice stands —
+apply, verify with a rollback-only dry run, record the version, regenerate
+types — and §19.7 is why that verification is not optional.
+
+### 19.7 The rollback-only dry run has earned permanent status
+
+§16 established it (node-only tests never execute PL/pgSQL, which is why
+settlement was broken for a month). §18.5 used it for the money function. This
+build used it for a non-money table and it paid again: a single transaction
+priced a two-line request at 16,450,000 TZS, then proved **all three
+immutability guards fire** — a line added to a submitted request, a delete of a
+submitted request, and an edit of an approved one — before rolling everything
+back.
+
+The addition this time: **a negative control**. The same script was re-run with
+one assertion deliberately inverted to confirm it failed — otherwise "no error"
+is indistinguishable from "the assertions never ran". A dry run without a
+negative control is a test that has never been shown to be capable of failing.
+
+S0 replaces this with real pgTAP coverage in CI. Until it does, the pattern is:
+**dry run + negative control + a check that no rows were left behind.**
+
+### 19.8 Adapting a client's reference design — honour the constraint, not the mockup
+
+The client supplied screenshots of an existing requisition form. Three details
+were deliberately not copied, and the reasoning generalises:
+
+- **"Max 10MB per file" became 4 MiB.** Vercel rejects a larger request body
+  with an opaque 413 (D-030). Promising a limit the platform will not honour
+  moves the failure somewhere the user cannot interpret.
+- **GIF was dropped.** Every upload here is validated by magic-byte sniffing,
+  and the sniffer does not recognise GIF. Accepting a file type we cannot
+  verify is worse than not accepting it.
+- **Currency is TZS-only** (spec rule 11), but the `currency` column exists,
+  constrained by a CHECK. **Shape for later, constrain for now** — multi-currency
+  then becomes a constraint change plus a rate source, not a schema migration
+  across a money-adjacent table. This is a cheap pattern worth repeating in S0
+  wherever a per-tenant dimension is coming but is not needed yet.
+
+And the vocabulary was translated: departments, item categories, units and
+budget covers use *this business's* words (motorcycle, spare parts, fuel, phone,
+rider collections), reusing the expense-ledger categories so an approved
+requisition and the expense it later becomes file under the same word. In a
+multi-tenant product this vocabulary is **per-tenant configuration**, and §19.9
+records the consequence.
+
+### 19.9 Inventory additions for §2
+
+- **Three new tables** — `purchase_requisitions`, `requisition_items`,
+  `requisition_documents` — all needing `org_id` under §4, all currently
+  staff-read-only under RLS with **zero write grants to `authenticated`**
+  (writes go through the service role after a server-side permission check).
+  They follow 0016's money-table discipline despite not being money.
+- **`requisition-documents` is an eighth private storage bucket.** Per-tenant
+  storage isolation (§10) now covers eight buckets; the count grows with every
+  feature, which argues for the prefix-per-org convention being decided once
+  rather than per bucket.
+- **`REQ/YYYY/MM/NNNN` is a per-month, max-based sequence.** Max-based because
+  a *draft* can be deleted by its author — precisely the failure that broke
+  `count(*)+1` rider numbering (§18, `lib/riders/numbering.ts`). Under
+  multi-tenancy it must additionally be **per-org**: two tenants must both be
+  able to have `REQ/2026/09/0001`, so the uniqueness constraint becomes
+  `(org_id, requisition_number)` and the allocator's `LIKE` scan gains an
+  org filter. **Every human-readable sequence in §2 needs this same treatment.**
+- **`approver_id` points at an owner profile.** Under §4 it becomes "an org
+  member holding the approval permission", which is where per-org approval
+  routing (§19.1) attaches.
+- **Requisitions are procurement, not revenue.** They must never be summed into
+  collections, ledger totals or tenant-billing usage metrics. Worth stating
+  explicitly because they are the first table in the system carrying TZS
+  amounts that are *not* part of the money ledger — a reporting join that
+  treats "has an amount column" as "is revenue" would be wrong.
+- **Item categories overlap the expense ledger deliberately.** Under
+  multi-tenancy both lists become per-tenant reference data, and §18.3's
+  append-only contract applies: rows store the category as text, so renaming a
+  category orphans historical requisitions and expenses alike.

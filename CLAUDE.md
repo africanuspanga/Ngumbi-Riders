@@ -71,6 +71,11 @@ the Director DECIDES.
   diffed against the live schema.
 
 Verified: **398 unit tests** (+22), typecheck ✅, lint ✅, `npm run build` ✅.
+See `Docs/SAAS_PLAN.md` §19 for the transferable lessons and D-036 — chiefly
+that approval is now a **reusable primitive** (this is the second instance
+after 0026's cash confirmation) and that shared surfaces such as dashboards
+must degrade when a feature's schema is not provisioned yet, while the
+feature's own pages still fail loudly.
 
 **🆕 CLIENT-FEEDBACK BUILD #2 (2026-09-05, migrations `0026`+`0027`, APPLIED
 LIVE; D-035).** Nine more client-requested changes. Types regenerated from the
