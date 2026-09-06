@@ -10,6 +10,7 @@ import {
   EMPTY_FILTERS,
   RIDER_FILTER_LABELS,
   RIDER_SORT_LABELS,
+  RIDER_VIEW_COOKIE,
   type RiderDirectoryFilters,
   type RiderDirectoryRow,
   type RiderQuickFilter,
@@ -22,13 +23,6 @@ import { formatDate } from '@/lib/dates/format';
 import { RiderAvatar } from '@/components/riders/RiderAvatar';
 import { LayoutGridIcon, TableIcon, SearchIcon, XIcon } from 'lucide-react';
 
-/*
- * The display preference lives in a cookie, not localStorage, so the SERVER
- * knows it and renders the right view immediately. Reading localStorage in an
- * effect would flash the wrong layout on every load and set state during the
- * effect body (which React Compiler correctly flags as a cascading render).
- */
-export const RIDER_VIEW_COOKIE = 'ngr_riders_view';
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 const RIDER_STATUS_TONE: Record<string, string> = {

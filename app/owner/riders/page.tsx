@@ -1,7 +1,8 @@
 import { cookies } from 'next/headers';
 import { requireOwner } from '@/lib/auth/session';
 import { listRiderDirectory } from '@/lib/riders/queries';
-import { RiderDirectory, RIDER_VIEW_COOKIE } from '@/components/riders/RiderDirectory';
+import { RiderDirectory } from '@/components/riders/RiderDirectory';
+import { RIDER_VIEW_COOKIE } from '@/lib/riders/directory';
 import type { RiderView } from '@/lib/riders/directory';
 
 export const metadata = { title: 'Riders' };

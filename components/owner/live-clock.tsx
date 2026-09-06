@@ -1,7 +1,7 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import { APP_TIMEZONE } from '@/lib/dates/tz';
+import { formatClockDate, formatClockTime } from '@/lib/dates/clock';
 
 /*
  * Date and time in the top-right corner of the dashboard (client feedback
@@ -15,29 +15,12 @@ import { APP_TIMEZONE } from '@/lib/dates/tz';
  * the client takes over after mount, via `useSyncExternalStore` — the clock is
  * an external system (a ticking interval), not derived state, so this is the
  * idiomatic subscription rather than a setState-in-effect cascade.
+ *
+ * The formatters live in lib/dates/clock.ts, NOT here: the owner dashboard is a
+ * Server Component and must call them for the first paint. Exports of a
+ * 'use client' module are client references on the server, so calling one from
+ * there throws and crashes the page.
  */
-const dateFmt = new Intl.DateTimeFormat('en-GB', {
-  timeZone: APP_TIMEZONE,
-  weekday: 'short',
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-});
-const timeFmt = new Intl.DateTimeFormat('en-GB', {
-  timeZone: APP_TIMEZONE,
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  hour12: false,
-});
-
-export function formatClockDate(at: Date): string {
-  return dateFmt.format(at);
-}
-export function formatClockTime(at: Date): string {
-  return timeFmt.format(at);
-}
-
 function subscribe(onChange: () => void): () => void {
   const id = setInterval(onChange, 1000);
   return () => clearInterval(id);

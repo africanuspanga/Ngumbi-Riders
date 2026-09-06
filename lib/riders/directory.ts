@@ -118,6 +118,16 @@ export const EMPTY_FILTERS: RiderDirectoryFilters = {
 
 export type RiderView = 'card' | 'table';
 
+/*
+ * The card/table preference is kept in a cookie so the SERVER can read it and
+ * render the right view on first paint (localStorage would flash the wrong
+ * layout). The name lives here, not in RiderDirectory.tsx: that file is
+ * 'use client', and a constant exported from a client module reaches the
+ * server as a throwing function stub, not as this string — so the pages read
+ * a garbage cookie key and the preference silently never applied.
+ */
+export const RIDER_VIEW_COOKIE = 'ngr_riders_view';
+
 const norm = (v: string | null | undefined): string => (v ?? '').toLowerCase().trim();
 
 const digits = (v: string | null | undefined): string => (v ?? '').replace(/\D/g, '');

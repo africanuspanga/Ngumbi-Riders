@@ -23,7 +23,8 @@ import {
 } from '@/components/ui/table';
 import { CollectionsChart } from '@/components/owner/collections-chart';
 import { BalanceChart } from '@/components/owner/balance-chart';
-import { LiveClock, formatClockDate, formatClockTime } from '@/components/owner/live-clock';
+import { LiveClock } from '@/components/owner/live-clock';
+import { formatClockDate, formatClockTime } from '@/lib/dates/clock';
 import {
   TriangleAlertIcon,
   ArrowRightIcon,
