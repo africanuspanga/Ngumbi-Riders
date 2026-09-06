@@ -41,13 +41,21 @@ const ERRORS: Record<string, string> = {
 export function CashApprovalQueue({
   requests,
   canDecide,
-  editHref,
+  editBasePath,
 }: {
   requests: CashRequestRow[];
   /** Only the Director may confirm/reject; accountants see and may withdraw. */
   canDecide: boolean;
-  /** Where the "edit" button goes for this audience. */
-  editHref: (request: CashRequestRow) => string;
+  /**
+   * Where the "edit" button goes for this audience, e.g.
+   * "/owner/payments/approvals" — the request id is appended.
+   *
+   * A STRING, not a builder function: this is a Client Component, and the
+   * Server Components that render it cannot pass a function across the
+   * boundary ("Functions cannot be passed directly to Client Components").
+   * Taking the callback crashed both approvals pages in production.
+   */
+  editBasePath: string;
 }) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -176,7 +184,7 @@ export function CashApprovalQueue({
                 </button>
               )}
               <Link
-                href={editHref(r)}
+                href={`${editBasePath}/${r.id}`}
                 className="flex min-h-11 items-center rounded-[--radius-card] border border-border bg-white px-4 font-semibold text-primary-dark hover:bg-surface"
               >
                 Edit

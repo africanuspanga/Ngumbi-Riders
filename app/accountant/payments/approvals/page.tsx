@@ -37,7 +37,7 @@ export default async function AccountantApprovalsPage() {
       <CashApprovalQueue
         requests={pending}
         canDecide={false}
-        editHref={(r) => `/accountant/payments/approvals/${r.id}`}
+        editBasePath="/accountant/payments/approvals"
       />
 
       {decided.length > 0 && (
