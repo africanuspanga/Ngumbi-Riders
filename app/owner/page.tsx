@@ -3,6 +3,7 @@ import { requireOwner } from '@/lib/auth/session';
 import { getOwnerDashboard, getCollectionsSeries, getRiderBalances } from '@/lib/dashboard/queries';
 import { listCashRequests } from '@/lib/payments/queries';
 import { listRequisitionsForDashboard } from '@/lib/requisitions/queries';
+import { listUnreadNotifications, unreadCount } from '@/lib/notifications/queries';
 import { formatTZS } from '@/lib/money/format';
 import {
   Card,
@@ -30,6 +31,7 @@ import {
   ArrowRightIcon,
   BanknoteIcon,
   ClipboardCheckIcon,
+  BellIcon,
 } from 'lucide-react';
 import { formatDate } from '@/lib/dates/format';
 
@@ -37,13 +39,16 @@ export const metadata = { title: 'Dashboard' };
 
 export default async function OwnerHome() {
   const profile = await requireOwner();
-  const [d, series, balances, pendingCash, pendingRequisitions] = await Promise.all([
-    getOwnerDashboard(),
-    getCollectionsSeries(14),
-    getRiderBalances(12),
-    listCashRequests(['pending']),
-    listRequisitionsForDashboard({ statuses: ['submitted'] }),
-  ]);
+  const [d, series, balances, pendingCash, pendingRequisitions, unreadNotifications, unread] =
+    await Promise.all([
+      getOwnerDashboard(),
+      getCollectionsSeries(14),
+      getRiderBalances(12),
+      listCashRequests(['pending']),
+      listRequisitionsForDashboard({ statuses: ['submitted'] }),
+      listUnreadNotifications(4),
+      unreadCount(),
+    ]);
   const rate = d.kpis.collectionRate === null ? '—' : `${Math.round(d.kpis.collectionRate * 100)}%`;
   // Rendered on the server for the first paint; LiveClock takes over on mount.
   const now = new Date();
@@ -63,6 +68,41 @@ export default async function OwnerHome() {
         </div>
         <LiveClock initialDate={formatClockDate(now)} initialTime={formatClockTime(now)} />
       </header>
+
+      {/* Unread notifications, top of the dashboard (client feedback
+          2026-09-06). notifyOwner() had been writing these since Phase 8 with
+          nothing anywhere to display them. */}
+      {unread > 0 && (
+        <section className="rounded-[--radius-card] border border-border bg-white">
+          <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+            <span className="flex items-center gap-2 font-semibold">
+              <BellIcon className="size-4 shrink-0 text-primary" />
+              {unread} unread notification{unread === 1 ? '' : 's'}
+            </span>
+            <Link
+              href="/owner/notifications"
+              className="flex shrink-0 items-center gap-1 text-sm font-semibold text-primary-dark"
+            >
+              See all <ArrowRightIcon className="size-3.5" />
+            </Link>
+          </div>
+          <ul className="divide-y divide-border">
+            {unreadNotifications.map((n) => (
+              <li key={n.id}>
+                <Link
+                  href={n.deep_link ?? '/owner/notifications'}
+                  className="flex flex-col px-4 py-2.5 text-sm hover:bg-surface"
+                >
+                  <span className="font-medium">{n.title}</span>
+                  {n.body && (
+                    <span className="text-muted-foreground truncate text-xs">{n.body}</span>
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {pendingCash.length > 0 && (
         <Link

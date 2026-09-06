@@ -10,9 +10,17 @@ import { NavUser } from '@/components/nav-user';
 export function AppHeader({
   ownerName,
   roleLabel,
+  notifications,
 }: {
   ownerName: string;
   roleLabel?: string;
+  /*
+   * The unread-notification bell, rendered by the SERVER and handed down as an
+   * element. This header is a Client Component, so it cannot call the database
+   * itself; an already-rendered element crosses the boundary happily where a
+   * fetch function would not.
+   */
+  notifications?: React.ReactNode;
 }) {
   const pathname = usePathname();
   const activeItem = findActiveNavItem(pathname);
@@ -28,6 +36,7 @@ export function AppHeader({
         <AppBreadcrumbs page={activeItem} />
       </div>
       <div className="flex items-center gap-3">
+        {notifications}
         {roleLabel && (
           <span className="hidden rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted-foreground sm:inline">
             {roleLabel}

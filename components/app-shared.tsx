@@ -14,6 +14,7 @@ import {
   MegaphoneIcon,
   UploadIcon,
   ActivityIcon,
+  BellIcon,
   ScrollTextIcon,
   UserCogIcon,
   NotebookPenIcon,
@@ -81,6 +82,7 @@ export const navGroups: SidebarNavGroup[] = [
 ];
 
 export const footerNavLinks: SidebarNavItem[] = [
+  { title: 'Notifications', path: '/owner/notifications', icon: <BellIcon /> },
   { title: 'System health', path: '/owner/system', icon: <ActivityIcon /> },
   { title: 'Audit trail', path: '/owner/audit', icon: <ScrollTextIcon /> },
   { title: 'Staff', path: '/owner/staff', icon: <UserCogIcon /> },
@@ -115,6 +117,7 @@ export const accountantNavGroups: SidebarNavGroup[] = [
       { title: 'Motorcycles', path: '/accountant/motorcycles', icon: <BikeIcon /> },
       { title: 'Contracts', path: '/accountant/contracts', icon: <FileTextIcon /> },
       { title: 'Notes', path: '/accountant/notes', icon: <NotebookPenIcon /> },
+      { title: 'Notifications', path: '/accountant/notifications', icon: <BellIcon /> },
     ],
   },
 ];

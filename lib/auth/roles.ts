@@ -47,6 +47,10 @@ export type Permission =
   | 'notes.write'
   | 'requisitions.write'
   | 'requisitions.decide'
+  // Recording that money for an APPROVED purchase has been released. Separate
+  // from 'decide' on purpose: approving a purchase and paying for it are two
+  // different acts, and only the owner holds the second.
+  | 'requisitions.pay'
   | 'expenses.write'
   | 'applications.write'
   | 'incidents.write'
@@ -83,7 +87,9 @@ const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   // an internal financial note (append-only), and raise a purchase requisition
   // for the Managing Director to decide. Note what is NOT here:
   // 'requisitions.decide' — an accountant may ask to buy motorcycles, never
-  // approve the purchase, not even their own request.
+  // approve the purchase, not even their own request. Nor
+  // 'requisitions.pay': they see whether a request was paid, they do not get
+  // to declare it paid.
   'payments.record',
   'notes.write',
   'requisitions.write',

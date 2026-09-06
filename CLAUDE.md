@@ -13,7 +13,7 @@
 > and why); this file tracks where execution stands right now.
 >
 > Companion docs: [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md) ·
-> [`DECISIONS.md`](DECISIONS.md) (D-001…D-031) · [`Docs/MIGRATION_PLAN.md`](Docs/MIGRATION_PLAN.md) ·
+> [`DECISIONS.md`](DECISIONS.md) (D-001…D-039) · [`Docs/MIGRATION_PLAN.md`](Docs/MIGRATION_PLAN.md) ·
 > [`Docs/ROUTE_MAP.md`](Docs/ROUTE_MAP.md) · [`Docs/RLS_MATRIX.md`](Docs/RLS_MATRIX.md) ·
 > [`Docs/LAUNCH_CHECKLIST.md`](Docs/LAUNCH_CHECKLIST.md) ·
 > [`Docs/SECURITY_REVIEW.md`](Docs/SECURITY_REVIEW.md) ·
@@ -36,6 +36,91 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 ---
 
 ## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
+
+**🆕 CLIENT-FEEDBACK BUILD #3 (2026-09-06, migration `0029`, APPLIED LIVE).**
+Six requests, plus two production outages fixed the same day and two permanent
+guards added so that class of outage cannot ship again. ⚠ **Deploy to Vercel is
+the remaining step.**
+
+**Two outages, both fixed and deployed (`65f695e`, `162076f`).**
+- `/owner` threw on every request: `app/owner/page.tsx` called
+  `formatClockDate()`, a plain function exported from the `'use client'`
+  module `components/owner/live-clock.tsx`. On the server such an export is a
+  client REFERENCE, not the function. Formatters moved to `lib/dates/clock.ts`.
+- `/owner/payments/approvals` and `/accountant/payments/approvals` threw on
+  every request: both passed `editHref={(r) => …}` — a FUNCTION — as a prop to
+  the Client Component `CashApprovalQueue`. Functions are not serializable
+  across the boundary. Now `editBasePath`, a plain string.
+- Found alongside: `RIDER_VIEW_COOKIE` was exported from a client module and
+  read server-side on `/owner/riders`, so the card/table preference had never
+  actually applied since it shipped.
+
+**Two permanent guards (this is the answer to "why does it keep coming back").**
+- `lib/dev/rsc-boundary.ts` + `tests/unit/rsc-boundary.test.ts` — a source
+  scanner in `npm run verify`, so it runs in CI. Two rules: a non-`'use client'`
+  module may not (1) import a non-component binding from a `'use client'`
+  module, nor (2) pass a function literal as a prop to a client component. It
+  caught five fresh violations of rule 1 during this very build.
+  **A "component" is PascalCase WITHOUT underscores** — `RIDER_VIEW_COOKIE`
+  starts with a capital and a laxer test would have missed it.
+- `tests/integration/smoke/` + `npm run test:smoke` — opt-in
+  (`SMOKE_TEST_ENABLED=1 SMOKE_BASE_URL=…`), READ-ONLY, requests every page as
+  every role and fails on 5xx, on the `error.tsx` marker, or on landing at
+  `/login` (a rejected session would otherwise let every route "pass").
+  Routes are DISCOVERED from `app/**/page.tsx`, never listed, so a new page is
+  covered the day it is created. Sessions are minted without passwords: an
+  admin-generated OTP for the email roles (`generateLink` does NOT send mail),
+  and the app's own `/api/auth/rider-login` for riders.
+  **RIDER PAGES ARE NOT COVERED** unless `SMOKE_RIDER_PHONE` +
+  `SMOKE_RIDER_PIN` are set — a PIN is unrecoverable by design, so there is no
+  way to mint a rider session without one. 52 owner+accountant pages pass.
+
+**The six requests.**
+1. **Owner notifications, at last.** `notifyOwner()` had been writing since
+   Phase 8 from 8 call sites and **nothing ever displayed them — the backlog
+   was 884 unread**. New `/owner/notifications` and `/accountant/notifications`
+   (the rider page now shares one component with a `labels` prop), an unread
+   bell in the back-office header on every page, and an unread panel at the top
+   of the owner dashboard. `unreadCount()` was also counting a `.limit(100)`
+   page and returning its length, so it could never report more than 100.
+2. **Requisition PDF** (`lib/requisitions/pdf.tsx`,
+   `/api/requisitions/[id]/pdf`), modelled on the client's reference document —
+   grey section bars, one ruled item table, an approvals table — in Ng'umbi
+   green rather than the reference's blue. Downloadable **at any stage** by
+   owner and accountant, and the stage is printed on its face, with an explicit
+   "NOT an authorisation to purchase" line on anything unapproved. Amounts are
+   recomputed from the lines by the same pure functions the screen uses, so a
+   printed total can never disagree with the approved one.
+   ⚠ **Known limitation:** `@react-pdf/renderer` 4.5.1 renders NOTHING for an
+   absolutely-positioned footer (three variants tried) and produces no output
+   for `<Text render={…} />`, so the footer is in normal flow and there is no
+   "Page X of Y".
+3. **Transactions grouped by outcome** (`lib/payments/grouping.ts`, pure +
+   tested) on both `/owner/payments/transactions` and the accountant's.
+   Successful money first, then the reasons money did not arrive. Empty groups
+   are omitted; no payment is ever dropped.
+4. **Requisition payment stage** (migration `0029`): approved → **unpaid /
+   processing / paid**, shown as a column in the list, a badge on the detail
+   page and a line in the PDF. The accountant is notified in-app and by SMS
+   (queued; Mobishastra delivers once the credentials are paid for).
+   `requisitions.pay` is a NEW permission the accountant does not hold —
+   approving a purchase and paying for it are different acts.
+   **This is not ledger money**: it creates no payment, obligation, allocation
+   or receipt, and no report may treat it as collections.
+5. **Add to home screen** (`components/pwa/InstallPrompt.tsx`) in both shells.
+   The manifest was already installable; nobody was ever told. Captures
+   `beforeinstallprompt` on Android/Chrome and replays it from a real button;
+   iOS gets the Share → Add to Home Screen instruction instead, because it has
+   no programmatic install and a button that cannot work is worse. Written with
+   `useSyncExternalStore` — the React Compiler rejects setState-in-effect.
+6. **Daily reconciliation was ALREADY DONE.** `vercel.json` has one cron at
+   `0 21 * * *` (midnight EAT) hitting `/api/cron/daily`, which runs all 8
+   tasks serially including `reconcile-pending`. Verified live: every task
+   succeeded on 2026-09-05 and 09-04; 438 runs recorded. Nothing was built.
+
+Verified: **454 unit tests** (+40), typecheck ✅, lint ✅, `npm run build` ✅,
+52-page smoke run ✅. 0029 applied live after a rollback-only dry run with a
+negative control; types regenerated and diffed against the live schema.
 
 **🆕 RIDER EDIT + DELETE, AND TWO LIVE DATA FIXES (2026-09-05, no migration).**
 The owner can now correct a rider's details (`/owner/riders/[id]/edit`, linked
@@ -604,7 +689,9 @@ app/accountant/      gated accountant area (spec #10) — dashboard, reports,
                      contracts, notes
 app/owner/staff/     owner-only accountant account management
 app/accountant/requisitions/  purchase requests (raise, edit draft, submit)
-app/owner/requisitions/       Managing Director's approve / reject queue
+app/owner/requisitions/       Managing Director's approve / reject / mark-paid queue
+app/owner/notifications/ app/accountant/notifications/  staff inboxes (2026-09-06)
+app/api/requisitions/[id]/pdf  printable requisition, any stage
 
 lib/env.ts           validated env (public vs server-only)
 lib/supabase/        client (browser) · server (SSR) · admin (service role, server-only) · proxy · types
@@ -613,8 +700,14 @@ lib/auth/            phone (E.164) · pin (validation) · pin-derive (HMAC, serv
                      provision (Admin API) · roles (permission matrix, pure)
 lib/staff/           accountant account create/activate/deactivate/reset (owner-only)
 lib/notes/           internal financial notes (append-only)
-lib/requisitions/    constants · compute (pure totals + status machine) ·
-                     numbering (REQ/YYYY/MM/NNNN) · validation · actions · queries
+lib/requisitions/    constants · compute (pure totals + status/payment machine) ·
+                     numbering (REQ/YYYY/MM/NNNN) · validation · actions · queries ·
+                     pdf (printable request, any stage)
+lib/dev/             rsc-boundary (client/server boundary scanner) · routes
+                     (smoke-test route discovery) — build-quality tooling, not app code
+lib/notifications/   service · queries · actions · labels (sw/en, plain module)
+lib/payments/        …· grouping (transaction outcome groups, pure)
+lib/pwa/             install-labels (sw/en, plain module)
 lib/contracts/       actions · queries · validation · pdf · duration (#9) · status (#8)
 lib/obligations/     schedule (cadence engine) · plan (bulk generator, #1) · transitions
 lib/riders/          actions · queries · validation · numbering · directory (#2, pure) ·
@@ -625,8 +718,10 @@ lib/money/ dates/ i18n/ validation/          domain utilities
 
 supabase/migrations/ 0001..0028 + seed.sql    supabase/config.toml
 scripts/seed.ts      owner + demo rider seeding
-tests/unit/          phone, pin, lockout, money
-tests/integration/rls/ isolation suite (opt-in via RLS_TEST_ENABLED)
+tests/unit/          phone, pin, lockout, money, rsc-boundary, dev-routes,
+                     payment-grouping, requisition-payment-stage
+tests/integration/rls/   isolation suite (opt-in via RLS_TEST_ENABLED)
+tests/integration/smoke/ every page as every role (opt-in via SMOKE_TEST_ENABLED)
 messages/sw.json en.json                      i18n catalogs
 ```
 
@@ -667,6 +762,17 @@ Migration-by-migration contents + planned future migrations: `docs/MIGRATION_PLA
     `proxyConfig` matcher before it) is caught at build time alone.
 15. Reference data encoded into identifiers (geo codes) is **append-only**;
     never rename a region/district that live rows store as text.
+16. **Only COMPONENTS cross the client/server boundary.** A `'use client'`
+    module's exports are client references on the server, so a server module
+    may never import a helper, hook or constant from one, and never pass a
+    FUNCTION as a prop to a client component. Shared values live in `lib/`;
+    pass strings and ids, not callbacks. Enforced by
+    `tests/unit/rsc-boundary.test.ts` in `npm run verify` — three production
+    outages came from breaking this (2026-09-06).
+17. **A page that renders in `npm run build` has not been tested.** Build never
+    executes a dynamic page and vitest is node-only, so before a release run
+    `npm run test:smoke` against a live server. That is the only gate that
+    actually requests the pages.
 
 ---
 
@@ -677,6 +783,9 @@ npm run dev            # local dev (http://localhost:3000)
 npm run verify         # typecheck + lint + test  (run before committing)
 npm run build          # production build
 npm run test:rls       # RLS isolation (needs RLS_TEST_ENABLED=1 + live DB)
+npm run test:smoke     # every page as every role; needs a RUNNING server:
+                       #   SMOKE_TEST_ENABLED=1 SMOKE_BASE_URL=http://localhost:3000
+                       #   (+ SMOKE_RIDER_PHONE / SMOKE_RIDER_PIN for rider pages)
 npm run db:push        # apply migrations to linked project
 npm run db:reset       # local reset (needs Docker)
 npm run seed           # seed owner + demo riders

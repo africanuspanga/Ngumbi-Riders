@@ -7,6 +7,7 @@ import type {
   RequisitionDepartment,
   RequisitionItemCategory,
   RequisitionStatus,
+  RequisitionPaymentStatus,
   RequisitionUnit,
 } from './constants';
 
@@ -47,6 +48,12 @@ export type RequisitionSummary = {
   fiscalYear: number;
   requestDate: string;
   status: RequisitionStatus;
+  /* Whether the owner has released money for an APPROVED purchase (0029).
+     Always present; only meaningful once `status` is 'approved'. */
+  paymentStatus: RequisitionPaymentStatus;
+  paymentMarkedByName: string | null;
+  paymentMarkedAt: string | null;
+  paymentNote: string | null;
   total: number;
   itemCount: number;
   requestedById: string;
@@ -85,6 +92,10 @@ type RawRequisition = {
   decided_by: string | null;
   decided_at: string | null;
   decision_note: string | null;
+  payment_status: string | null;
+  payment_marked_by: string | null;
+  payment_marked_at: string | null;
+  payment_note: string | null;
   created_at: string;
   requisition_items: {
     id: string;
@@ -101,7 +112,8 @@ type RawRequisition = {
 const SELECT =
   'id, requisition_number, title, description, department, fiscal_year, request_date, currency, ' +
   'payment_information, status, approver_id, requested_by, submitted_at, decided_by, decided_at, ' +
-  'decision_note, created_at, requisition_items(id, position, description, category, quantity, unit, unit_price, budget_cover)';
+  'decision_note, payment_status, payment_marked_by, payment_marked_at, payment_note, ' +
+  'created_at, requisition_items(id, position, description, category, quantity, unit, unit_price, budget_cover)';
 
 /** Display names for a set of profile ids, in one query. */
 async function profileNames(
@@ -148,6 +160,12 @@ function toSummary(raw: RawRequisition, names: Map<string, string>): Requisition
     fiscalYear: raw.fiscal_year,
     requestDate: raw.request_date,
     status: raw.status as RequisitionStatus,
+    paymentStatus: (raw.payment_status ?? 'unpaid') as RequisitionPaymentStatus,
+    paymentMarkedByName: raw.payment_marked_by
+      ? (names.get(raw.payment_marked_by) ?? null)
+      : null,
+    paymentMarkedAt: raw.payment_marked_at,
+    paymentNote: raw.payment_note,
     total: requisitionTotal(items),
     itemCount: items.length,
     requestedById: raw.requested_by,
@@ -187,7 +205,7 @@ export async function listRequisitions(options?: {
   const rows = (data ?? []) as unknown as RawRequisition[];
   const names = await profileNames(
     supabase,
-    rows.flatMap((r) => [r.requested_by, r.approver_id, r.decided_by]),
+    rows.flatMap((r) => [r.requested_by, r.approver_id, r.decided_by, r.payment_marked_by]),
   );
   return rows.map((r) => toSummary(r, names));
 }
@@ -205,7 +223,7 @@ export async function getRequisition(id: string): Promise<RequisitionDetail | nu
   const raw = data as unknown as RawRequisition;
 
   const [names, docs] = await Promise.all([
-    profileNames(supabase, [raw.requested_by, raw.approver_id, raw.decided_by]),
+    profileNames(supabase, [raw.requested_by, raw.approver_id, raw.decided_by, raw.payment_marked_by]),
     supabase
       .from('requisition_documents')
       .select('id, file_name, mime_type, size_bytes, created_at')

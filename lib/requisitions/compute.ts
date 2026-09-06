@@ -9,7 +9,7 @@
  * the lines that were approved.
  */
 
-import type { RequisitionStatus } from './constants';
+import type { RequisitionPaymentStatus, RequisitionStatus } from './constants';
 
 export type RequisitionLine = {
   quantity: number;
@@ -70,4 +70,57 @@ export function isClosed(status: RequisitionStatus): boolean {
 /** True when the request is sitting on the Managing Director's desk. */
 export function awaitsDecision(status: RequisitionStatus): boolean {
   return status === 'submitted';
+}
+
+/* ------------------------------------------------------------------------ *
+ * Payment progress after approval (client feedback 2026-09-06)
+ * ------------------------------------------------------------------------ */
+
+
+/**
+ * Whether a requisition may be given a payment stage at all.
+ *
+ * Only an approved purchase can be paid for. A rejected request was never
+ * authorised, and a draft has not even been asked yet — marking either "paid"
+ * would assert money left the business against a decision nobody made. The DB
+ * refuses it too (0029); this is the same rule where the UI can read it.
+ */
+export function canSetPaymentStatus(status: RequisitionStatus): boolean {
+  return status === 'approved';
+}
+
+/**
+ * Payment stages an approved requisition may move to from where it is.
+ *
+ * The ladder runs forward — unpaid → processing → paid — and one step BACK is
+ * allowed from each, because this is an operational marker the owner sets by
+ * hand, not a ledger entry, and a mis-tap must be correctable. Every change is
+ * stamped with who made it and audited, so a correction is visible rather than
+ * silent. What is not allowed is jumping from paid straight to unpaid, which
+ * would erase the fact that a payment was ever recorded.
+ */
+export function nextPaymentStatuses(
+  current: RequisitionPaymentStatus,
+): readonly RequisitionPaymentStatus[] {
+  switch (current) {
+    case 'unpaid':
+      return ['processing', 'paid'];
+    case 'processing':
+      return ['paid', 'unpaid'];
+    case 'paid':
+      return ['processing'];
+  }
+}
+
+/** True when moving `from` → `to` is a change this system permits. */
+export function canChangePaymentStatus(
+  from: RequisitionPaymentStatus,
+  to: RequisitionPaymentStatus,
+): boolean {
+  return nextPaymentStatuses(from).includes(to);
+}
+
+/** True once the money side is finished, for a "nothing left to do" badge. */
+export function isPaid(paymentStatus: RequisitionPaymentStatus): boolean {
+  return paymentStatus === 'paid';
 }

@@ -5,6 +5,81 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-039 · Approving a purchase and paying for it are separate acts (2026-09-06)
+
+Migration `0029` adds a payment stage — unpaid / processing / paid — that only
+exists on an APPROVED requisition. Four things follow, and they are the reason
+this is not simply two more values on `requisition_status`:
+
+1. **It is a separate enum, not more statuses.** A request is approved OR
+   rejected; separately, an approved one is unpaid, processing or paid. Folding
+   them together would make "approved" ambiguous and force every existing
+   status check to be re-read.
+2. **It is a separate permission.** `requisitions.pay` is NOT held by the
+   accountant, who holds `requisitions.write` and neither `decide` nor `pay`.
+   They may raise a request and watch its progress; declaring that the business
+   has paid a supplier is the Director's statement.
+3. **It is NOT ledger money.** Marking a purchase paid creates no payment,
+   obligation, allocation or receipt. `payments` remains rider collections
+   only, and no report may add a requisition to it.
+4. **The 0028 freeze had to be narrowed, not removed.** Payment happens by
+   definition after approval, so on an approved row the payment columns may
+   change and nothing else. That is enforced by stripping those columns from
+   both row images with `to_jsonb(...) - 'col'` and comparing the remainder —
+   written that way round so a column added by a LATER migration is protected
+   automatically, where an explicit list of frozen columns would silently fail
+   to cover it.
+
+The ladder allows one step back (processing → unpaid, paid → processing) but
+never paid → unpaid: this is an operational marker a human sets by hand, so a
+mis-tap must be correctable, but erasing the fact that a payment was ever
+recorded is not a correction. Every change is stamped with who made it and
+audited.
+
+---
+
+## D-038 · A page that builds has not been tested (2026-09-06)
+
+Three outages in one day all reached the owner through the same gap: `npm run
+build` does not execute a dynamic page, and the vitest suite is node-only and
+renders nothing. Both gates passed while `/owner` and
+`/owner/payments/approvals` threw on every single request.
+
+Two gates now close it, and they are deliberately different in kind:
+
+* **Static** — `tests/unit/rsc-boundary.test.ts` runs in `npm run verify`, so
+  it is in CI and costs nothing. It can only see boundary violations, but it
+  sees ALL of them, always.
+* **Live** — `npm run test:smoke` requests every page as every role against a
+  running server. It sees everything a real user would hit — bad data, a null
+  deref, an unprovisioned column — but needs a server and a database, so it is
+  opt-in and run before a release.
+
+Neither replaces the other, and the smoke suite states which roles it did NOT
+cover rather than implying a clean run means everything works.
+
+---
+
+## D-037 · Only components cross the client/server boundary (2026-09-06)
+
+A `'use client'` module's exports reach the server as client references, not
+values. Two rules, now enforced by `lib/dev/rsc-boundary.ts`:
+
+1. A server module may not import a **non-component binding** — a helper, a
+   hook, a constant — from a client module. `formatClockDate()` crashed
+   `/owner`; `RIDER_VIEW_COOKIE` silently made the rider directory's saved
+   card/table preference never apply, because the server received a throwing
+   function stub instead of the string.
+2. A server module may not pass a **function** as a prop to a client component.
+   `editHref={(r) => …}` crashed both approvals pages.
+
+Shared values live in `lib/` and both sides import them. Props are strings and
+ids; the client builds the function. The scanner's definition of "component" is
+**PascalCase without underscores** — a plain uppercase-first test would classify
+`RIDER_VIEW_COOKIE` as a component and miss the bug entirely.
+
+---
+
 ## D-036 · The person who asks to spend is never the person who authorises it (2026-09-05)
 
 Purchase requisitions (migration `0028`). The accountant raises a request to

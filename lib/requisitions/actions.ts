@@ -11,9 +11,19 @@ import { formatTZS } from '@/lib/money/format';
 import { formatDate } from '@/lib/dates/format';
 import { localDateString } from '@/lib/dates/tz';
 import { requisitionSchema, type RequisitionInput } from './validation';
-import { requisitionTotal, canTransition } from './compute';
-import { nextRequisitionNumber } from './numbering';
 import {
+  requisitionTotal,
+  canTransition,
+  canSetPaymentStatus,
+  canChangePaymentStatus,
+} from './compute';
+import { nextRequisitionNumber } from './numbering';
+import { enqueueSms } from '@/lib/messaging/outbox';
+import {
+  PAYMENT_STATUS_LABELS,
+  REQUISITION_PAYMENT_STATUSES,
+  type RequisitionPaymentStatus,
+  type RequisitionStatus,
   MAX_REQUISITION_DOCUMENTS,
   MAX_REQUISITION_DOC_BYTES,
   REQUISITION_CURRENCY,
@@ -604,4 +614,127 @@ async function totalOf(
     amount: requisitionTotal(rows.map((r) => ({ quantity: r.quantity, unitPrice: r.unit_price }))),
     items: rows.length,
   };
+}
+
+/* ------------------------------------------------------------------------ *
+ * Payment progress after approval (client feedback 2026-09-06)
+ * ------------------------------------------------------------------------ */
+
+/**
+ * Record whether money for an APPROVED purchase has been released.
+ *
+ * OWNER ONLY. `requisitions.pay` is deliberately absent from the accountant's
+ * permissions: they raised the request and they can see how it is progressing,
+ * but declaring that the business has paid a supplier is the Director's
+ * statement, not theirs. Approving a purchase and paying for it are separate
+ * acts, which is why this is a separate permission from `requisitions.decide`.
+ *
+ * The accountant is told either way — in the app, and by SMS when Mobishastra
+ * credentials are live. That is the whole point of the feature: the accountant
+ * asked in person because nothing ever told them.
+ *
+ * This creates NO payment, obligation, allocation or receipt. It is an
+ * operational marker on a purchase order, and no report may treat it as
+ * collections.
+ */
+export async function setRequisitionPaymentStatus(
+  requisitionId: string,
+  to: RequisitionPaymentStatus,
+  note?: string,
+): Promise<ActionResult> {
+  const actor = await checkPermission('requisitions.pay');
+  if (!actor || actor.role !== 'owner') return { ok: false, error: 'forbidden' };
+  if (!REQUISITION_PAYMENT_STATUSES.includes(to)) return { ok: false, error: 'invalid_status' };
+
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from('purchase_requisitions')
+    .select('id, requisition_number, status, payment_status, requested_by, title')
+    .eq('id', requisitionId)
+    .maybeSingle();
+  const row = data as (RequisitionRow & { payment_status: RequisitionPaymentStatus }) | null;
+  if (!row) return { ok: false, error: 'not_found' };
+
+  // Only an approved purchase can be paid for. The DB refuses this too (0029);
+  // checking here turns a raised exception into a message the owner can read.
+  if (!canSetPaymentStatus(row.status as RequisitionStatus)) {
+    return { ok: false, error: 'not_approved' };
+  }
+  const from = row.payment_status ?? 'unpaid';
+  if (from === to) return { ok: true };
+  if (!canChangePaymentStatus(from, to)) return { ok: false, error: 'invalid_transition' };
+
+  const total = await totalOf(admin, requisitionId);
+
+  // Conditional on the stage we read, so two owners clicking at once cannot
+  // both apply their change — the second finds it moved and stops.
+  const { data: changed, error } = await admin
+    .from('purchase_requisitions')
+    .update({
+      payment_status: to,
+      payment_marked_by: actor.userId,
+      payment_marked_at: new Date().toISOString(),
+      payment_note: note?.trim() || null,
+    })
+    .eq('id', requisitionId)
+    .eq('payment_status', from)
+    .select('id');
+  if (error) return { ok: false, error: 'server_error' };
+  if (!changed || changed.length === 0) return { ok: false, error: 'invalid_transition' };
+
+  await writeAudit({
+    actorId: actor.userId,
+    actorRole: actor.role,
+    action: 'requisition.payment_status_changed',
+    entityType: 'purchase_requisition',
+    entityId: requisitionId,
+    metadata: {
+      requisitionNumber: row.requisition_number,
+      from,
+      to,
+      total: total.amount,
+      note: note?.trim() || null,
+    },
+  });
+
+  // --- tell the accountant who asked -------------------------------------
+  const headline =
+    to === 'paid'
+      ? 'Purchase request paid'
+      : to === 'processing'
+        ? 'Purchase request payment started'
+        : 'Purchase request marked not paid';
+  const body =
+    `${row.requisition_number} — ${row.title} — ${formatTZS(total.amount)}: ` +
+    `${PAYMENT_STATUS_LABELS[to].toLowerCase()} as of ${formatDate(new Date())}.`;
+
+  await createNotification({
+    profileId: row.requested_by,
+    type: 'requisition_payment',
+    title: headline,
+    body,
+    deepLink: `/accountant/requisitions/${requisitionId}`,
+    // Keyed on the STAGE, not just the request: moving to processing and later
+    // to paid are two things the accountant needs to hear, but clicking the
+    // same button twice is one.
+    dedupeKey: `requisition_payment:${requisitionId}:${to}`,
+  });
+
+  // SMS is supplementary and never load-bearing: the outbox no-ops safely
+  // until the Mobishastra credentials are live, and a failure here must not
+  // undo a stage the owner has already recorded.
+  try {
+    const { data: requester } = await admin
+      .from('profiles')
+      .select('phone')
+      .eq('id', row.requested_by)
+      .maybeSingle();
+    const phone = (requester as { phone: string | null } | null)?.phone;
+    if (phone) await enqueueSms({ recipient: phone, text: `${headline}. ${body}`, subject: headline });
+  } catch {
+    /* notification already delivered in-app */
+  }
+
+  revalidateRequisitionSurfaces(requisitionId);
+  return { ok: true };
 }

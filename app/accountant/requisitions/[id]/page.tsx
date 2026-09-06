@@ -4,7 +4,8 @@ import { requireAccountant } from '@/lib/auth/session';
 import { getRequisition } from '@/lib/requisitions/queries';
 import { RequisitionView } from '@/components/requisitions/RequisitionView';
 import { RequesterActions } from '@/components/requisitions/RequesterActions';
-import { StatusBadge } from '@/components/requisitions/StatusBadge';
+import { StatusBadge, PaymentBadge } from '@/components/requisitions/StatusBadge';
+import { RequisitionPdfLink } from '@/components/requisitions/RequisitionPdfLink';
 import { formatTZS } from '@/lib/money/format';
 
 export const metadata = { title: 'Purchase request' };
@@ -40,6 +41,8 @@ export default async function AccountantRequisitionPage({
             {requisition.title}
           </h1>
           <StatusBadge status={requisition.status} />
+          <PaymentBadge status={requisition.status} paymentStatus={requisition.paymentStatus} />
+          <RequisitionPdfLink requisitionId={requisition.id} />
         </div>
         <p className="text-muted-foreground text-sm">
           {requisition.requisitionNumber} · {formatTZS(requisition.total)}

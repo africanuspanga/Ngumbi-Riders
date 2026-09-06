@@ -4,6 +4,8 @@ import { homePathFor } from '@/lib/auth/roles';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { RiderHeader } from '@/components/rider/rider-header';
 import { RiderNav } from '@/components/rider/rider-nav';
+import { InstallPrompt } from '@/components/pwa/InstallPrompt';
+import { INSTALL_LABELS_SW } from '@/lib/pwa/install-labels';
 
 // Coarse gate for the rider area. The mandatory temporary-PIN redirect lives on
 // the dashboard page (not here) to avoid a redirect loop with the PIN settings
@@ -44,7 +46,10 @@ export default async function RiderLayout({
   return (
     <div className="min-h-dvh">
       <RiderHeader />
-      <main className="mx-auto max-w-md px-4 pb-24 pt-4">{children}</main>
+      <main className="mx-auto flex max-w-md flex-col gap-4 px-4 pt-4 pb-24">
+        <InstallPrompt labels={INSTALL_LABELS_SW} />
+        {children}
+      </main>
       <RiderNav unread={count ?? 0} />
     </div>
   );

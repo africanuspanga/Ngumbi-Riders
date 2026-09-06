@@ -154,3 +154,52 @@ export const REQUISITION_DOC_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp';
 export function yearOf(isoDate: string): number {
   return parseInt(isoDate.slice(0, 4), 10);
 }
+
+/* ------------------------------------------------------------------------ *
+ * Payment progress after approval (client feedback 2026-09-06)
+ * ------------------------------------------------------------------------ */
+
+/**
+ * Whether the owner has released money for an APPROVED purchase.
+ *
+ * Deliberately NOT part of `RequisitionStatus`: approval and payment are two
+ * different questions, and folding them into one enum would make "approved"
+ * ambiguous and force every existing status check to be re-read. A request is
+ * approved OR rejected; separately, an approved one is unpaid, processing or
+ * paid.
+ */
+export type RequisitionPaymentStatus = 'unpaid' | 'processing' | 'paid';
+
+export const REQUISITION_PAYMENT_STATUSES: readonly RequisitionPaymentStatus[] = [
+  'unpaid',
+  'processing',
+  'paid',
+] as const;
+
+export const PAYMENT_STATUS_LABELS: Record<RequisitionPaymentStatus, string> = {
+  unpaid: 'Not paid',
+  processing: 'Payment processing',
+  paid: 'Paid',
+};
+
+/** What each stage means, in the owner's and accountant's terms. */
+export const PAYMENT_STATUS_DESCRIPTIONS: Record<RequisitionPaymentStatus, string> = {
+  unpaid: 'Approved, but no money has been released yet.',
+  processing: 'Payment has been started — bank transfer, cash or mobile money in progress.',
+  paid: 'The supplier has been paid in full.',
+};
+
+/**
+ * The single line a reader — including the printed PDF — should see for a
+ * requisition, combining the decision and the money.
+ *
+ * A rejected or draft request has no payment stage worth printing, so only an
+ * approved one gets the second half.
+ */
+export function requisitionStageLabel(
+  status: RequisitionStatus,
+  paymentStatus: RequisitionPaymentStatus,
+): string {
+  if (status !== 'approved') return REQUISITION_STATUS_LABELS[status];
+  return `${REQUISITION_STATUS_LABELS.approved} · ${PAYMENT_STATUS_LABELS[paymentStatus]}`;
+}

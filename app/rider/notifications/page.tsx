@@ -1,6 +1,7 @@
 import { requireRider } from '@/lib/auth/session';
 import { listNotifications } from '@/lib/notifications/queries';
-import { NotificationList } from './NotificationList';
+import { NotificationList } from '@/components/notifications/NotificationList';
+import { NOTIFICATION_LABELS_SW } from '@/lib/notifications/labels';
 import { PushToggle } from '@/components/pwa/PushToggle';
 
 export const metadata = { title: 'Arifa' };
@@ -14,7 +15,7 @@ export default async function RiderNotificationsPage() {
         <h1 className="text-xl font-bold text-primary-dark">Arifa</h1>
         <PushToggle />
       </div>
-      <NotificationList notifications={notifications} />
+      <NotificationList notifications={notifications} labels={NOTIFICATION_LABELS_SW} />
     </div>
   );
 }

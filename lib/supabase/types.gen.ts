@@ -1705,6 +1705,10 @@ export type Database = {
           fiscal_year: number
           id: string
           payment_information: string | null
+          payment_marked_at: string | null
+          payment_marked_by: string | null
+          payment_note: string | null
+          payment_status: Database["public"]["Enums"]["requisition_payment_status"]
           request_date: string
           requested_by: string
           requisition_number: string
@@ -1725,6 +1729,10 @@ export type Database = {
           fiscal_year: number
           id?: string
           payment_information?: string | null
+          payment_marked_at?: string | null
+          payment_marked_by?: string | null
+          payment_note?: string | null
+          payment_status?: Database["public"]["Enums"]["requisition_payment_status"]
           request_date: string
           requested_by: string
           requisition_number: string
@@ -1745,6 +1753,10 @@ export type Database = {
           fiscal_year?: number
           id?: string
           payment_information?: string | null
+          payment_marked_at?: string | null
+          payment_marked_by?: string | null
+          payment_note?: string | null
+          payment_status?: Database["public"]["Enums"]["requisition_payment_status"]
           request_date?: string
           requested_by?: string
           requisition_number?: string
@@ -1764,6 +1776,13 @@ export type Database = {
           {
             foreignKeyName: "purchase_requisitions_decided_by_fkey"
             columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requisitions_payment_marked_by_fkey"
+            columns: ["payment_marked_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -2404,6 +2423,7 @@ export type Database = {
         | "cancelled"
         | "reversed"
       phone_loan_status: "pending" | "active" | "completed" | "cancelled"
+      requisition_payment_status: "unpaid" | "processing" | "paid"
       requisition_status:
         | "draft"
         | "submitted"
@@ -3083,6 +3103,7 @@ export const Constants = {
         "reversed",
       ],
       phone_loan_status: ["pending", "active", "completed", "cancelled"],
+      requisition_payment_status: ["unpaid", "processing", "paid"],
       requisition_status: [
         "draft",
         "submitted",
