@@ -2,7 +2,15 @@ import 'server-only';
 
 import { createServerSupabase } from '@/lib/supabase/server';
 import { fetchAllPages, chunkIds } from '@/lib/supabase/fetch-all';
-import { isSnippeConfigured } from '@/lib/snippe/client';
+import { isSnippeConfigured, getCollectionBalance } from '@/lib/snippe/client';
+import {
+  summariseCollections,
+  reconciliationSnapshot,
+  type BalanceState,
+  type CollectionPayment,
+  type CollectionsSummary,
+  type ReconciliationSnapshot,
+} from './collections';
 import { localDateString } from '@/lib/dates/tz';
 import {
   computeOwnerKpis,
@@ -32,6 +40,8 @@ export type OwnerDashboard = {
   unpaidRiders: UnpaidRider[];
   endingContracts: EndingContract[];
   applicationsAwaiting: number;
+  /** Payment deadline as HH:MM (app settings). The day's clock for the owner. */
+  paymentDeadline: string;
   highRiskRiders: { id: string; name: string; risk: string }[];
   warnings: string[];
 };
@@ -133,6 +143,18 @@ export async function getOwnerDashboard(): Promise<OwnerDashboard> {
     endDate: c.end_date,
   }));
 
+  // The deadline the whole day counts down to. Read from settings rather than
+  // hardcoded: the owner can move it, and a dashboard promising 18:00 when the
+  // contracts say 20:00 would be worse than showing no deadline at all.
+  const { data: settingsRow } = await supabase
+    .from('app_settings')
+    .select('payment_deadline_time')
+    .maybeSingle();
+  const paymentDeadline = (
+    (settingsRow as { payment_deadline_time: string | null } | null)?.payment_deadline_time ??
+    '18:00'
+  ).slice(0, 5);
+
   const warnings: string[] = [];
   if (!isSnippeConfigured()) warnings.push('Snippe is not configured — mobile payments are disabled.');
   const pendingCount = (pendingRes as { count?: number }).count ?? 0;
@@ -146,6 +168,7 @@ export async function getOwnerDashboard(): Promise<OwnerDashboard> {
     unpaidRiders,
     endingContracts,
     applicationsAwaiting: (appsRes as { count?: number }).count ?? 0,
+    paymentDeadline,
     highRiskRiders: ((riskRes.data ?? []) as { id: string; first_name: string; last_name: string; risk_level: string }[]).map(
       (r) => ({ id: r.id, name: `${r.first_name} ${r.last_name}`, risk: r.risk_level }),
     ),
@@ -439,4 +462,122 @@ export async function getRiderBalances(limit = 12): Promise<RiderBalances> {
     totalRemaining: all.reduce((s, p) => s + p.totalRemaining, 0),
     riderCount: all.length,
   };
+}
+
+/* =========================================================================
+ * Collection balance + collections by source (client feedback 2026-09-11 #1)
+ * ========================================================================= */
+
+/**
+ * Everything the "current collection balance" panel needs: the live Snippe
+ * balance, this system's own collections split by source, and the payments
+ * that did not turn into money.
+ *
+ * The Snippe call is best-effort and NEVER fails this query — a provider
+ * outage must not take down the owner's dashboard, and the ledger figures
+ * beside it are ours and remain correct regardless.
+ */
+export type CollectionsOverview = {
+  balance: BalanceState;
+  summary: CollectionsSummary;
+  reconciliation: ReconciliationSnapshot;
+};
+
+export async function getCollectionsOverview(): Promise<CollectionsOverview> {
+  const supabase = await createServerSupabase();
+  const today = localDateString();
+
+  const [completed, unresolved, balance] = await Promise.all([
+    fetchAllPages<{ id: string; amount: number; method: string; completed_at: string | null }>(
+      (from, to) =>
+        supabase
+          .from('payments')
+          .select('id, amount, method, completed_at')
+          .eq('status', 'completed')
+          .order('completed_at', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to),
+      { label: 'collections overview payments' },
+    ),
+    fetchAllPages<{
+      id: string;
+      amount: number;
+      status: string;
+      created_at: string;
+      rider_id: string;
+    }>(
+      (from, to) =>
+        supabase
+          .from('payments')
+          .select('id, amount, status, created_at, rider_id')
+          // 'created' is included deliberately: an initiate that never reached
+          // the provider still holds its obligations reserved.
+          .in('status', ['pending', 'created', 'failed', 'expired', 'reversed'])
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: true })
+          .range(from, to),
+      { label: 'collections overview unresolved' },
+    ),
+    readSnippeBalance(),
+  ]);
+
+  const payments: CollectionPayment[] = completed
+    // A completed payment with no completion time cannot be dated, and
+    // guessing one would silently move money between periods.
+    .filter((p) => Boolean(p.completed_at))
+    .map((p) => ({
+      paymentId: p.id,
+      date: localDateString(new Date(p.completed_at as string)),
+      method: p.method,
+      amount: p.amount,
+    }));
+
+  const riderNames = new Map<string, string>();
+  const riderIds = [...new Set(unresolved.map((p) => p.rider_id).filter(Boolean))];
+  for (const chunk of chunkIds(riderIds)) {
+    const { data } = await supabase
+      .from('riders')
+      .select('id, first_name, last_name')
+      .in('id', chunk);
+    for (const r of (data ?? []) as { id: string; first_name: string; last_name: string }[]) {
+      riderNames.set(r.id, `${r.first_name} ${r.last_name}`);
+    }
+  }
+
+  return {
+    balance,
+    summary: summariseCollections(payments, today),
+    reconciliation: reconciliationSnapshot(
+      unresolved.map((p) => ({
+        paymentId: p.id,
+        status: p.status,
+        amount: p.amount,
+        createdAt: p.created_at,
+        riderId: p.rider_id ?? null,
+        riderName: riderNames.get(p.rider_id) ?? null,
+      })),
+      Date.now(),
+    ),
+  };
+}
+
+/** Snippe balance, mapped onto the states the dashboard can explain. */
+async function readSnippeBalance(): Promise<BalanceState> {
+  if (!isSnippeConfigured()) return { state: 'not_configured' };
+  try {
+    const res = await getCollectionBalance();
+    if (res.ok) {
+      return {
+        state: 'ok',
+        available: res.data.available,
+        balance: res.data.balance,
+        currency: res.data.currency,
+      };
+    }
+    if (res.error === 'not_configured') return { state: 'not_configured' };
+    if (res.error === 'forbidden') return { state: 'forbidden' };
+    return { state: 'unavailable', reason: res.error };
+  } catch {
+    return { state: 'unavailable', reason: 'network_error' };
+  }
 }

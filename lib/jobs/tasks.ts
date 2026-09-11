@@ -10,6 +10,8 @@ import { getPaymentStatus } from '@/lib/snippe/client';
 import { settlePaymentCompleted, markPaymentFailed, expireStalePayment } from '@/lib/payments/settle';
 import { processOutbox } from '@/lib/messaging/outbox';
 import { recomputeRiskForRider } from '@/lib/risk/recompute';
+import { planPostponements } from '@/lib/loans/lease-pause';
+import { sweepCompletedPhoneLoans } from '@/lib/loans/settle';
 import { computeOwnerKpis, type KpiObligation } from '@/lib/dashboard/kpis';
 import { composeDailySummaryHtml } from '@/lib/resend/summary';
 import { sendEmail } from '@/lib/resend/client';
@@ -160,7 +162,7 @@ export const contractCompletionTask: CronTask = async () => {
   const admin = createAdminClient();
   const today = localDateString();
 
-  const due = await fetchAllPages<{ id: string; rider_id: string; contract_number: string; end_date: string }>(
+  let due = await fetchAllPages<{ id: string; rider_id: string; contract_number: string; end_date: string }>(
     (from, to) =>
       admin
         .from('contracts')
@@ -173,7 +175,41 @@ export const contractCompletionTask: CronTask = async () => {
         .range(from, to),
     { label: 'contract-completion select' },
   );
-  if (due.length === 0) return { completed: 0, withArrears: 0, notifyErrors: 0 };
+  if (due.length === 0) {
+    return { completed: 0, withArrears: 0, notifyErrors: 0, awaitingReview: 0 };
+  }
+
+  /*
+   * STAND DOWN where a completion request is open (client feedback #6).
+   *
+   * "When a rider finishes a contract, the rider should not be marked complete
+   *  automatically without review." A contract whose end date has passed AND
+   *  which has a live end-of-contract request belongs to that chain, not to
+   *  this job: flipping it to 'completed' here would race the Director's
+   *  sign-off and, worse, make the contract look finished before anybody had
+   *  approved it or the motorcycle had changed hands.
+   *
+   * The automatic sweep still runs for every OTHER contract, which is the case
+   * it was built for in 0025: a term that simply ran out with nothing to hand
+   * over. Those still show "Contract Ended — Outstanding Balance" when money is
+   * owed, because that status is derived from the ledger, not stored.
+   */
+  const underReview = new Set<string>();
+  for (const ids of chunkIds(due.map((c) => c.id))) {
+    const { data, error } = await admin
+      .from('contract_completion_requests')
+      .select('contract_id')
+      .in('contract_id', ids)
+      .not('status', 'in', '(completed,rejected)');
+    // A failed read must not read as "no requests open" — that would let this
+    // job complete exactly the contracts it is supposed to leave alone.
+    if (error) throw new Error(`contract-completion review check failed: ${error.message}`);
+    for (const r of (data ?? []) as { contract_id: string }[]) underReview.add(r.contract_id);
+  }
+
+  const awaitingReview = underReview.size;
+  due = due.filter((c) => !underReview.has(c.id));
+  if (due.length === 0) return { completed: 0, withArrears: 0, notifyErrors: 0, awaitingReview };
 
   // Which of them still owe money? Read BEFORE the status flip so the
   // notification tells the owner the truth (chunked: an .in() with hundreds of
@@ -246,7 +282,7 @@ export const contractCompletionTask: CronTask = async () => {
     notifyErrors++;
   }
 
-  return { completed: completed.length, withArrears, notifyErrors };
+  return { completed: completed.length, withArrears, notifyErrors, awaitingReview };
 };
 
 /** Pending Snippe reconciliation (spec §12.5): resolves missed webhooks. */
@@ -557,12 +593,138 @@ export const dailySummaryTask: CronTask = async (): Promise<Record<string, numbe
   throw new Error(`summary_email_failed: ${res.error}`);
 };
 
+/*
+ * PHONE-LOAN LEASE PAUSE (client feedback 2026-09-11 #13).
+ *
+ * "Motorcycle collections pause. Phone-loan collections start. When the phone
+ *  loan is fully completed, motorcycle collections resume automatically."
+ *
+ * This is the pause, applied ONE DAY AT A TIME as the days actually arrive.
+ *
+ * Why not move the whole block of days at activation? Because the resume date
+ * is not knowable then. A rider may repay early, or an instalment may be
+ * waived; if 90 days had already been re-dated to the end of the calendar,
+ * every one of them would have to be dragged back, and dragging money around
+ * is how ledgers break. Handling one day per night means an early repayment
+ * needs no unwinding at all — the pause flag clears and the next morning's day
+ * is simply not postponed.
+ *
+ * WHAT IS NEVER TOUCHED:
+ *   • arrears. Only 'scheduled' days move. A day the rider had already failed
+ *     to pay stays overdue, because postponing it would forgive a real debt.
+ *   • phone instalments. They are the whole point of the pause.
+ *   • a day reserved by an in-flight mobile payment (the DB refuses it too).
+ *
+ * Ordering matters: this runs BEFORE obligation-status in the daily
+ * dispatcher, so a day that is about to be postponed is never first flipped to
+ * 'due' and announced to the rider as owing.
+ */
+export const phoneLoanLeasePauseTask: CronTask = async () => {
+  const admin = createAdminClient();
+  const today = localDateString();
+  const counts = { pausedContracts: 0, daysPostponed: 0, failures: 0, loansCompleted: 0 };
+
+  // Loans that finished by means other than a settlement — a waived or
+  // cancelled final instalment settles nothing, so nothing in the payment path
+  // fires. Swept first so a contract whose loan is already finished does not
+  // have another day postponed tonight.
+  counts.loansCompleted = (await sweepCompletedPhoneLoans()).length;
+
+  const { data: pausedRows, error: pausedErr } = await admin
+    .from('contracts')
+    .select(
+      'id, contract_number, schedule_type, selected_weekdays, payment_deadline_time, lease_paused_for_loan_id',
+    )
+    .not('lease_paused_for_loan_id', 'is', null)
+    .eq('status', 'active');
+  // Never swallow a failed read in a money path (D-033): an empty result would
+  // read as "no contracts are paused" and quietly let every lease day fall due.
+  if (pausedErr) throw new Error(`lease-pause contracts read failed: ${pausedErr.message}`);
+
+  type PausedContract = {
+    id: string;
+    contract_number: string;
+    schedule_type: string;
+    selected_weekdays: number[] | null;
+    payment_deadline_time: string;
+    lease_paused_for_loan_id: string;
+  };
+
+  for (const contract of (pausedRows ?? []) as unknown as PausedContract[]) {
+    counts.pausedContracts++;
+
+    // Lease days that have ARRIVED and are still merely scheduled. Anything
+    // later stays where it is — there is no point re-dating days the rider may
+    // never reach.
+    const { data: dueRows, error: dueErr } = await admin
+      .from('payment_obligations')
+      .select('id, due_date')
+      .eq('contract_id', contract.id)
+      .eq('kind', 'lease')
+      .eq('status', 'scheduled')
+      .lte('due_date', today)
+      .order('due_date', { ascending: true });
+    if (dueErr) {
+      counts.failures++;
+      continue;
+    }
+    const arriving = (dueRows ?? []) as { id: string; due_date: string }[];
+    if (arriving.length === 0) continue;
+
+    // Every date this contract already uses, so a replacement cannot collide
+    // with an existing obligation (0007 allows one per contract per date).
+    const existing = await fetchAllPages<{ due_date: string }>(
+      (from, to) =>
+        admin
+          .from('payment_obligations')
+          .select('due_date')
+          .eq('contract_id', contract.id)
+          .order('due_date', { ascending: true })
+          .range(from, to),
+      { label: 'lease-pause existing dates' },
+    );
+    const taken = new Set(existing.map((o) => o.due_date));
+    const lastDate = existing.length ? existing[existing.length - 1]!.due_date : today;
+
+    const plan = planPostponements(
+      arriving.map((o) => o.id),
+      lastDate,
+      { scheduleType: contract.schedule_type, selectedWeekdays: contract.selected_weekdays },
+      taken,
+    );
+
+    const deadline = (contract.payment_deadline_time ?? '18:00').slice(0, 5);
+    for (const step of plan) {
+      const { error } = await admin.rpc('postpone_lease_day_for_loan', {
+        p_obligation_id: step.obligationId,
+        p_loan_id: contract.lease_paused_for_loan_id,
+        p_new_date: step.newDate,
+        p_due_at: new Date(`${step.newDate}T${deadline}:00+03:00`).toISOString(),
+        p_local_due_time: `${deadline}:00`,
+      });
+      if (error) {
+        // Per-day best effort: one obligation that cannot move (reserved by an
+        // in-flight payment, say) must not stop the rest of the fleet.
+        counts.failures++;
+        continue;
+      }
+      counts.daysPostponed++;
+    }
+  }
+
+  return counts;
+};
+
 /**
  * All tasks in daily-dispatch order (midnight EAT): flip statuses for the new
  * day first, resolve pending payments, then clean up, score risk, check data
  * quality, send the summary and flush the outbox.
  */
 export const DAILY_TASKS: [name: string, task: CronTask][] = [
+  // BEFORE the status sweep: a lease day that is about to be postponed for a
+  // phone loan must never first be flipped to 'due' and announced to the rider
+  // as money they owe tonight (client feedback #13).
+  ['phone-loan-lease-pause', phoneLoanLeasePauseTask],
   ['obligation-status', obligationStatusTask],
   // Completion runs right after the status sweep: a lease that ended yesterday
   // should be marked complete before the dashboard and summary are computed.

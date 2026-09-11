@@ -16,6 +16,18 @@ import {
   type FinancialReport,
   type FinancialTransaction,
 } from './financial';
+import {
+  cashflowStatement,
+  filterExpenses,
+  filterRequisitions,
+  filterTransactions,
+  type CashflowStatement,
+  type ReportFilters,
+  type RequisitionSpendRow,
+} from './cashflow';
+import { listExpenses } from '@/lib/departments/queries';
+import type { ExpenseRow } from '@/lib/departments/compute';
+import { requisitionTotal } from '@/lib/requisitions/compute';
 
 function dayRangeUtc(from: string, to: string) {
   const start = new Date(`${from}T00:00:00+03:00`).toISOString();
@@ -218,4 +230,172 @@ export async function getFinancialReport(from: string, to: string): Promise<Fina
   }));
 
   return financialReport(transactions, from, to);
+}
+
+/* =========================================================================
+ * Requisitions, expenses, income and the cashflow statement
+ * (client feedback 2026-09-11 #4)
+ * ========================================================================= */
+
+/**
+ * Every requisition touching the period, with its total recomputed from its
+ * lines. There is no total column by design (0028), so the sum is derived here
+ * exactly as it is on the screen and in the printed PDF — three readers, one
+ * arithmetic.
+ *
+ * The range is applied to BOTH the request date and the decision date: a
+ * request raised in March and approved in April belongs to both months'
+ * reports, for different reasons (raised in one, committed in the other), and
+ * `requisitionTotals` decides which figure it lands in.
+ */
+export async function listRequisitionSpend(
+  from: string,
+  to: string,
+): Promise<RequisitionSpendRow[]> {
+  const supabase = await createServerSupabase();
+
+  const rows = await fetchAllPages<{
+    id: string;
+    requisition_number: string;
+    title: string;
+    request_date: string;
+    decided_at: string | null;
+    department: string;
+    department_id: string | null;
+    requisition_type: string;
+    status: string;
+    payment_status: string;
+    retirement_status: string;
+    retired_amount: number | null;
+    requisition_items: { quantity: number; unit_price: number }[];
+  }>(
+    (a, b) =>
+      supabase
+        .from('purchase_requisitions')
+        .select(
+          'id, requisition_number, title, request_date, decided_at, department, department_id, ' +
+            'requisition_type, status, payment_status, retirement_status, retired_amount, ' +
+            'requisition_items(quantity, unit_price)',
+        )
+        // Raised in the window OR decided in it. `or` across two columns is
+        // one round trip; filtering in JS afterwards would need every
+        // requisition ever raised.
+        .or(
+          `and(request_date.gte.${from},request_date.lte.${to}),` +
+            `and(decided_at.gte.${from}T00:00:00Z,decided_at.lte.${to}T23:59:59Z)`,
+        )
+        .order('request_date', { ascending: false })
+        .order('id', { ascending: true })
+        .range(a, b) as unknown as PromiseLike<{
+        data: RawRequisitionSpend[] | null;
+        error: { message: string } | null;
+      }>,
+    { label: 'requisition spend' },
+  );
+
+  const departmentNames = await departmentNameMap(supabase);
+
+  return rows.map((r) => ({
+    id: r.id,
+    requisitionNumber: r.requisition_number,
+    title: r.title,
+    date: r.request_date,
+    // A calendar day, read from the instant in EAT so a late-evening approval
+    // does not land in the previous day's report.
+    decidedDate: r.decided_at ? localDateString(new Date(r.decided_at)) : null,
+    departmentId: r.department_id,
+    departmentName: r.department_id
+      ? (departmentNames.get(r.department_id) ?? r.department)
+      : r.department,
+    requisitionType: r.requisition_type ?? 'general',
+    status: r.status,
+    paymentStatus: r.payment_status ?? 'unpaid',
+    retirementStatus: r.retirement_status ?? 'not_started',
+    total: requisitionTotal(
+      (r.requisition_items ?? []).map((i) => ({
+        quantity: i.quantity,
+        unitPrice: i.unit_price,
+      })),
+    ),
+    retiredAmount: r.retired_amount,
+  }));
+}
+
+type RawRequisitionSpend = {
+  id: string;
+  requisition_number: string;
+  title: string;
+  request_date: string;
+  decided_at: string | null;
+  department: string;
+  department_id: string | null;
+  requisition_type: string;
+  status: string;
+  payment_status: string;
+  retirement_status: string;
+  retired_amount: number | null;
+  requisition_items: { quantity: number; unit_price: number }[];
+};
+
+async function departmentNameMap(
+  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
+): Promise<Map<string, string>> {
+  const { data } = await supabase.from('departments').select('id, name');
+  return new Map(((data ?? []) as { id: string; name: string }[]).map((d) => [d.id, d.name]));
+}
+
+export type CashflowReport = {
+  filters: ReportFilters;
+  statement: CashflowStatement;
+  transactions: FinancialTransaction[];
+  expenses: ExpenseRow[];
+  requisitions: RequisitionSpendRow[];
+  departments: { id: string; name: string }[];
+};
+
+/**
+ * The statement the brief asks for: income received, expenses made,
+ * requisitions made and the net balance, for one period and one filter set.
+ *
+ * Every filter is applied HERE, to the fetched rows, so the on-screen figures
+ * and the exported file are produced by the same code path. A filter that
+ * applies on one and not the other is the specific failure this shape exists
+ * to prevent.
+ */
+export async function getCashflowReport(filters: ReportFilters): Promise<CashflowReport> {
+  const supabase = await createServerSupabase();
+  const range = { from: filters.from, to: filters.to };
+
+  const [financial, allExpenses, allRequisitions, deptRows] = await Promise.all([
+    getFinancialReport(filters.from, filters.to),
+    listExpenses(range),
+    listRequisitionSpend(filters.from, filters.to),
+    supabase.from('departments').select('id, name').order('name'),
+  ]);
+
+  const departments = ((deptRows.data ?? []) as { id: string; name: string }[]).map((d) => ({
+    id: d.id,
+    name: d.name,
+  }));
+  const departmentNames = new Map(departments.map((d) => [d.id, d.name]));
+
+  const transactions = filterTransactions(financial.transactions, filters);
+  const expenses = filterExpenses(allExpenses, filters);
+  const requisitions = filterRequisitions(allRequisitions, filters);
+
+  return {
+    filters,
+    statement: cashflowStatement({
+      transactions,
+      expenses,
+      requisitions,
+      departmentNames,
+      from: filters.from,
+      to: filters.to,
+    }),
+    transactions,
+    expenses,
+    requisitions,
+    departments,
+  };
 }

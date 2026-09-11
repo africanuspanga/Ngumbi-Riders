@@ -1,6 +1,11 @@
 import Link from 'next/link';
 import { requireOwner } from '@/lib/auth/session';
-import { getOwnerDashboard, getCollectionsSeries, getRiderBalances } from '@/lib/dashboard/queries';
+import {
+  getOwnerDashboard,
+  getCollectionsSeries,
+  getRiderBalances,
+  getCollectionsOverview,
+} from '@/lib/dashboard/queries';
 import { listCashRequests } from '@/lib/payments/queries';
 import { listRequisitionsForDashboard } from '@/lib/requisitions/queries';
 import { listUnreadNotifications, unreadCount } from '@/lib/notifications/queries';
@@ -22,9 +27,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { CollectionsChart } from '@/components/owner/collections-chart';
 import { BalanceChart } from '@/components/owner/balance-chart';
-import { LiveClock } from '@/components/owner/live-clock';
+import { TodayBand } from '@/components/owner/today-band';
+import { localDateString } from '@/lib/dates/tz';
+import { CollectionBalancePanel } from '@/components/owner/collection-balance';
+import { PhoneLoanPanel } from '@/components/loans/PhoneLoanPanel';
+import { getPhoneLoanPortfolio } from '@/lib/loans/queries';
 import { formatClockDate, formatClockTime } from '@/lib/dates/clock';
 import {
   TriangleAlertIcon,
@@ -39,69 +47,78 @@ export const metadata = { title: 'Dashboard' };
 
 export default async function OwnerHome() {
   const profile = await requireOwner();
-  const [d, series, balances, pendingCash, pendingRequisitions, unreadNotifications, unread] =
-    await Promise.all([
-      getOwnerDashboard(),
-      getCollectionsSeries(14),
-      getRiderBalances(12),
-      listCashRequests(['pending']),
-      listRequisitionsForDashboard({ statuses: ['submitted'] }),
-      listUnreadNotifications(4),
-      unreadCount(),
-    ]);
+  const [
+    d,
+    series,
+    balances,
+    collections,
+    phoneLoans,
+    pendingCash,
+    pendingRequisitions,
+    unreadNotifications,
+    unread,
+  ] = await Promise.all([
+    getOwnerDashboard(),
+    getCollectionsSeries(30),
+    getRiderBalances(12),
+    getCollectionsOverview(),
+    getPhoneLoanPortfolio(),
+    listCashRequests(['pending']),
+    listRequisitionsForDashboard({ statuses: ['submitted'] }),
+    listUnreadNotifications(3),
+    unreadCount(),
+  ]);
   const rate = d.kpis.collectionRate === null ? '—' : `${Math.round(d.kpis.collectionRate * 100)}%`;
   // Rendered on the server for the first paint; LiveClock takes over on mount.
   const now = new Date();
+  const today = localDateString(now);
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Date + time sits top-RIGHT, as the owner asked, and ticks live. */}
-      <header className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">
-            Karibu{profile.fullName ? ` Mr ${profile.fullName}` : ''}
-          </h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
-            <Badge variant="secondary">{d.activeRiders} active riders</Badge>
-            <Badge variant="secondary">{d.activeMotorcycles} motorcycles out</Badge>
-          </div>
-        </div>
-        <LiveClock initialDate={formatClockDate(now)} initialTime={formatClockTime(now)} />
+    <div className="flex flex-col gap-5">
+      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">
+          Karibu{profile.fullName ? ` Mr ${profile.fullName}` : ''}
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          <span className="font-display text-foreground">{d.activeRiders}</span> active riders ·{' '}
+          <span className="font-display text-foreground">{d.activeMotorcycles}</span> motorcycles out
+        </p>
       </header>
 
-      {/* Unread notifications, top of the dashboard (client feedback
-          2026-09-06). notifyOwner() had been writing these since Phase 8 with
-          nothing anywhere to display them. */}
+      {/* The thesis: today's collections against today's expectation, with the
+          30-day ribbon beside it. The one place on this page that is loud. */}
+      <TodayBand
+        collectedToday={d.kpis.collectedToday}
+        expectedToday={d.kpis.expectedToday}
+        outstandingToday={d.kpis.outstandingToday}
+        unpaidRiders={d.kpis.unpaidRiders}
+        paidRiders={d.kpis.paidRiders}
+        deadline={d.paymentDeadline}
+        series={series}
+        today={today}
+        nowDate={formatClockDate(now)}
+        nowTime={formatClockTime(now)}
+      />
+
+      {/* Notifications were a four-row block at the top of the page — the
+          largest element on screen, and the least actionable. Demoted to one
+          line; the full list is a click away and the header bell already
+          carries the count. */}
       {unread > 0 && (
-        <section className="rounded-[--radius-card] border border-border bg-white">
-          <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-            <span className="flex items-center gap-2 font-semibold">
-              <BellIcon className="size-4 shrink-0 text-primary" />
-              {unread} unread notification{unread === 1 ? '' : 's'}
+        <Link
+          href="/owner/notifications"
+          className="group flex items-center justify-between gap-3 rounded-[--radius-card] border border-border bg-white px-4 py-2.5 text-sm hover:bg-surface"
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <BellIcon className="size-4 shrink-0 text-primary" />
+            <span className="font-display shrink-0">{unread}</span>
+            <span className="shrink-0 text-muted-foreground">unread ·</span>
+            <span className="truncate font-medium">
+              {unreadNotifications[0]?.title ?? 'See your notifications'}
             </span>
-            <Link
-              href="/owner/notifications"
-              className="flex shrink-0 items-center gap-1 text-sm font-semibold text-primary-dark"
-            >
-              See all <ArrowRightIcon className="size-3.5" />
-            </Link>
-          </div>
-          <ul className="divide-y divide-border">
-            {unreadNotifications.map((n) => (
-              <li key={n.id}>
-                <Link
-                  href={n.deep_link ?? '/owner/notifications'}
-                  className="flex flex-col px-4 py-2.5 text-sm hover:bg-surface"
-                >
-                  <span className="font-medium">{n.title}</span>
-                  {n.body && (
-                    <span className="text-muted-foreground truncate text-xs">{n.body}</span>
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
+          </span>
+          <ArrowRightIcon className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+        </Link>
       )}
 
       {pendingCash.length > 0 && (
@@ -150,56 +167,76 @@ export default async function OwnerHome() {
         </Card>
       )}
 
-      {/* KPI cards (spec §14.1) */}
-      <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      {/*
+        The POSITION, as distinct from the day.
+        Expected/collected/outstanding/rate all moved into the band above, so
+        these three say what the band cannot: the accumulated debt, the whole
+        book still to be collected, and how reliably today is going.
+      */}
+      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
-          label="Expected today"
-          value={formatTZS(d.kpis.expectedToday)}
-          footnote="due from active contracts"
+          label="Arrears"
+          value={formatTZS(d.kpis.totalArrears)}
+          footnote={`${d.kpis.arrearsCount} unpaid day${d.kpis.arrearsCount === 1 ? '' : 's'} across ${d.unpaidRiders.length} rider${d.unpaidRiders.length === 1 ? '' : 's'}`}
+          tone={d.kpis.totalArrears > 0 ? 'text-[color:var(--color-overdue)]' : undefined}
         />
         <StatCard
-          label="Collected today"
-          value={formatTZS(d.kpis.collectedToday)}
-          footnote={`${formatTZS(d.kpis.settledToday)} settled against today`}
-          tone="text-[color:var(--color-paid)]"
+          label="Owed now"
+          value={formatTZS(balances.totalOutstandingNow)}
+          footnote="due up to today, across every contract"
         />
         <StatCard
-          label="Outstanding today"
-          value={formatTZS(d.kpis.outstandingToday)}
-          footnote={`${d.kpis.unpaidRiders} rider(s) not settled yet`}
-          tone={d.kpis.outstandingToday > 0 ? 'text-[color:var(--color-warning)]' : undefined}
+          label="Still to collect"
+          value={formatTZS(balances.totalRemaining)}
+          footnote={`to finish all ${balances.riderCount} contract${balances.riderCount === 1 ? '' : 's'}`}
         />
         <StatCard
           label="Collection rate"
           value={rate}
-          footnote={`${d.kpis.paidRiders} paid · ${d.kpis.unpaidRiders} unpaid`}
+          footnote={`${d.kpis.paidRiders} paid · ${d.kpis.unpaidRiders} unpaid today`}
+          tone={
+            d.kpis.collectionRate !== null && d.kpis.collectionRate >= 1
+              ? 'text-[color:var(--color-paid)]'
+              : undefined
+          }
         />
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        <BalanceChart
-          points={balances.points}
-          totalOutstandingNow={balances.totalOutstandingNow}
-          totalRemaining={balances.totalRemaining}
-          riderCount={balances.riderCount}
-        />
-        <CollectionsChart data={series} />
-      </section>
+      {/* Current collection balance, by source (client feedback #1). */}
+      <CollectionBalancePanel overview={collections} basePath="/owner" />
 
-      <section className="grid gap-4 lg:grid-cols-3">
-        <Card className="shadow-none lg:col-span-3">
+      {/* Phone-loan status (client feedback #3). */}
+      <PhoneLoanPanel portfolio={phoneLoans} basePath="/owner" />
+
+      {/*
+        The 14-day area chart used to sit beside this. The 30-day ribbon in the
+        band covers twice the period and answers the same question, and two
+        "collections over time" charts on one screen is one too many — so the
+        balance chart takes the full width it always needed for rider names.
+      */}
+      <section className="grid gap-4 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <BalanceChart
+            points={balances.points}
+            totalOutstandingNow={balances.totalOutstandingNow}
+            totalRemaining={balances.totalRemaining}
+            riderCount={balances.riderCount}
+          />
+        </div>
+
+        <Card className="shadow-none lg:col-span-2">
           <CardHeader>
             <CardTitle>Arrears aging</CardTitle>
             <CardDescription>
-              {formatTZS(d.kpis.totalArrears)} total arrears
+              How old the {formatTZS(d.kpis.totalArrears)} of unpaid days is
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
-            <AgingBar label="1 day" value={d.aging.oneDay} total={d.kpis.totalArrears} />
-            <AgingBar label="2–3 days" value={d.aging.twoToThree} total={d.kpis.totalArrears} />
-            <AgingBar label="4–7 days" value={d.aging.fourToSeven} total={d.kpis.totalArrears} />
-            <AgingBar label="8–30 days" value={d.aging.eightToThirty} total={d.kpis.totalArrears} />
-            <AgingBar label="31+ days" value={d.aging.overThirty} total={d.kpis.totalArrears} />
+            <AgingBar label="1 day" value={d.aging.oneDay} total={d.kpis.totalArrears} depth={1} />
+            <AgingBar label="2–3 days" value={d.aging.twoToThree} total={d.kpis.totalArrears} depth={2} />
+            <AgingBar label="4–7 days" value={d.aging.fourToSeven} total={d.kpis.totalArrears} depth={3} />
+            <AgingBar label="8–30 days" value={d.aging.eightToThirty} total={d.kpis.totalArrears} depth={4} />
+            <AgingBar label="31+ days" value={d.aging.overThirty} total={d.kpis.totalArrears} depth={5} />
           </CardContent>
         </Card>
       </section>
@@ -237,7 +274,7 @@ export default async function OwnerHome() {
                           {r.name}
                         </Link>
                       </TableCell>
-                      <TableCell className="text-right font-mono font-medium text-[color:var(--color-overdue)] tabular-nums">
+                      <TableCell className="font-display text-right font-bold text-[color:var(--color-overdue)]">
                         {formatTZS(r.arrears)}
                       </TableCell>
                     </TableRow>
@@ -318,6 +355,12 @@ export default async function OwnerHome() {
   );
 }
 
+/*
+ * One figure, with the label small and tracked above it and the caption quiet
+ * below. The amount is set in the display face so a number is recognisable as
+ * a number before it is read — previously label, value and footnote were all
+ * Geist at three close sizes, which is why the old KPI row read as a wall.
+ */
 function StatCard({
   label,
   value,
@@ -330,30 +373,50 @@ function StatCard({
   tone?: string;
 }) {
   return (
-    <Card className="shadow-none">
-      <CardHeader>
-        <CardTitle className="text-muted-foreground text-xs font-normal">{label}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-1">
-        <p className={`break-words text-lg font-semibold tabular-nums sm:text-2xl ${tone ?? ''}`}>{value}</p>
-        <p className="text-muted-foreground text-xs">{footnote}</p>
-      </CardContent>
-    </Card>
+    <div className="flex flex-col gap-2 rounded-[--radius-card] border border-border bg-white p-4">
+      <span className="eyebrow text-muted-foreground">{label}</span>
+      <p
+        className={`font-display break-words text-xl font-bold leading-none sm:text-[1.75rem] ${
+          tone ?? 'text-primary-dark'
+        }`}
+      >
+        {value}
+      </p>
+      <p className="text-muted-foreground text-xs leading-snug">{footnote}</p>
+    </div>
   );
 }
 
-function AgingBar({ label, value, total }: { label: string; value: number; total: number }) {
+/*
+ * One aging bucket. `depth` darkens the bar as the debt gets older, so the
+ * shape of the problem is readable without comparing five numbers: a stack
+ * that reddens towards the bottom is a business with old, hardening arrears.
+ */
+function AgingBar({
+  label,
+  value,
+  total,
+  depth = 1,
+}: {
+  label: string;
+  value: number;
+  total: number;
+  depth?: number;
+}) {
   const pct = total > 0 ? Math.round((value / total) * 100) : 0;
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between text-xs">
+      <div className="flex items-baseline justify-between gap-2 text-xs">
         <span className="text-muted-foreground">{label}</span>
-        <span className="font-mono font-medium tabular-nums">{formatTZS(value)}</span>
+        <span className="font-display font-medium">
+          {formatTZS(value)}
+          {pct > 0 && <span className="ml-1.5 text-muted-foreground">{pct}%</span>}
+        </span>
       </div>
-      <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
+      <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
         <div
-          className="h-full rounded-full bg-[color:var(--color-overdue)]/80"
-          style={{ width: `${pct}%` }}
+          className="h-full rounded-full bg-[color:var(--color-overdue)]"
+          style={{ width: `${pct}%`, opacity: 0.35 + depth * 0.13 }}
         />
       </div>
     </div>

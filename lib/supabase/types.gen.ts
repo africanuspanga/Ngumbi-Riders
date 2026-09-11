@@ -129,6 +129,9 @@ export type Database = {
           default_installment_amount: number
           id: boolean
           payment_deadline_time: string
+          phone_loan_interest_bps: number
+          phone_loan_max_amount: number
+          phone_loan_max_months: number
           reminder_config: Json
           timezone: string
           updated_at: string
@@ -141,6 +144,9 @@ export type Database = {
           default_installment_amount?: number
           id?: boolean
           payment_deadline_time?: string
+          phone_loan_interest_bps?: number
+          phone_loan_max_amount?: number
+          phone_loan_max_months?: number
           reminder_config?: Json
           timezone?: string
           updated_at?: string
@@ -153,6 +159,9 @@ export type Database = {
           default_installment_amount?: number
           id?: boolean
           payment_deadline_time?: string
+          phone_loan_interest_bps?: number
+          phone_loan_max_amount?: number
+          phone_loan_max_months?: number
           reminder_config?: Json
           timezone?: string
           updated_at?: string
@@ -323,6 +332,301 @@ export type Database = {
             columns: ["rider_id"]
             isOneToOne: false
             referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_certificates: {
+        Row: {
+          certificate_number: string
+          contract_id: string
+          created_at: string
+          id: string
+          issued_at: string
+          issued_by: string | null
+          motorcycle_id: string
+          request_id: string
+          rider_id: string
+          sha256_hash: string | null
+          snapshot: Json
+          storage_path: string
+          version: number
+        }
+        Insert: {
+          certificate_number: string
+          contract_id: string
+          created_at?: string
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          motorcycle_id: string
+          request_id: string
+          rider_id: string
+          sha256_hash?: string | null
+          snapshot?: Json
+          storage_path: string
+          version?: number
+        }
+        Update: {
+          certificate_number?: string
+          contract_id?: string
+          created_at?: string
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          motorcycle_id?: string
+          request_id?: string
+          rider_id?: string
+          sha256_hash?: string | null
+          snapshot?: Json
+          storage_path?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_certificates_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_certificates_issued_by_fkey"
+            columns: ["issued_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_certificates_motorcycle_id_fkey"
+            columns: ["motorcycle_id"]
+            isOneToOne: false
+            referencedRelation: "motorcycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_certificates_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "contract_completion_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_certificates_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_completion_events: {
+        Row: {
+          actor_id: string | null
+          actor_role: string | null
+          created_at: string
+          from_status:
+            | Database["public"]["Enums"]["contract_completion_status"]
+            | null
+          id: string
+          note: string | null
+          request_id: string
+          to_status: Database["public"]["Enums"]["contract_completion_status"]
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          from_status?:
+            | Database["public"]["Enums"]["contract_completion_status"]
+            | null
+          id?: string
+          note?: string | null
+          request_id: string
+          to_status: Database["public"]["Enums"]["contract_completion_status"]
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          from_status?:
+            | Database["public"]["Enums"]["contract_completion_status"]
+            | null
+          id?: string
+          note?: string | null
+          request_id?: string
+          to_status?: Database["public"]["Enums"]["contract_completion_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_completion_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_completion_events_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "contract_completion_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_completion_requests: {
+        Row: {
+          contract_id: string
+          created_at: string
+          director_decided_at: string | null
+          director_decided_by: string | null
+          director_note: string | null
+          finance_cleared: boolean | null
+          finance_note: string | null
+          finance_outstanding_snapshot: number | null
+          finance_reviewed_at: string | null
+          finance_reviewed_by: string | null
+          id: string
+          motorcycle_id: string
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          request_number: string
+          requested_at: string
+          requested_by: string
+          rider_id: string
+          rider_note: string | null
+          signed_off_at: string | null
+          signed_off_by: string | null
+          signoff_note: string | null
+          status: Database["public"]["Enums"]["contract_completion_status"]
+          transfer_handled_by: string | null
+          transfer_note: string | null
+          transfer_started_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          director_decided_at?: string | null
+          director_decided_by?: string | null
+          director_note?: string | null
+          finance_cleared?: boolean | null
+          finance_note?: string | null
+          finance_outstanding_snapshot?: number | null
+          finance_reviewed_at?: string | null
+          finance_reviewed_by?: string | null
+          id?: string
+          motorcycle_id: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          request_number: string
+          requested_at?: string
+          requested_by: string
+          rider_id: string
+          rider_note?: string | null
+          signed_off_at?: string | null
+          signed_off_by?: string | null
+          signoff_note?: string | null
+          status?: Database["public"]["Enums"]["contract_completion_status"]
+          transfer_handled_by?: string | null
+          transfer_note?: string | null
+          transfer_started_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          director_decided_at?: string | null
+          director_decided_by?: string | null
+          director_note?: string | null
+          finance_cleared?: boolean | null
+          finance_note?: string | null
+          finance_outstanding_snapshot?: number | null
+          finance_reviewed_at?: string | null
+          finance_reviewed_by?: string | null
+          id?: string
+          motorcycle_id?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          request_number?: string
+          requested_at?: string
+          requested_by?: string
+          rider_id?: string
+          rider_note?: string | null
+          signed_off_at?: string | null
+          signed_off_by?: string | null
+          signoff_note?: string | null
+          status?: Database["public"]["Enums"]["contract_completion_status"]
+          transfer_handled_by?: string | null
+          transfer_note?: string | null
+          transfer_started_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_completion_requests_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_completion_requests_director_decided_by_fkey"
+            columns: ["director_decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_completion_requests_finance_reviewed_by_fkey"
+            columns: ["finance_reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_completion_requests_motorcycle_id_fkey"
+            columns: ["motorcycle_id"]
+            isOneToOne: false
+            referencedRelation: "motorcycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_completion_requests_rejected_by_fkey"
+            columns: ["rejected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_completion_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_completion_requests_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_completion_requests_signed_off_by_fkey"
+            columns: ["signed_off_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_completion_requests_transfer_handled_by_fkey"
+            columns: ["transfer_handled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -532,6 +836,7 @@ export type Database = {
       contracts: {
         Row: {
           assignment_id: string | null
+          completion_request_id: string | null
           contract_number: string
           contract_type: string
           created_at: string
@@ -549,7 +854,12 @@ export type Database = {
           installment_amount: number
           last_edited_at: string | null
           last_edited_by: string | null
+          lease_paused_at: string | null
+          lease_paused_for_loan_id: string | null
           lease_start_date: string | null
+          lock_reason: string | null
+          locked_at: string | null
+          locked_by: string | null
           motorcycle_id: string
           ownership_transfer_notes: string | null
           ownership_transfers: boolean
@@ -570,6 +880,7 @@ export type Database = {
         }
         Insert: {
           assignment_id?: string | null
+          completion_request_id?: string | null
           contract_number: string
           contract_type?: string
           created_at?: string
@@ -587,7 +898,12 @@ export type Database = {
           installment_amount?: number
           last_edited_at?: string | null
           last_edited_by?: string | null
+          lease_paused_at?: string | null
+          lease_paused_for_loan_id?: string | null
           lease_start_date?: string | null
+          lock_reason?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
           motorcycle_id: string
           ownership_transfer_notes?: string | null
           ownership_transfers?: boolean
@@ -608,6 +924,7 @@ export type Database = {
         }
         Update: {
           assignment_id?: string | null
+          completion_request_id?: string | null
           contract_number?: string
           contract_type?: string
           created_at?: string
@@ -625,7 +942,12 @@ export type Database = {
           installment_amount?: number
           last_edited_at?: string | null
           last_edited_by?: string | null
+          lease_paused_at?: string | null
+          lease_paused_for_loan_id?: string | null
           lease_start_date?: string | null
+          lock_reason?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
           motorcycle_id?: string
           ownership_transfer_notes?: string | null
           ownership_transfers?: boolean
@@ -653,8 +975,29 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "contracts_completion_request_id_fkey"
+            columns: ["completion_request_id"]
+            isOneToOne: false
+            referencedRelation: "contract_completion_requests"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "contracts_last_edited_by_fkey"
             columns: ["last_edited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_lease_paused_for_loan_id_fkey"
+            columns: ["lease_paused_for_loan_id"]
+            isOneToOne: false
+            referencedRelation: "phone_loans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_locked_by_fkey"
+            columns: ["locked_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -708,6 +1051,171 @@ export type Database = {
           summary_date?: string
         }
         Relationships: []
+      }
+      department_budgets: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          department_id: string
+          fiscal_year: number
+          id: string
+          label: string
+          note: string | null
+          period_end: string
+          period_start: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          department_id: string
+          fiscal_year: number
+          id?: string
+          label: string
+          note?: string | null
+          period_end: string
+          period_start: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          department_id?: string
+          fiscal_year?: number
+          id?: string
+          label?: string
+          note?: string | null
+          period_end?: string
+          period_start?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_budgets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "department_budgets_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      department_expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          created_by: string | null
+          department_id: string
+          description: string
+          expense_date: string
+          id: string
+          reference: string | null
+          requisition_id: string | null
+          supplier: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          created_by?: string | null
+          department_id: string
+          description: string
+          expense_date: string
+          id?: string
+          reference?: string | null
+          requisition_id?: string | null
+          supplier?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string
+          description?: string
+          expense_date?: string
+          id?: string
+          reference?: string | null
+          requisition_id?: string | null
+          supplier?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_expenses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "department_expenses_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "department_expenses_requisition_id_fkey"
+            columns: ["requisition_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requisitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      departments: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "departments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       exemption_requests: {
         Row: {
@@ -1140,30 +1648,36 @@ export type Database = {
           category: string
           created_at: string
           created_by: string | null
+          department_id: string | null
           expense_date: string
           id: string
           motorcycle_id: string
           note: string | null
+          updated_at: string
         }
         Insert: {
           amount: number
           category: string
           created_at?: string
           created_by?: string | null
+          department_id?: string | null
           expense_date: string
           id?: string
           motorcycle_id: string
           note?: string | null
+          updated_at?: string
         }
         Update: {
           amount?: number
           category?: string
           created_at?: string
           created_by?: string | null
+          department_id?: string | null
           expense_date?: string
           id?: string
           motorcycle_id?: string
           note?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -1171,6 +1685,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "motorcycle_expenses_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
             referencedColumns: ["id"]
           },
           {
@@ -1190,12 +1711,16 @@ export type Database = {
           district: string | null
           engine_number: string | null
           id: string
+          locked_at: string | null
+          locked_by: string | null
           make: string | null
           model: string | null
           motorcycle_number: string
           region: string | null
           registration_number: string | null
           status: Database["public"]["Enums"]["motorcycle_status"]
+          transferred_at: string | null
+          transferred_to_rider_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1205,12 +1730,16 @@ export type Database = {
           district?: string | null
           engine_number?: string | null
           id?: string
+          locked_at?: string | null
+          locked_by?: string | null
           make?: string | null
           model?: string | null
           motorcycle_number: string
           region?: string | null
           registration_number?: string | null
           status?: Database["public"]["Enums"]["motorcycle_status"]
+          transferred_at?: string | null
+          transferred_to_rider_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1220,15 +1749,34 @@ export type Database = {
           district?: string | null
           engine_number?: string | null
           id?: string
+          locked_at?: string | null
+          locked_by?: string | null
           make?: string | null
           model?: string | null
           motorcycle_number?: string
           region?: string | null
           registration_number?: string | null
           status?: Database["public"]["Enums"]["motorcycle_status"]
+          transferred_at?: string | null
+          transferred_to_rider_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "motorcycles_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "motorcycles_transferred_to_rider_id_fkey"
+            columns: ["transferred_to_rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -1268,6 +1816,93 @@ export type Database = {
           {
             foreignKeyName: "notifications_recipient_profile_id_fkey"
             columns: ["recipient_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ownership_transfer_documents: {
+        Row: {
+          contract_id: string
+          created_at: string
+          doc_type: string
+          file_name: string
+          id: string
+          mime_type: string
+          motorcycle_id: string
+          note: string | null
+          request_id: string
+          rider_id: string
+          sha256_hash: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          doc_type?: string
+          file_name: string
+          id?: string
+          mime_type: string
+          motorcycle_id: string
+          note?: string | null
+          request_id: string
+          rider_id: string
+          sha256_hash: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          doc_type?: string
+          file_name?: string
+          id?: string
+          mime_type?: string
+          motorcycle_id?: string
+          note?: string | null
+          request_id?: string
+          rider_id?: string
+          sha256_hash?: string
+          size_bytes?: number
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ownership_transfer_documents_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfer_documents_motorcycle_id_fkey"
+            columns: ["motorcycle_id"]
+            isOneToOne: false
+            referencedRelation: "motorcycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfer_documents_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "contract_completion_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfer_documents_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfer_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1366,6 +2001,7 @@ export type Database = {
           motorcycle_id: string
           paid_in_advance_at: string | null
           phone_loan_id: string | null
+          postponed_for_loan_id: string | null
           rider_id: string
           settled_at: string | null
           status: Database["public"]["Enums"]["obligation_status"]
@@ -1385,6 +2021,7 @@ export type Database = {
           motorcycle_id: string
           paid_in_advance_at?: string | null
           phone_loan_id?: string | null
+          postponed_for_loan_id?: string | null
           rider_id: string
           settled_at?: string | null
           status?: Database["public"]["Enums"]["obligation_status"]
@@ -1404,6 +2041,7 @@ export type Database = {
           motorcycle_id?: string
           paid_in_advance_at?: string | null
           phone_loan_id?: string | null
+          postponed_for_loan_id?: string | null
           rider_id?: string
           settled_at?: string | null
           status?: Database["public"]["Enums"]["obligation_status"]
@@ -1434,6 +2072,13 @@ export type Database = {
           {
             foreignKeyName: "payment_obligations_phone_loan_id_fkey"
             columns: ["phone_loan_id"]
+            isOneToOne: false
+            referencedRelation: "phone_loans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_obligations_postponed_for_loan_id_fkey"
+            columns: ["postponed_for_loan_id"]
             isOneToOne: false
             referencedRelation: "phone_loans"
             referencedColumns: ["id"]
@@ -1575,8 +2220,125 @@ export type Database = {
           },
         ]
       }
+      phone_loan_requests: {
+        Row: {
+          contract_id: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          device_description: string | null
+          id: string
+          interest_amount: number
+          interest_bps: number
+          phone_loan_id: string | null
+          principal: number
+          reason: string | null
+          requisition_id: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rider_id: string
+          status: Database["public"]["Enums"]["phone_loan_request_status"]
+          term_months: number
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          contract_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          device_description?: string | null
+          id?: string
+          interest_amount: number
+          interest_bps: number
+          phone_loan_id?: string | null
+          principal: number
+          reason?: string | null
+          requisition_id?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rider_id: string
+          status?: Database["public"]["Enums"]["phone_loan_request_status"]
+          term_months: number
+          total_amount: number
+          updated_at?: string
+        }
+        Update: {
+          contract_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          device_description?: string | null
+          id?: string
+          interest_amount?: number
+          interest_bps?: number
+          phone_loan_id?: string | null
+          principal?: number
+          reason?: string | null
+          requisition_id?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rider_id?: string
+          status?: Database["public"]["Enums"]["phone_loan_request_status"]
+          term_months?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phone_loan_requests_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phone_loan_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phone_loan_requests_phone_loan_id_fkey"
+            columns: ["phone_loan_id"]
+            isOneToOne: false
+            referencedRelation: "phone_loans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phone_loan_requests_requisition_id_fkey"
+            columns: ["requisition_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requisitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phone_loan_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phone_loan_requests_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       phone_loans: {
         Row: {
+          activated_at: string | null
+          completed_at: string | null
           contract_id: string | null
           created_at: string
           created_by: string | null
@@ -1585,13 +2347,17 @@ export type Database = {
           interest_amount: number
           interest_bps: number
           principal: number
+          request_id: string | null
           rider_id: string
+          source: string
           status: Database["public"]["Enums"]["phone_loan_status"]
           term_months: number
           total_amount: number
           updated_at: string
         }
         Insert: {
+          activated_at?: string | null
+          completed_at?: string | null
           contract_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -1600,13 +2366,17 @@ export type Database = {
           interest_amount: number
           interest_bps?: number
           principal: number
+          request_id?: string | null
           rider_id: string
+          source?: string
           status?: Database["public"]["Enums"]["phone_loan_status"]
           term_months: number
           total_amount: number
           updated_at?: string
         }
         Update: {
+          activated_at?: string | null
+          completed_at?: string | null
           contract_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -1615,7 +2385,9 @@ export type Database = {
           interest_amount?: number
           interest_bps?: number
           principal?: number
+          request_id?: string | null
           rider_id?: string
+          source?: string
           status?: Database["public"]["Enums"]["phone_loan_status"]
           term_months?: number
           total_amount?: number
@@ -1634,6 +2406,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phone_loans_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "phone_loan_requests"
             referencedColumns: ["id"]
           },
           {
@@ -1701,6 +2480,7 @@ export type Database = {
           decided_by: string | null
           decision_note: string | null
           department: string
+          department_id: string | null
           description: string | null
           fiscal_year: number
           id: string
@@ -1709,9 +2489,16 @@ export type Database = {
           payment_marked_by: string | null
           payment_note: string | null
           payment_status: Database["public"]["Enums"]["requisition_payment_status"]
+          phone_loan_request_id: string | null
           request_date: string
           requested_by: string
           requisition_number: string
+          requisition_type: string
+          retired_amount: number | null
+          retired_at: string | null
+          retired_by: string | null
+          retirement_note: string | null
+          retirement_status: Database["public"]["Enums"]["requisition_retirement_status"]
           status: Database["public"]["Enums"]["requisition_status"]
           submitted_at: string | null
           title: string
@@ -1725,6 +2512,7 @@ export type Database = {
           decided_by?: string | null
           decision_note?: string | null
           department: string
+          department_id?: string | null
           description?: string | null
           fiscal_year: number
           id?: string
@@ -1733,9 +2521,16 @@ export type Database = {
           payment_marked_by?: string | null
           payment_note?: string | null
           payment_status?: Database["public"]["Enums"]["requisition_payment_status"]
+          phone_loan_request_id?: string | null
           request_date: string
           requested_by: string
           requisition_number: string
+          requisition_type?: string
+          retired_amount?: number | null
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_note?: string | null
+          retirement_status?: Database["public"]["Enums"]["requisition_retirement_status"]
           status?: Database["public"]["Enums"]["requisition_status"]
           submitted_at?: string | null
           title: string
@@ -1749,6 +2544,7 @@ export type Database = {
           decided_by?: string | null
           decision_note?: string | null
           department?: string
+          department_id?: string | null
           description?: string | null
           fiscal_year?: number
           id?: string
@@ -1757,9 +2553,16 @@ export type Database = {
           payment_marked_by?: string | null
           payment_note?: string | null
           payment_status?: Database["public"]["Enums"]["requisition_payment_status"]
+          phone_loan_request_id?: string | null
           request_date?: string
           requested_by?: string
           requisition_number?: string
+          requisition_type?: string
+          retired_amount?: number | null
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_note?: string | null
+          retirement_status?: Database["public"]["Enums"]["requisition_retirement_status"]
           status?: Database["public"]["Enums"]["requisition_status"]
           submitted_at?: string | null
           title?: string
@@ -1781,6 +2584,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "purchase_requisitions_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "purchase_requisitions_payment_marked_by_fkey"
             columns: ["payment_marked_by"]
             isOneToOne: false
@@ -1788,8 +2598,22 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "purchase_requisitions_phone_loan_request_id_fkey"
+            columns: ["phone_loan_request_id"]
+            isOneToOne: false
+            referencedRelation: "phone_loan_requests"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "purchase_requisitions_requested_by_fkey"
             columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requisitions_retired_by_fkey"
+            columns: ["retired_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1890,6 +2714,7 @@ export type Database = {
       requisition_documents: {
         Row: {
           created_at: string
+          doc_type: string
           file_name: string
           id: string
           mime_type: string
@@ -1901,6 +2726,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          doc_type?: string
           file_name: string
           id?: string
           mime_type: string
@@ -1912,6 +2738,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          doc_type?: string
           file_name?: string
           id?: string
           mime_type?: string
@@ -2289,6 +3116,144 @@ export type Database = {
           },
         ]
       }
+      staff_certificates: {
+        Row: {
+          created_at: string
+          file_name: string
+          id: string
+          issued_on: string | null
+          issuer: string | null
+          kind: string
+          mime_type: string
+          sha256_hash: string
+          size_bytes: number
+          staff_profile_id: string
+          storage_path: string
+          title: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          id?: string
+          issued_on?: string | null
+          issuer?: string | null
+          kind?: string
+          mime_type: string
+          sha256_hash: string
+          size_bytes: number
+          staff_profile_id: string
+          storage_path: string
+          title: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          id?: string
+          issued_on?: string | null
+          issuer?: string | null
+          kind?: string
+          mime_type?: string
+          sha256_hash?: string
+          size_bytes?: number
+          staff_profile_id?: string
+          storage_path?: string
+          title?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_certificates_staff_profile_id_fkey"
+            columns: ["staff_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_certificates_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_profiles: {
+        Row: {
+          created_at: string
+          education: string | null
+          employment_status: Database["public"]["Enums"]["employment_status"]
+          end_date: string | null
+          id: string
+          job_title: string | null
+          notes: string | null
+          phone: string | null
+          profile_id: string
+          review_note: string | null
+          review_status: Database["public"]["Enums"]["staff_profile_review_status"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_date: string | null
+          submitted_at: string | null
+          updated_at: string
+          work_experience: string | null
+        }
+        Insert: {
+          created_at?: string
+          education?: string | null
+          employment_status?: Database["public"]["Enums"]["employment_status"]
+          end_date?: string | null
+          id?: string
+          job_title?: string | null
+          notes?: string | null
+          phone?: string | null
+          profile_id: string
+          review_note?: string | null
+          review_status?: Database["public"]["Enums"]["staff_profile_review_status"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+          work_experience?: string | null
+        }
+        Update: {
+          created_at?: string
+          education?: string | null
+          employment_status?: Database["public"]["Enums"]["employment_status"]
+          end_date?: string | null
+          id?: string
+          job_title?: string | null
+          notes?: string | null
+          phone?: string | null
+          profile_id?: string
+          review_note?: string | null
+          review_status?: Database["public"]["Enums"]["staff_profile_review_status"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+          work_experience?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_profiles_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_profiles_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_job_runs: {
         Row: {
           completed_at: string | null
@@ -2328,6 +3293,14 @@ export type Database = {
         Args: { p_contract_id: string; p_obligations: Json }
         Returns: number
       }
+      activate_phone_loan: {
+        Args: {
+          p_instalments: Json
+          p_loan_id: string
+          p_pause_lease?: boolean
+        }
+        Returns: number
+      }
       apply_exemption_waiver: {
         Args: { p_exemption_id: string }
         Returns: undefined
@@ -2341,10 +3314,21 @@ export type Database = {
         }
         Returns: string
       }
+      complete_phone_loan: { Args: { p_loan_id: string }; Returns: boolean }
       current_rider_id: { Args: never; Returns: string }
       is_accountant: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
+      postpone_lease_day_for_loan: {
+        Args: {
+          p_due_at: string
+          p_loan_id: string
+          p_local_due_time: string
+          p_new_date: string
+          p_obligation_id: string
+        }
+        Returns: string
+      }
       record_completed_payment: {
         Args: {
           p_completed_at: string
@@ -2356,6 +3340,10 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      unlock_contract_for_amendment: {
+        Args: { p_contract_id: string; p_reason: string }
+        Returns: undefined
+      }
     }
     Enums: {
       application_status:
@@ -2370,6 +3358,19 @@ export type Database = {
         | "withdrawn"
         | "converted_to_rider"
       cash_request_status: "pending" | "approved" | "rejected" | "cancelled"
+      contract_completion_status:
+        | "requested"
+        | "finance_review"
+        | "finance_cleared"
+        | "director_review"
+        | "director_approved"
+        | "certificate_issued"
+        | "transfer_in_progress"
+        | "transfer_uploaded"
+        | "final_review"
+        | "completed"
+        | "rejected"
+        | "returned"
       contract_status:
         | "draft"
         | "awaiting_signatures"
@@ -2380,6 +3381,7 @@ export type Database = {
         | "completed_early"
         | "terminated"
         | "cancelled"
+      employment_status: "probation" | "permanent" | "inactive" | "terminated"
       exemption_status:
         | "submitted"
         | "under_review"
@@ -2422,14 +3424,26 @@ export type Database = {
         | "expired"
         | "cancelled"
         | "reversed"
+      phone_loan_request_status:
+        | "submitted"
+        | "under_review"
+        | "requisition_raised"
+        | "requisition_approved"
+        | "purchased"
+        | "active"
+        | "completed"
+        | "rejected"
+        | "cancelled"
       phone_loan_status: "pending" | "active" | "completed" | "cancelled"
       requisition_payment_status: "unpaid" | "processing" | "paid"
+      requisition_retirement_status: "not_started" | "pending" | "completed"
       requisition_status:
         | "draft"
         | "submitted"
         | "approved"
         | "rejected"
         | "cancelled"
+        | "under_review"
       rider_status:
         | "onboarding"
         | "active"
@@ -2438,6 +3452,11 @@ export type Database = {
         | "inactive"
       risk_level: "low" | "medium" | "high" | "critical"
       schedule_type: "daily" | "selected_weekdays" | "weekly" | "monthly"
+      staff_profile_review_status:
+        | "draft"
+        | "submitted"
+        | "approved"
+        | "returned"
       user_role: "owner" | "rider" | "accountant"
     }
     CompositeTypes: {
@@ -3044,6 +4063,20 @@ export const Constants = {
         "converted_to_rider",
       ],
       cash_request_status: ["pending", "approved", "rejected", "cancelled"],
+      contract_completion_status: [
+        "requested",
+        "finance_review",
+        "finance_cleared",
+        "director_review",
+        "director_approved",
+        "certificate_issued",
+        "transfer_in_progress",
+        "transfer_uploaded",
+        "final_review",
+        "completed",
+        "rejected",
+        "returned",
+      ],
       contract_status: [
         "draft",
         "awaiting_signatures",
@@ -3055,6 +4088,7 @@ export const Constants = {
         "terminated",
         "cancelled",
       ],
+      employment_status: ["probation", "permanent", "inactive", "terminated"],
       exemption_status: [
         "submitted",
         "under_review",
@@ -3102,14 +4136,27 @@ export const Constants = {
         "cancelled",
         "reversed",
       ],
+      phone_loan_request_status: [
+        "submitted",
+        "under_review",
+        "requisition_raised",
+        "requisition_approved",
+        "purchased",
+        "active",
+        "completed",
+        "rejected",
+        "cancelled",
+      ],
       phone_loan_status: ["pending", "active", "completed", "cancelled"],
       requisition_payment_status: ["unpaid", "processing", "paid"],
+      requisition_retirement_status: ["not_started", "pending", "completed"],
       requisition_status: [
         "draft",
         "submitted",
         "approved",
         "rejected",
         "cancelled",
+        "under_review",
       ],
       rider_status: [
         "onboarding",
@@ -3120,6 +4167,12 @@ export const Constants = {
       ],
       risk_level: ["low", "medium", "high", "critical"],
       schedule_type: ["daily", "selected_weekdays", "weekly", "monthly"],
+      staff_profile_review_status: [
+        "draft",
+        "submitted",
+        "approved",
+        "returned",
+      ],
       user_role: ["owner", "rider", "accountant"],
     },
   },

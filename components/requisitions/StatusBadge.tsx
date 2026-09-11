@@ -1,7 +1,9 @@
 import {
   PAYMENT_STATUS_LABELS,
   REQUISITION_STATUS_LABELS,
+  RETIREMENT_STATUS_LABELS,
   type RequisitionPaymentStatus,
+  type RequisitionRetirementStatus,
   type RequisitionStatus,
 } from '@/lib/requisitions/constants';
 
@@ -13,6 +15,10 @@ import {
 const TONE: Record<RequisitionStatus, string> = {
   draft: 'border-border bg-muted text-muted-foreground',
   submitted:
+    'border-[color:var(--color-warning)]/30 bg-[color:var(--color-warning)]/10 text-[color:var(--color-warning)]',
+  // Under review shares the awaiting-decision amber: from the accountant's
+  // side both mean the same thing — it is not their move.
+  under_review:
     'border-[color:var(--color-warning)]/30 bg-[color:var(--color-warning)]/10 text-[color:var(--color-warning)]',
   approved:
     'border-[color:var(--color-paid)]/30 bg-[color:var(--color-paid)]/10 text-[color:var(--color-paid)]',
@@ -60,6 +66,41 @@ export function PaymentBadge({
       className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap ${PAYMENT_TONE[paymentStatus]}`}
     >
       {PAYMENT_STATUS_LABELS[paymentStatus]}
+    </span>
+  );
+}
+
+/*
+ * The ACCOUNTING half (0033): whether money already released has been
+ * accounted for. A third badge rather than a longer payment badge, because
+ * "paid" and "retired" answer different questions — money left, and money was
+ * explained — and a reader needs to see which of the two is missing.
+ *
+ * Hidden at 'not_started', which is the honest default for a purchase nobody
+ * has paid for yet: there is nothing to account for, so saying so would be
+ * noise on every unpaid row.
+ */
+const RETIREMENT_TONE: Record<RequisitionRetirementStatus, string> = {
+  not_started: 'border-border bg-muted text-muted-foreground',
+  pending:
+    'border-[color:var(--color-warning)]/30 bg-[color:var(--color-warning)]/10 text-[color:var(--color-warning)]',
+  completed:
+    'border-[color:var(--color-paid)]/30 bg-[color:var(--color-paid)]/10 text-[color:var(--color-paid)]',
+};
+
+export function RetirementBadge({
+  status,
+  retirementStatus,
+}: {
+  status: RequisitionStatus;
+  retirementStatus: RequisitionRetirementStatus;
+}) {
+  if (status !== 'approved' || retirementStatus === 'not_started') return null;
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap ${RETIREMENT_TONE[retirementStatus]}`}
+    >
+      {RETIREMENT_STATUS_LABELS[retirementStatus]}
     </span>
   );
 }

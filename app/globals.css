@@ -26,6 +26,20 @@
   --color-exempt: #98a2b3;
 
   --radius-card: 0.75rem;
+
+  /*
+   * Dashboard hero band (2026-09-11 visual pass).
+   *
+   * A deep forest ground, darker than the sidebar's --color-primary-dark so the
+   * band reads as the page's anchor rather than an extension of the nav, and a
+   * lifted green for data ON that ground — #2f8f46 is unreadable at small sizes
+   * against it. Both are derived from the brand green rather than picked for
+   * contrast alone, which is why the band still looks like Ng'umbi.
+   */
+  --color-band: #0c2314;
+  --color-band-edge: #17402a;
+  --color-signal: #5fd08b;
+  --color-signal-dim: #2e6b47;
 }
 
 :root {
@@ -105,7 +119,31 @@ select:not([data-slot]) {
  ---break---
  */
 
+/*
+ * Display type, used with restraint (see app/layout.tsx). `.font-display`
+ * carries the tabular, slightly-tightened setting every money figure in the
+ * back office should share, so an amount is recognisable as an amount before
+ * it is read.
+ */
+.font-display {
+  font-family: var(--font-display), var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: 'tnum' 1, 'ss01' 1;
+  letter-spacing: -0.02em;
+}
+
+/* Small capitalised label above a figure or a section. Tracking does the work;
+ * at 11px, uppercase without it is a smudge. */
+.eyebrow {
+  font-family: var(--font-display), var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
 @theme inline {
+  --font-display: var(--font-display);
   --font-heading: var(--font-sans);
   --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);

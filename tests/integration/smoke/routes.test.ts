@@ -96,6 +96,12 @@ suite('smoke: every page renders for its role', () => {
       'cash_payment_requests',
       'purchase_requisitions',
       'payments',
+      // Client-feedback build #4 (2026-09-11). A table with no rows yet simply
+      // yields no id and its detail route is skipped — an empty table is a
+      // legitimate state, not a coverage failure.
+      'contract_completion_requests',
+      'departments',
+      'profiles',
     ]) {
       staffIds[table] = await firstId(table);
     }

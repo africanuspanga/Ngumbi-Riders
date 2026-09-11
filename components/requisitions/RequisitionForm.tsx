@@ -194,6 +194,10 @@ export function RequisitionForm({
             mimeType: file.type,
             sizeBytes: file.size,
             createdAt: new Date().toISOString(),
+            // This form only ever uploads the documents the DECISION is made
+            // on. Receipts and proof of payment are attached after approval,
+            // from the requisition detail page.
+            docType: 'supporting',
           });
         } else {
           failed.push(`${file.name} (${message(res.ok ? undefined : res.error).toLowerCase()})`);

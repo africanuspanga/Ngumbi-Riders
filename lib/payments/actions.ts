@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { checkPermission, getSessionProfile } from '@/lib/auth/session';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { writeAudit } from '@/lib/audit/audit';
+import { completePhoneLoansFor } from '@/lib/loans/settle';
 import { newIdempotencyKey } from './idempotency';
 import { triggerPush } from '@/lib/snippe/client';
 import { localDateString } from '@/lib/dates/tz';
@@ -164,6 +165,10 @@ export async function recordCashPayment(input: {
     await admin.from('payments').update({ status: 'failed' }).eq('id', paymentId);
     return { ok: false, error: 'settlement_failed' };
   }
+
+  // The owner's own cash entry settles immediately, so it too can be the
+  // payment that finishes a phone loan and resumes the lease (feedback #13).
+  await completePhoneLoansFor(input.obligationIds);
 
   await writeAudit({
     actorId: ownerId,

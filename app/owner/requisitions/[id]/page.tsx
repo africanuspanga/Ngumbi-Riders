@@ -4,7 +4,11 @@ import { requireOwner } from '@/lib/auth/session';
 import { getRequisition } from '@/lib/requisitions/queries';
 import { RequisitionView } from '@/components/requisitions/RequisitionView';
 import { DecisionActions } from '@/components/requisitions/DecisionActions';
-import { StatusBadge, PaymentBadge } from '@/components/requisitions/StatusBadge';
+import {
+  StatusBadge,
+  PaymentBadge,
+  RetirementBadge,
+} from '@/components/requisitions/StatusBadge';
 import { PaymentActions } from '@/components/requisitions/PaymentActions';
 import { RequisitionPdfLink } from '@/components/requisitions/RequisitionPdfLink';
 import { awaitsDecision, canSetPaymentStatus } from '@/lib/requisitions/compute';
@@ -34,6 +38,10 @@ export default async function OwnerRequisitionPage({
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{requisition.title}</h1>
           <StatusBadge status={requisition.status} />
           <PaymentBadge status={requisition.status} paymentStatus={requisition.paymentStatus} />
+          <RetirementBadge
+            status={requisition.status}
+            retirementStatus={requisition.retirementStatus}
+          />
           <RequisitionPdfLink requisitionId={requisition.id} />
         </div>
         <p className="text-muted-foreground text-sm">

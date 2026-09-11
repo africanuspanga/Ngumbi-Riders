@@ -37,6 +37,140 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
 
+**🆕 DASHBOARD VISUAL PASS (2026-09-11, no migration).** The back office had no
+visual hierarchy: every section was a white card with a hairline border on a
+near-white page, so eight equally-weighted blocks competed and nothing said
+"look here first". Four changes, and one of them is the point:
+
+- **A display face, used with restraint.** Space Grotesk (`--font-display`,
+  `.font-display`, `.eyebrow`) for money figures, the hero and section
+  eyebrows; Geist stays the UI face. An amount is now recognisable as an amount
+  before it is read. The rider PWA pays nothing — a browser downloads a font
+  only when something uses it, and only the back office references the variable.
+- **The TODAY BAND** (`components/owner/today-band.tsx`) — the page's thesis.
+  The largest thing on the dashboard is deliberately a RATIO, today's
+  collections against today's expectation, with the deadline (read from
+  `app_settings`, not hardcoded) and the riders still to pay beneath it. That is
+  Mr. Ng'umbi's entire working day in one line.
+- **The COLLECTION RIBBON** (`components/owner/collection-ribbon.tsx`) — the
+  signature. One bar per billing day for 30 days, because this business bills
+  EVERY DAY; the same device on a monthly-invoice dashboard would be
+  meaningless. Scaled to the **90th percentile, not the maximum**: one rider
+  settling a whole contract produced a 5,280,000 day against a 439,000 average,
+  which squashed the other 29 days to a pixel each. Days above the ceiling clip
+  with a visible white cap rather than misleading silently. It REPLACED the
+  14-day area chart — two views of collections-over-time on one screen was one
+  too many.
+- **Everything else got quieter.** Notifications went from a four-row block at
+  the top of the page (the largest element on screen and the least actionable)
+  to one line. The four KPI cards stopped duplicating the band and now carry
+  the position instead — arrears, owed now, still to collect. Arrears aging
+  bars darken with age, so a business with old, hardening debt looks like one.
+
+Verified: 588 unit tests ✅, typecheck ✅, lint ✅, build ✅, 63-page smoke ✅,
+and checked in Chrome at 1560px and 420px.
+
+**🆕 CLIENT-FEEDBACK BUILD #4 (2026-09-11, migrations `0030`–`0035`, APPLIED
+LIVE).** Sixteen requests, delivered in the client's own priority order.
+⚠ **Deploy to Vercel is the remaining step.**
+
+Verified: **588 unit tests** (+134), typecheck ✅, lint ✅, `npm run build` ✅,
+**63-page smoke run ✅** (owner + accountant; rider pages need a PIN).
+Live DB verified after applying: 55 public tables (+10), RLS on all 10 new
+tables, 10 new functions, 3 new private buckets, 5 new enums, and **zero
+INSERT/UPDATE/DELETE/TRUNCATE grants to anon or authenticated** on any of them.
+Types regenerated from the live schema and the whole app recompiled against
+them.
+
+**Two things the live run caught that no unit test could.**
+- **0030's backfill was refused by the 0029 guard**, correctly: setting
+  `department_id` on an APPROVED requisition is a change to a decided record.
+  The migration now disables `trg_requisitions_guard` for that single UPDATE,
+  explains at length why that is legitimate (the column did not exist when the
+  Director approved; the value is read from the `department` TEXT already on the
+  row), and **asserts the guard is back on before it commits**.
+- **Two ambiguous PostgREST embeds → HTTP 500 on five pages.** 0033 and 0034
+  each added a reverse FK (`purchase_requisitions.phone_loan_request_id`,
+  `contracts.completion_request_id`), so `contracts(...)` and
+  `purchase_requisitions(...)` became ambiguous. Both embeds now name their
+  constraint. **`npm run test:smoke` found this and `npm run build` did not** —
+  rule 18, exactly.
+
+1. **Snippe collection balance on the dashboard** (`lib/dashboard/collections.ts`,
+   pure + tested). The live provider balance, plus today / last 7 days / this
+   month / all-time collections **split by source** — Snippe vs cash vs combined
+   — because the Director had been reading one as the other. The balance is
+   labelled as the provider's FLOAT and the panel says explicitly that it is not
+   expected to equal cumulative mobile collections. A key without
+   `collection:read` reports that exact fix rather than "error"
+   (`getCollectionBalance`, `SnippeBalance`). Pending/failed reconciliation items
+   sit beside it.
+2. **Reports: income, expenses, requisitions, cashflow** (`lib/reports/cashflow.ts`,
+   pure + tested) on both report pages, with the full filter set the brief asked
+   for (start, end, department, rider, motorcycle, payment type, requisition
+   type) via `ReportFilterBar` — a plain GET form, so **the URL the page reads is
+   the URL the export reads** and a filter can never apply on screen but not in
+   the downloaded file. Four new export families (`cashflow`, `income`,
+   `expense-ledger`, `requisitions`). ⚠ **`net` = income − recorded expenses;
+   requisitions are NOT subtracted** (D-041) — they become a cost when retired.
+3. **Automatic cash allocation** (`lib/payments/auto-allocate.ts`, pure +
+   tested). The owner types what the rider handed over; the system clears the
+   oldest whole obligations it covers, **shows exactly which days before
+   confirming**, and never over-clears. Leftover change is reported loudly and
+   written into the payment note — there is deliberately no rider credit
+   balance (it would be a second source of truth for what a rider owes).
+4. **Phone-loan dashboard status** (`lib/loans/portfolio.ts`, pure + tested):
+   active loans, issued, repaid, outstanding, who is repaying, who finished, and
+   **who has motorcycle repayment paused**. `issued − repaid ≠ outstanding` and
+   both are reported rather than inferred (a cancelled instalment reduces what
+   is owed without anybody paying it).
+5. **Phone-loan request → approval → repayment pause** (`0031`). A rider with an
+   active contract asks (`/rider/loans`, Swahili, live quote from the SAME pure
+   function the server stores); finance reviews and raises a purchase
+   requisition; **the Director's approval of that requisition is the approval of
+   the loan** (hooked into `decideRequisition`); finance buys the handset and
+   activates. Activation is one DB transaction — instalments + loan + pause, or
+   nothing — and re-checks that the generated calendar sums to the agreed total.
+   **The pause POSTPONES lease days one at a time as they fall due** (D-043):
+   nothing is written off, arrears never move, and completion resumes the lease
+   from every settlement path, not at midnight.
+6. **Department budgets & expenses** (`0030`, `lib/departments/*`). Six seeded
+   departments, budgets as dated PERIODS, spend from **both** ledgers with no
+   double counting (D-040), remaining/utilisation derived on read, overspend
+   shown in red rather than clamped, and unassigned spend surfaced rather than
+   hidden in "Other". Creating departments and setting budgets is owner-only;
+   recording spend is shared with the accountant.
+7. **Requisition types + retirement** (`0032`+`0033`). Three orthogonal axes —
+   decision, payment, retirement (D-042) — plus document KINDS with the window
+   each may be attached in enforced by a trigger (quotations while draft;
+   receipts only after approval). Retirement records what was ACTUALLY spent
+   beside what was approved, never over it, and can file the spend as a
+   department expense in the same step.
+8. **End-of-contract chain** (`0034`, `lib/completion/*`): twelve statuses, three
+   roles, and **two invariants enforced in the database as well as in code** —
+   no approval without finance clearance, no completion without the Director's
+   sign-off AND a live zero balance (D-044). `contractCompletionTask` now stands
+   down for any contract with an open request, so the cron cannot race a
+   sign-off.
+9. **Certificate of accomplishment** (`lib/completion/certificate.tsx`) —
+   landscape A4, generated AUTOMATICALLY on the Director's approval, stored
+   private + hashed, immutable (a reissue is a new version), downloadable by the
+   rider from their own page.
+10. **Ownership-transfer upload + final sign-off**: private bucket, magic-byte
+    sniffed, linked to contract AND rider AND motorcycle, staff-only to read
+    (the rider gets the physical document). Sign-off completes the contract,
+    **locks it**, and records the motorcycle as transferred.
+11. **Staff profiles** (`0035`): education, experience, employment status,
+    certificates, and a review chain to the Director. Deliberately NOT columns on
+    `profiles` — that table is read by every RLS helper on nearly every query,
+    and 0026 opened a staff-wide SELECT on it. **An accountant cannot read a
+    colleague's record**, which is why these policies name `is_owner()` rather
+    than reusing `is_staff()`. Employment status is an HR fact and does **not**
+    touch system access.
+12. **Locked records** (D-045): a completed contract's terms and a transferred
+    motorcycle's registration identity are frozen by triggers; the amendment
+    path demands a reason and audits BEFORE unlocking.
+
 **🆕 CLIENT-FEEDBACK BUILD #3 (2026-09-06, migration `0029`, APPLIED LIVE).**
 Six requests, plus two production outages fixed the same day and two permanent
 guards added so that class of outage cannot ship again. ⚠ **Deploy to Vercel is
@@ -614,6 +748,20 @@ the auth user + one-time temp PIN, copies encrypted PII).
    instead of `db push` (see D-029).
 
 ### ▶ Immediate next actions
+
+**Client-feedback build #4 (2026-09-11): 0030–0035 are APPLIED LIVE and
+recorded in `supabase_migrations.schema_migrations`. Deploy to Vercel is the
+only remaining step.** After deploying, run the real gate against the live URL:
+
+```bash
+SMOKE_TEST_ENABLED=1 SMOKE_BASE_URL=<url> npm run test:smoke
+```
+
+`scripts/db-query.ts` is the helper this build added for live DB work
+(Management API, D-029): `--file`, `--sql`, `--dry-run`, and `--prove-rollback`
+which proves the endpoint honours BEGIN…ROLLBACK before you trust a dry run.
+
+
 All 18 migrations, env, seed, types, auth config and the live RLS proof are
 DONE (see §2). Remaining critical path:
 ```bash
@@ -688,10 +836,22 @@ app/accountant/      gated accountant area (spec #10) — dashboard, reports,
                      payments (+record), outstanding, riders, motorcycles,
                      contracts, notes
 app/owner/staff/     owner-only accountant account management
-app/accountant/requisitions/  purchase requests (raise, edit draft, submit)
+app/accountant/requisitions/  purchase requests (raise, edit draft, submit, retire)
 app/owner/requisitions/       Managing Director's approve / reject / mark-paid queue
 app/owner/notifications/ app/accountant/notifications/  staff inboxes (2026-09-06)
 app/api/requisitions/[id]/pdf  printable requisition, any stage
+
+--- client feedback build #4 (2026-09-11) ---
+app/owner/departments/ app/accountant/departments/   budget board + spend
+app/owner/phone-loans/ app/accountant/phone-loans/   loan queue + portfolio
+app/owner/completions/ app/accountant/completions/   end-of-contract chain
+app/owner/staff-profiles/     HR records + the Director's review
+app/accountant/profile/       an employee's own HR record
+app/rider/loans/              rider asks for a phone loan (Swahili)
+app/rider/completion/         rider asks to finish, and downloads the certificate
+app/api/completions/certificates/[id]        signed certificate download
+app/api/completions/transfer-documents/[id]  signed transfer doc (staff only)
+app/api/staff/certificates/[id]              signed staff certificate
 
 lib/env.ts           validated env (public vs server-only)
 lib/supabase/        client (browser) · server (SSR) · admin (service role, server-only) · proxy · types
@@ -701,8 +861,17 @@ lib/auth/            phone (E.164) · pin (validation) · pin-derive (HMAC, serv
 lib/staff/           accountant account create/activate/deactivate/reset (owner-only)
 lib/notes/           internal financial notes (append-only)
 lib/requisitions/    constants · compute (pure totals + status/payment machine) ·
-                     numbering (REQ/YYYY/MM/NNNN) · validation · actions · queries ·
-                     pdf (printable request, any stage)
+                     numbering (REQ/YYYY/MM/NNNN) · validation · actions (incl.
+                     retirement) · queries · pdf (printable request, any stage)
+lib/departments/     compute (pure budget arithmetic) · queries · detail ·
+                     validation · actions      (client feedback #2)
+lib/completion/      machine (pure, 12 statuses) · numbering · queries · actions ·
+                     certificate (PDF)         (client feedback #6–#8, #10)
+lib/loans/           phone (pure terms) · constants · portfolio (pure dashboard) ·
+                     lease-pause (pure, where a postponed day goes) · validation ·
+                     queries · requests (workflow) · settle (resume the lease)
+lib/staff/           actions (accounts) · validation · profile (HR record) ·
+                     profile-constants · profile-queries
 lib/dev/             rsc-boundary (client/server boundary scanner) · routes
                      (smoke-test route discovery) — build-quality tooling, not app code
 lib/notifications/   service · queries · actions · labels (sw/en, plain module)
@@ -716,10 +885,13 @@ lib/dates/           tz (timezone primitives) · format (DD/MM/YYYY, the shared 
 lib/security/        request (client IP)     lib/audit/  audit writer
 lib/money/ dates/ i18n/ validation/          domain utilities
 
-supabase/migrations/ 0001..0028 + seed.sql    supabase/config.toml
+supabase/migrations/ 0001..0035 + seed.sql    supabase/config.toml
 scripts/seed.ts      owner + demo rider seeding
 tests/unit/          phone, pin, lockout, money, rsc-boundary, dev-routes,
-                     payment-grouping, requisition-payment-stage
+                     payment-grouping, requisition-payment-stage,
+                     collections-summary, cashflow, auto-allocate, departments,
+                     phone-loan-workflow, completion-machine,
+                     requisition-retirement
 tests/integration/rls/   isolation suite (opt-in via RLS_TEST_ENABLED)
 tests/integration/smoke/ every page as every role (opt-in via SMOKE_TEST_ENABLED)
 messages/sw.json en.json                      i18n catalogs
@@ -769,7 +941,12 @@ Migration-by-migration contents + planned future migrations: `docs/MIGRATION_PLA
     pass strings and ids, not callbacks. Enforced by
     `tests/unit/rsc-boundary.test.ts` in `npm run verify` — three production
     outages came from breaking this (2026-09-06).
-17. **A page that renders in `npm run build` has not been tested.** Build never
+17. **Derived money is reported, never inferred from another derived figure.**
+    `issued − repaid` is not the outstanding balance (a cancelled instalment
+    reduces what is owed without anybody paying it), and an approved requisition
+    is not an expense (it becomes one when retired — counting both double-counts
+    every purchase). Report both figures; never compute one from the other.
+18. **A page that renders in `npm run build` has not been tested.** Build never
     executes a dynamic page and vitest is node-only, so before a release run
     `npm run test:smoke` against a live server. That is the only gate that
     actually requests the pages.

@@ -6,3 +6,8 @@
  */
 import { config } from 'dotenv';
 config({ path: '.env.local' });
+
+/** Explicit entry point for scripts that want to load env inside a function. */
+export function loadEnv(): void {
+  config({ path: '.env.local' });
+}

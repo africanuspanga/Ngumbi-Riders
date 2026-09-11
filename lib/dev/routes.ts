@@ -109,6 +109,13 @@ export const ID_SOURCE_BY_SEGMENT: Record<string, string> = {
   approvals: 'cash_payment_requests',
   requisitions: 'purchase_requisitions',
   payments: 'payments',
+  // Client-feedback build #4 (2026-09-11).
+  completions: 'contract_completion_requests',
+  departments: 'departments',
+  // /owner/staff-profiles/[id] is addressed by the PROFILE id, not by a
+  // staff_profiles row id: the record may not exist yet for a colleague who
+  // has never opened it, and the page handles that by rendering an empty one.
+  'staff-profiles': 'profiles',
 };
 
 /** The static segment directly before the first dynamic one, if any. */

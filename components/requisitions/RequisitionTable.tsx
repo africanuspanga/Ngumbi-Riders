@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { StatusBadge, PaymentBadge } from './StatusBadge';
+import { StatusBadge, PaymentBadge, RetirementBadge } from './StatusBadge';
 import { RequisitionPdfLink } from './RequisitionPdfLink';
 import { formatTZS } from '@/lib/money/format';
 import { formatDate } from '@/lib/dates/format';
@@ -42,6 +42,7 @@ export function RequisitionTable({
             <th className="px-3 py-2.5 text-right font-semibold">Total</th>
             <th className="px-3 py-2.5 font-semibold">Status</th>
             <th className="px-3 py-2.5 font-semibold">Payment</th>
+            <th className="px-3 py-2.5 font-semibold">Retirement</th>
             <th className="px-3 py-2.5 font-semibold">
               <span className="sr-only">Download</span>
             </th>
@@ -76,6 +77,9 @@ export function RequisitionTable({
                 {/* Blank rather than "not paid" for anything unapproved: a
                     rejected request is not waiting for money. */}
                 <PaymentBadge status={r.status} paymentStatus={r.paymentStatus} />
+              </td>
+              <td className="px-3 py-3">
+                <RetirementBadge status={r.status} retirementStatus={r.retirementStatus} />
                 {r.status === 'approved' && r.paymentNote ? (
                   <span className="text-muted-foreground mt-1 block max-w-56 truncate text-xs">
                     {r.paymentNote}

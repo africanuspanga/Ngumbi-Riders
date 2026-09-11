@@ -1,6 +1,16 @@
 import { requireAccountant } from '@/lib/auth/session';
 import Link from 'next/link';
-import { getCollectionReport, getArrearsReport, getFinancialReport } from '@/lib/reports/queries';
+import {
+  getCollectionReport,
+  getArrearsReport,
+  getFinancialReport,
+  getCashflowReport,
+} from '@/lib/reports/queries';
+import { parseFilters, filtersToQuery } from '@/lib/reports/cashflow';
+import { listRiders } from '@/lib/riders/queries';
+import { listMotorcycles } from '@/lib/motorcycles/queries';
+import { ReportFilterBar } from '@/components/reports/ReportFilterBar';
+import { CashflowSections } from '@/components/reports/CashflowSections';
 import { methodLabel } from '@/lib/payments/statement';
 import { localDateString } from '@/lib/dates/tz';
 import { formatDate, formatDateRange } from '@/lib/dates/format';
@@ -16,24 +26,29 @@ export const metadata = { title: 'Reports' };
 export default async function AccountantReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
   await requireAccountant();
   const sp = await searchParams;
-  const to = sp.to ?? localDateString();
-  const from = sp.from ?? `${to.slice(0, 7)}-01`;
+  const today = localDateString();
+  // Same parser the owner page uses, so both areas scope their figures and
+  // their exports identically.
+  const filters = parseFilters(sp, { from: `${today.slice(0, 7)}-01`, to: today });
+  const { from, to } = filters;
 
-  const [collections, arrears, financial] = await Promise.all([
+  const [collections, arrears, financial, cashflow, riders, motorcycles] = await Promise.all([
     getCollectionReport(from, to),
     getArrearsReport(),
     getFinancialReport(from, to),
+    getCashflowReport(filters),
+    listRiders(),
+    listMotorcycles(),
   ]);
   const rate =
     collections.collectionRate === null ? '—' : `${Math.round(collections.collectionRate * 100)}%`;
-  const q = `?from=${from}&to=${to}`;
+  const q = filtersToQuery(filters);
 
   // Quick ranges the client asked for: daily, weekly, monthly and custom.
-  const today = localDateString();
   const daysAgo = (n: number) => localDateString(new Date(Date.parse(`${today}T00:00:00+03:00`) - n * 86_400_000));
   const presets = [
     { label: 'Today', from: today, to: today },
@@ -63,22 +78,23 @@ export default async function AccountantReportsPage({
         ))}
       </div>
 
-      <form className="flex flex-wrap items-end gap-3 rounded-[--radius-card] border border-border bg-white p-4">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-muted-foreground">From</span>
-          <input type="date" name="from" defaultValue={from} className="input" />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-muted-foreground">To</span>
-          <input type="date" name="to" defaultValue={to} className="input" />
-        </label>
-        <button
-          type="submit"
-          className="rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
-        >
-          Apply
-        </button>
-      </form>
+      <ReportFilterBar
+        filters={filters}
+        departments={cashflow.departments}
+        riders={riders.map((r) => ({
+          id: r.id,
+          label: `${r.first_name} ${r.last_name} (${r.rider_number})`,
+        }))}
+        motorcycles={motorcycles.map((m) => ({
+          id: m.id,
+          label: m.registration_number
+            ? `${m.motorcycle_number} · ${m.registration_number}`
+            : m.motorcycle_number,
+        }))}
+      />
+
+      {/* Income, expenses, requisitions and the period statement (#4). */}
+      <CashflowSections report={cashflow} basePath="/accountant" />
 
       <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">

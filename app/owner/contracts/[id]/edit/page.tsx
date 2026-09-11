@@ -4,6 +4,7 @@ import { requireOwner } from '@/lib/auth/session';
 import { getContract } from '@/lib/contracts/queries';
 import { listAvailableMotorcycles } from '@/lib/motorcycles/queries';
 import { ContractEditor } from './ContractEditor';
+import { LockNotice } from '@/components/contracts/LockNotice';
 
 export const metadata = { title: 'Edit contract' };
 
@@ -31,6 +32,18 @@ export default async function EditContractPage({
         </p>
       </div>
 
+      {/* A completed, signed-off contract is frozen (client feedback #10). The
+          editor is not rendered at all: offering fields that the action and
+          the database will both refuse is worse than explaining why. */}
+      {c.locked_at ? (
+        <LockNotice
+          entity="contract"
+          entityId={c.id}
+          lockedAt={c.locked_at}
+          lockReason={c.lock_reason}
+          canAmend
+        />
+      ) : (
       <ContractEditor
         contract={{
           id: c.id,
@@ -69,6 +82,7 @@ export default async function EditContractPage({
         }))}
         termEditable={PRE_ACTIVATION.includes(c.status)}
       />
+      )}
     </div>
   );
 }

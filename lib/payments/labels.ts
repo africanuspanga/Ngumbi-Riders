@@ -21,3 +21,35 @@ export const PAYMENT_STATUS_LABELS_EN: Record<string, string> = {
   cancelled: 'Cancelled',
   reversed: 'Reversed',
 };
+
+/*
+ * OBLIGATION status, rider-facing (Swahili) and staff-facing (English).
+ *
+ * Previously these lived inline in app/rider/calendar/page.tsx. Moved here
+ * because a second surface now needs them (the phone-loan instalment list), and
+ * a second copy is how "Imeahirishwa" ends up meaning two different things on
+ * two screens. A plain lib/ module so a SERVER page may import it — a
+ * 'use client' module's exports are client references on the server (spec
+ * rule 16).
+ */
+export const OBLIGATION_STATUS_LABELS_SW: Record<string, string> = {
+  scheduled: 'Ijayo',
+  due: 'Ya leo',
+  overdue: 'Deni',
+  paid: 'Imelipwa',
+  paid_in_advance: 'Malipo ya awali',
+  exempted: 'Msamaha',
+  postponed: 'Imeahirishwa',
+  cancelled: 'Imeghairiwa',
+};
+
+export const OBLIGATION_STATUS_LABELS_EN: Record<string, string> = {
+  scheduled: 'Scheduled',
+  due: 'Due today',
+  overdue: 'Overdue',
+  paid: 'Paid',
+  paid_in_advance: 'Paid in advance',
+  exempted: 'Waived',
+  postponed: 'Postponed',
+  cancelled: 'Cancelled',
+};

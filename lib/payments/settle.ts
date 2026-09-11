@@ -3,6 +3,7 @@ import 'server-only';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { notifyRider } from '@/lib/notifications/service';
 import { getPaymentStatus } from '@/lib/snippe/client';
+import { completePhoneLoansFor } from '@/lib/loans/settle';
 
 /*
  * Shared payment settlement helpers used by the webhook and the reconciliation
@@ -36,6 +37,11 @@ export async function settlePaymentCompleted(
     p_completed_at: completedAtIso,
   });
   if (error) return { ok: false, error: error.message };
+
+  // If those obligations were the last of a phone loan, the loan is repaid and
+  // the motorcycle lease resumes — now, not at midnight (client feedback #13).
+  // Best-effort: the money has settled and must be reported as settled.
+  await completePhoneLoansFor(obligationIds);
 
   await notifyRider(riderId, {
     type: 'payment_completed',

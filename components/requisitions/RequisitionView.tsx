@@ -1,14 +1,19 @@
 import Link from 'next/link';
-import { InfoIcon, ShoppingCartIcon, PaperclipIcon } from 'lucide-react';
+import { InfoIcon, ShoppingCartIcon, PaperclipIcon, ClipboardCheckIcon } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { formatTZS } from '@/lib/money/format';
 import { formatDate, formatDateTime } from '@/lib/dates/format';
 import {
   BUDGET_COVER_LABELS,
   DEPARTMENT_LABELS,
+  DOC_TYPE_LABELS,
   ITEM_CATEGORY_LABELS,
+  REQUISITION_DOC_TYPES,
+  RETIREMENT_STATUS_DESCRIPTIONS,
+  RETIREMENT_STATUS_LABELS,
   UNIT_LABELS,
 } from '@/lib/requisitions/constants';
+import { requisitionTotal } from '@/lib/requisitions/compute';
 import type { RequisitionDetail } from '@/lib/requisitions/queries';
 
 /*
@@ -28,6 +33,9 @@ export function RequisitionView({
   documentHref: (documentId: string) => string;
 }) {
   const r = requisition;
+  // Recomputed from the lines, never a stored column (D-034 rule 3) — the same
+  // arithmetic the list, the PDF and the reports use.
+  const total = requisitionTotal(r.items);
   return (
     <div className="flex flex-col gap-5">
       <section className="flex flex-col gap-4 rounded-[--radius-card] border border-border bg-white p-4 sm:p-5">
@@ -109,30 +117,93 @@ export function RequisitionView({
         </div>
       </section>
 
+      {/* Documents grouped by KIND (0033). What the decision was made on and
+          what happened to the money afterwards are different evidence, and
+          reading them in one undifferentiated list is how a receipt gets
+          mistaken for a quotation. */}
       <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4 sm:p-5">
         <h2 className="flex items-center gap-2 font-semibold text-primary">
-          <PaperclipIcon className="size-4" /> Supporting documents
+          <PaperclipIcon className="size-4" /> Documents
         </h2>
         {r.documents.length === 0 ? (
           <p className="text-sm text-muted-foreground">No documents attached.</p>
         ) : (
-          <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border">
-            {r.documents.map((d) => (
-              <li key={d.id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
-                <span className="truncate">{d.fileName}</span>
-                <Link
-                  href={documentHref(d.id)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="shrink-0 text-xs font-semibold text-primary underline"
-                >
-                  Open
-                </Link>
-              </li>
-            ))}
-          </ul>
+          REQUISITION_DOC_TYPES.filter((kind) =>
+            r.documents.some((d) => d.docType === kind),
+          ).map((kind) => (
+            <div key={kind} className="flex flex-col gap-1.5">
+              <h3 className="text-sm font-semibold text-primary-dark">
+                {DOC_TYPE_LABELS[kind]}
+              </h3>
+              <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border">
+                {r.documents
+                  .filter((d) => d.docType === kind)
+                  .map((d) => (
+                    <li
+                      key={d.id}
+                      className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm"
+                    >
+                      <span className="truncate">{d.fileName}</span>
+                      <Link
+                        href={documentHref(d.id)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="shrink-0 text-xs font-semibold text-primary underline"
+                      >
+                        Open
+                      </Link>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          ))
         )}
       </section>
+
+      {/* Retirement: what was ACTUALLY spent against what was approved
+          (client feedback #14). Only shown once there is something to say. */}
+      {r.status === 'approved' && r.retirementStatus !== 'not_started' && (
+        <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4 sm:p-5">
+          <h2 className="flex items-center gap-2 font-semibold text-primary">
+            <ClipboardCheckIcon className="size-4" />
+            Retirement
+            <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-xs font-semibold">
+              {RETIREMENT_STATUS_LABELS[r.retirementStatus]}
+            </span>
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {RETIREMENT_STATUS_DESCRIPTIONS[r.retirementStatus]}
+          </p>
+          {r.retirementStatus === 'completed' && (
+            <dl className="grid gap-4 sm:grid-cols-2">
+              <Detail label="Approved" value={formatTZS(total)} />
+              <Detail
+                label="Actually spent"
+                value={r.retiredAmount === null ? '—' : formatTZS(r.retiredAmount)}
+              />
+              {r.retiredAmount !== null && r.retiredAmount !== total && (
+                <Detail
+                  label="Variance"
+                  value={`${r.retiredAmount > total ? 'Over' : 'Under'} by ${formatTZS(Math.abs(r.retiredAmount - total))}`}
+                />
+              )}
+              <Detail label="Retired by" value={r.retiredByName ?? '—'} />
+              <Detail
+                label="Retired on"
+                value={r.retiredAt ? formatDateTime(r.retiredAt) : '—'}
+              />
+              {r.retirementNote && (
+                <Detail
+                  label="Note"
+                  value={r.retirementNote}
+                  className="sm:col-span-2"
+                  wrap
+                />
+              )}
+            </dl>
+          )}
+        </section>
+      )}
 
       <section className="rounded-[--radius-card] border border-border bg-white p-4 sm:p-5">
         <h2 className="border-b-2 border-primary pb-2 font-semibold text-primary-dark">

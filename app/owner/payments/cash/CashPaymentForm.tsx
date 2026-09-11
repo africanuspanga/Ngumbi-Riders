@@ -7,6 +7,11 @@ import { recordCashPayment } from '@/lib/payments/actions';
 import { requestCashPayment, updateCashRequest } from '@/lib/payments/cash-requests';
 import type { CashCandidate, StaffReceiver } from '@/lib/payments/queries';
 import { formatDate } from '@/lib/dates/format';
+import {
+  autoAllocate,
+  allocationWarnings,
+  remainderNote,
+} from '@/lib/payments/auto-allocate';
 
 type Recorded = { riderName: string; amount: number; days: number; date: string; mode: Mode };
 
@@ -89,6 +94,14 @@ export function CashPaymentForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recorded, setRecorded] = useState<Recorded | null>(null);
+  /*
+   * Manual = tick the exact days (the original behaviour, and still the
+   * default when correcting a request). Automatic = type what the rider
+   * handed over and let the system work out how many whole days it clears
+   * (client feedback #5).
+   */
+  const [allocation, setAllocation] = useState<'manual' | 'auto'>('manual');
+  const [cashReceived, setCashReceived] = useState('');
 
   // Days already spoken for by a DIFFERENT pending request are hidden so two
   // accountants cannot raise overlapping requests the Director then has to
@@ -100,9 +113,33 @@ export function CashPaymentForm({
   const visibleObligations = candidate
     ? candidate.obligations.filter((o) => !claimed.has(o.id))
     : [];
-  const total = visibleObligations
-    .filter((o) => selected.has(o.id))
-    .reduce((s, o) => s + o.amount, 0);
+
+  /*
+   * The automatic plan, recomputed on every render from the amount typed. It
+   * is DERIVED, never stored in state: a stale allocation is a payment that
+   * clears different days from the ones the owner was shown.
+   *
+   * Note the shape conversion — the pure allocator speaks the same
+   * SelectableObligation vocabulary as the rider's own payment flow, so the
+   * owner's cash page and the rider's Lipa Sasa allocate money identically.
+   */
+  const plan = autoAllocate(
+    visibleObligations.map((o) => ({
+      id: o.id,
+      dueDate: o.dueDate,
+      amountDue: o.amount,
+      status: o.status,
+    })),
+    Number(cashReceived) || 0,
+  );
+  const planIds = new Set(plan.obligations.map((o) => o.id));
+  const warnings = allocationWarnings(plan);
+
+  const autoMode = allocation === 'auto' && mode !== 'edit';
+  const effectiveIds = autoMode ? [...planIds] : [...selected];
+  const total = autoMode
+    ? plan.allocated
+    : visibleObligations.filter((o) => selected.has(o.id)).reduce((s, o) => s + o.amount, 0);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -114,16 +151,21 @@ export function CashPaymentForm({
   }
 
   async function submit() {
-    if (!candidate || selected.size === 0) return;
+    if (!candidate || effectiveIds.length === 0) return;
     setBusy(true);
     setError(null);
     try {
+      // In automatic mode the leftover change is written into the note at the
+      // moment it is decided. A payment that does not equal the cash handed
+      // over must say so on its own face, not in somebody's memory.
+      const changeNote = autoMode ? remainderNote(plan) : '';
+      const fullNote = [note.trim(), changeNote].filter(Boolean).join(' — ');
       const payload = {
         riderId: candidate.riderId,
         contractId: candidate.contractId,
-        obligationIds: [...selected],
+        obligationIds: effectiveIds,
         paymentDate: date,
-        note,
+        note: fullNote,
         receivedById: receivedById || undefined,
       };
       const res =
@@ -149,13 +191,14 @@ export function CashPaymentForm({
         setRecorded({
           riderName: candidate.riderName,
           amount: total,
-          days: selected.size,
+          days: effectiveIds.length,
           date,
           mode,
         });
         setRiderId('');
         setSelected(new Set());
         setNote('');
+        setCashReceived('');
         router.refresh();
       } else {
         setError(CASH_ERRORS[res.error] ?? 'Could not record the payment. Reload the page and try again.');
@@ -218,7 +261,11 @@ export function CashPaymentForm({
           className="input bg-white"
           value={riderId}
           disabled={mode === 'edit'}
-          onChange={(e) => { setRiderId(e.target.value); setSelected(new Set()); }}
+          onChange={(e) => {
+            setRiderId(e.target.value);
+            setSelected(new Set());
+            setCashReceived('');
+          }}
         >
           <option value="">Select rider…</option>
           {candidates.map((c) => (
@@ -227,7 +274,113 @@ export function CashPaymentForm({
         </select>
       </label>
 
-      {candidate && (
+      {/* Manual or automatic allocation (client feedback #5). Hidden when
+          correcting an existing request: an edit is always about which
+          specific days it covers. */}
+      {candidate && mode !== 'edit' && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-medium">How should this be applied?</legend>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <label
+              className={`flex flex-1 cursor-pointer items-start gap-2 rounded-[--radius-card] border p-3 ${
+                allocation === 'manual' ? 'border-primary bg-primary/5' : 'border-border'
+              }`}
+            >
+              <input
+                type="radio"
+                name="allocation"
+                className="mt-0.5 h-4 w-4"
+                checked={allocation === 'manual'}
+                onChange={() => setAllocation('manual')}
+              />
+              <span className="text-sm">
+                <span className="block font-semibold">Choose the days</span>
+                <span className="block text-xs text-muted-foreground">
+                  Tick exactly which days this money covers.
+                </span>
+              </span>
+            </label>
+            <label
+              className={`flex flex-1 cursor-pointer items-start gap-2 rounded-[--radius-card] border p-3 ${
+                allocation === 'auto' ? 'border-primary bg-primary/5' : 'border-border'
+              }`}
+            >
+              <input
+                type="radio"
+                name="allocation"
+                className="mt-0.5 h-4 w-4"
+                checked={allocation === 'auto'}
+                onChange={() => setAllocation('auto')}
+              />
+              <span className="text-sm">
+                <span className="block font-semibold">Enter the amount</span>
+                <span className="block text-xs text-muted-foreground">
+                  The system clears the oldest unpaid days the money covers.
+                </span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+      )}
+
+      {candidate && autoMode && (
+        <div className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">Cash received (TZS)</span>
+            <input
+              className="input"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={500}
+              value={cashReceived}
+              onChange={(e) => setCashReceived(e.target.value)}
+              placeholder="e.g. 30000"
+            />
+          </label>
+
+          {cashReceived !== '' && (
+            <div className="flex flex-col gap-2 rounded-[--radius-card] border border-border p-3">
+              {warnings.map((w) => (
+                <p
+                  key={w.message}
+                  role={w.level === 'error' ? 'alert' : undefined}
+                  className={`text-sm ${
+                    w.level === 'error'
+                      ? 'font-medium text-overdue'
+                      : w.level === 'warning'
+                        ? 'font-medium text-[color:var(--color-warning)]'
+                        : 'text-muted-foreground'
+                  }`}
+                >
+                  {w.message}
+                </p>
+              ))}
+
+              {/* The owner must SEE which days are about to be cleared before
+                  confirming — the brief asks for this explicitly, and it is
+                  the only thing standing between a typo and settled money. */}
+              {plan.obligations.length > 0 && (
+                <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border">
+                  {plan.obligations.map((o) => (
+                    <li
+                      key={o.id}
+                      className="flex items-center justify-between px-3 py-2 text-sm"
+                    >
+                      <span className={o.dueDate < today ? 'text-overdue' : ''}>
+                        ✓ {formatDate(o.dueDate)}
+                      </span>
+                      <span className="font-medium">{tzs(o.amountDue)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {candidate && !autoMode && (
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium">Outstanding obligations (oldest first)</span>
           {visibleObligations.length === 0 ? (
@@ -284,7 +437,7 @@ export function CashPaymentForm({
 
       <button
         type="button"
-        disabled={busy || selected.size === 0}
+        disabled={busy || effectiveIds.length === 0}
         onClick={submit}
         className="min-h-12 rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
       >

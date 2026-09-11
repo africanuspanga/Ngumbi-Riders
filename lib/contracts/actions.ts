@@ -724,7 +724,7 @@ export async function updateContract(
   const { data: current } = await admin
     .from('contracts')
     .select(
-      'id, rider_id, motorcycle_id, status, start_date, end_date, lease_start_date, phone_loan_id, schedule_type, selected_weekdays, due_day_of_month, duration_months, duration_years, duration_weeks, duration_days, installment_amount, daily_rate, payment_deadline_time, payment_plan',
+      'id, rider_id, motorcycle_id, status, locked_at, start_date, end_date, lease_start_date, phone_loan_id, schedule_type, selected_weekdays, due_day_of_month, duration_months, duration_years, duration_weeks, duration_days, installment_amount, daily_rate, payment_deadline_time, payment_plan',
     )
     .eq('id', contractId)
     .maybeSingle();
@@ -734,6 +734,7 @@ export async function updateContract(
     rider_id: string;
     motorcycle_id: string;
     status: ContractStatus;
+    locked_at: string | null;
     start_date: string | null;
     end_date: string | null;
     lease_start_date: string | null;
@@ -750,6 +751,19 @@ export async function updateContract(
     payment_deadline_time: string;
     payment_plan: { dueDate: string; amount: number }[] | null;
   };
+
+  /*
+   * LOCKED RECORDS (client feedback 2026-09-11 #10).
+   *
+   * "After completion and final print, contract and registration details should
+   *  become locked. Any change should require a special amendment process, not
+   *  normal editing."
+   *
+   * `locked_at` is set by the completion sign-off. The 0034 trigger refuses the
+   * write independently — this check exists so the owner reads a sentence
+   * instead of a raised database exception, and so nothing half-applies first.
+   */
+  if (c.locked_at) return { ok: false, error: 'locked' };
 
   const patch: ContractUpdate = {
     last_edited_at: new Date().toISOString(),

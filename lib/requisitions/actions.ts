@@ -19,6 +19,7 @@ import {
 } from './compute';
 import { nextRequisitionNumber } from './numbering';
 import { enqueueSms } from '@/lib/messaging/outbox';
+import { onRequisitionDecidedForPhoneLoan } from '@/lib/loans/requests';
 import {
   PAYMENT_STATUS_LABELS,
   REQUISITION_PAYMENT_STATUSES,
@@ -26,6 +27,11 @@ import {
   type RequisitionStatus,
   MAX_REQUISITION_DOCUMENTS,
   MAX_REQUISITION_DOC_BYTES,
+  REQUISITION_DOC_TYPES,
+  PRE_DECISION_DOC_TYPES,
+  RETIREMENT_STATUS_LABELS,
+  type RequisitionDocType,
+  type RequisitionRetirementStatus,
   REQUISITION_CURRENCY,
   yearOf,
 } from './constants';
@@ -389,6 +395,18 @@ async function decide(
     dedupeKey: `requisition_decided:${requisitionId}`,
   });
 
+  // A phone-purchase requisition carries a rider's loan request behind it
+  // (0031/0033). The Director deciding the purchase IS the decision on the
+  // loan, so the request advances here rather than waiting for the accountant
+  // to notice. Best-effort: the decision above is the record that matters and
+  // must never be undone because this follow-on failed — a request left at
+  // 'requisition_raised' is still visible in the queue and advanceable by hand.
+  try {
+    await onRequisitionDecidedForPhoneLoan(requisitionId, to, note);
+  } catch {
+    /* the requisition decision stands */
+  }
+
   revalidateRequisitionSurfaces(requisitionId);
   return { ok: true, data: { total: total.amount } };
 }
@@ -488,6 +506,12 @@ export async function uploadRequisitionDocument(
 
   const requisitionId = formData.get('requisitionId');
   const file = formData.get('file');
+  // Absent means 'supporting', which is what every existing caller uploads.
+  const rawDocType = formData.get('docType');
+  const docType: RequisitionDocType =
+    typeof rawDocType === 'string' && (REQUISITION_DOC_TYPES as readonly string[]).includes(rawDocType)
+      ? (rawDocType as RequisitionDocType)
+      : 'supporting';
   if (typeof requisitionId !== 'string' || !requisitionId) return { ok: false, error: 'bad_request' };
   if (!(file instanceof File) || file.size === 0) return { ok: false, error: 'no_file' };
   if (file.size > MAX_REQUISITION_DOC_BYTES) return { ok: false, error: 'too_large' };
@@ -495,12 +519,31 @@ export async function uploadRequisitionDocument(
   const admin = createAdminClient();
   const found = await loadForActor(admin, requisitionId, actor);
   if (!found.ok) return found;
-  if (found.row.status !== 'draft') return { ok: false, error: 'not_draft' };
 
+  /*
+   * WHEN each kind of document may be attached (0033's child-row trigger
+   * enforces the same rule, so this is the readable half of a control that
+   * exists in both places):
+   *
+   *   supporting / invoice          draft only. These are what the Director's
+   *                                 decision was made on, so they must be
+   *                                 exactly what was seen.
+   *   proof_of_payment / receipt /  approved only. A receipt exists by
+   *   retirement                    definition after the money left.
+   */
+  if (PRE_DECISION_DOC_TYPES.includes(docType)) {
+    if (found.row.status !== 'draft') return { ok: false, error: 'not_draft' };
+  } else {
+    if (found.row.status !== 'approved') return { ok: false, error: 'not_approved' };
+  }
+
+  // The ten-document cap counts PER KIND, so a long list of retirement receipts
+  // cannot crowd out the quotations the request was approved on.
   const { count } = await admin
     .from('requisition_documents')
     .select('id', { count: 'exact', head: true })
-    .eq('requisition_id', requisitionId);
+    .eq('requisition_id', requisitionId)
+    .eq('doc_type', docType);
   if ((count ?? 0) >= MAX_REQUISITION_DOCUMENTS) return { ok: false, error: 'too_many' };
 
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -533,6 +576,7 @@ export async function uploadRequisitionDocument(
       mime_type: mime,
       size_bytes: file.size,
       sha256_hash: hash,
+      doc_type: docType,
       uploaded_by: actor.userId,
     })
     .select('id')
@@ -697,6 +741,21 @@ export async function setRequisitionPaymentStatus(
     },
   });
 
+  /*
+   * Paying an approved purchase is what puts it on the accountant's retirement
+   * worklist. Done here rather than left to a human step: the whole point of
+   * retirement is that released money gets accounted for, and a queue nobody
+   * is placed into is a queue nobody works. Conditional and best-effort — the
+   * payment stage above is the record that matters.
+   */
+  if (to === 'paid') {
+    await admin
+      .from('purchase_requisitions')
+      .update({ retirement_status: 'pending' })
+      .eq('id', requisitionId)
+      .eq('retirement_status', 'not_started');
+  }
+
   // --- tell the accountant who asked -------------------------------------
   const headline =
     to === 'paid'
@@ -737,4 +796,182 @@ export async function setRequisitionPaymentStatus(
 
   revalidateRequisitionSurfaces(requisitionId);
   return { ok: true };
+}
+
+// =========================================================================
+// Retirement (client feedback 2026-09-11 #14)
+// =========================================================================
+
+/**
+ * Retire an approved, paid requisition: account for what was ACTUALLY spent.
+ *
+ * This is the accountant's step, and the one that finally closes the loop
+ * between an authorisation and a real cost. Three things make it safe:
+ *
+ *   1. It requires `requisitions.retire`, which the accountant holds and which
+ *      is NOT `requisitions.pay` — declaring money paid stays the Director's.
+ *   2. The DB refuses to retire anything that is not approved AND paid (0033),
+ *      so a request cannot be accounted for before the money left.
+ *   3. `retired_amount` is stored SEPARATELY from the approved total and never
+ *      overwrites it. A purchase that came in under or over budget shows the
+ *      variance; the Director's authorisation is left exactly as they signed it
+ *      (spec rule 6).
+ *
+ * Optionally files the spend as a department expense in the same step, which is
+ * where an approved purchase becomes a real operating cost in the reports.
+ */
+export async function retireRequisition(
+  requisitionId: string,
+  input: {
+    /** Actual spend in integer TZS. Defaults to the approved total. */
+    actualAmount?: number;
+    note?: string;
+    /** File the spend against this department at the same time. */
+    departmentId?: string;
+  } = {},
+): Promise<ActionResult<{ expenseId: string | null }>> {
+  const actor = await checkPermission('requisitions.retire');
+  if (!actor) return { ok: false, error: 'forbidden' };
+
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from('purchase_requisitions')
+    .select(
+      'id, requisition_number, title, status, payment_status, retirement_status, requested_by, ' +
+        'department_id, request_date',
+    )
+    .eq('id', requisitionId)
+    .maybeSingle();
+  const row = data as
+    | {
+        id: string;
+        requisition_number: string;
+        title: string;
+        status: string;
+        payment_status: string;
+        retirement_status: string;
+        requested_by: string;
+        department_id: string | null;
+        request_date: string;
+      }
+    | null;
+  if (!row) return { ok: false, error: 'not_found' };
+  if (row.status !== 'approved') return { ok: false, error: 'not_approved' };
+  if (row.payment_status !== 'paid') return { ok: false, error: 'not_paid' };
+  if (row.retirement_status === 'completed') return { ok: false, error: 'already_retired' };
+
+  const approved = await totalOf(admin, requisitionId);
+  const actual =
+    input.actualAmount === undefined || input.actualAmount === null
+      ? approved.amount
+      : Math.trunc(Number(input.actualAmount));
+  if (!Number.isFinite(actual) || actual < 0) return { ok: false, error: 'invalid_amount' };
+
+  // Conditional on the stage we read: a colleague retiring the same request
+  // between the read and this write wins rather than being overwritten.
+  const { data: changed, error } = await admin
+    .from('purchase_requisitions')
+    .update({
+      retirement_status: 'completed',
+      retired_by: actor.userId,
+      retired_at: new Date().toISOString(),
+      retired_amount: actual,
+      retirement_note: input.note?.trim() || null,
+    })
+    .eq('id', requisitionId)
+    .neq('retirement_status', 'completed')
+    .select('id');
+  if (error) return { ok: false, error: 'server_error' };
+  if (!changed || changed.length === 0) return { ok: false, error: 'already_retired' };
+
+  // Optionally record the cost. Done AFTER the retirement flag so a failure
+  // here leaves a retired request with no expense — visible and fixable —
+  // rather than an expense with no retirement, which would double-count once
+  // somebody retired it properly.
+  let expenseId: string | null = null;
+  const departmentId = input.departmentId?.trim() || row.department_id;
+  if (departmentId && actual > 0) {
+    const { data: exp } = await admin
+      .from('department_expenses')
+      .insert({
+        department_id: departmentId,
+        expense_date: localDateString(),
+        category: 'other',
+        amount: actual,
+        description: `${row.requisition_number} — ${row.title}`.slice(0, 300),
+        reference: row.requisition_number,
+        requisition_id: requisitionId,
+        created_by: actor.userId,
+      })
+      .select('id')
+      .maybeSingle();
+    expenseId = (exp as { id: string } | null)?.id ?? null;
+  }
+
+  await writeAudit({
+    actorId: actor.userId,
+    actorRole: actor.role,
+    action: 'requisition.retired',
+    entityType: 'purchase_requisition',
+    entityId: requisitionId,
+    metadata: {
+      requisitionNumber: row.requisition_number,
+      approved: approved.amount,
+      actual,
+      variance: actual - approved.amount,
+      departmentId,
+      expenseId,
+      note: input.note?.trim() || null,
+    },
+  });
+
+  await notifyOwner({
+    type: 'requisition_retired',
+    title: 'Purchase request retired',
+    body:
+      `${row.requisition_number} — ${row.title}: approved ${formatTZS(approved.amount)}, ` +
+      `actually spent ${formatTZS(actual)}` +
+      (actual === approved.amount
+        ? '.'
+        : ` (${actual > approved.amount ? 'over' : 'under'} by ${formatTZS(Math.abs(actual - approved.amount))}).`),
+    deepLink: `/owner/requisitions/${requisitionId}`,
+    dedupeKey: `requisition_retired:${requisitionId}`,
+  });
+
+  revalidateRequisitionSurfaces(requisitionId);
+  revalidatePath('/owner/departments');
+  revalidatePath('/accountant/departments');
+  return { ok: true, data: { expenseId } };
+}
+
+/**
+ * Move a paid requisition into 'retirement pending', so it appears on the
+ * accountant's worklist. Called by the owner when they mark it paid, and
+ * available by hand for the requests paid before this feature existed.
+ */
+export async function markRetirementPending(requisitionId: string): Promise<ActionResult> {
+  const actor = await checkPermission('requisitions.retire');
+  if (!actor) return { ok: false, error: 'forbidden' };
+
+  const admin = createAdminClient();
+  const { data: changed, error } = await admin
+    .from('purchase_requisitions')
+    .update({ retirement_status: 'pending' })
+    .eq('id', requisitionId)
+    .eq('status', 'approved')
+    .eq('payment_status', 'paid')
+    .eq('retirement_status', 'not_started')
+    .select('id');
+  if (error) return { ok: false, error: 'server_error' };
+  if (!changed || changed.length === 0) return { ok: false, error: 'invalid_transition' };
+
+  revalidateRequisitionSurfaces(requisitionId);
+  return { ok: true };
+}
+
+/** Label for a retirement stage — exported so the UI never spells one itself. */
+export async function retirementLabel(
+  status: RequisitionRetirementStatus,
+): Promise<string> {
+  return RETIREMENT_STATUS_LABELS[status];
 }

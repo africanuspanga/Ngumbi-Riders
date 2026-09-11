@@ -104,6 +104,9 @@ export const BUDGET_COVER_LABELS: Record<RequisitionBudgetCover, string> = {
 export type RequisitionStatus =
   | 'draft'
   | 'submitted'
+  // Picked up but not ruled on (migration 0032). Added at the END of the
+  // Postgres enum, because an enum's order is part of its identity.
+  | 'under_review'
   | 'approved'
   | 'rejected'
   | 'cancelled';
@@ -111,6 +114,7 @@ export type RequisitionStatus =
 export const REQUISITION_STATUS_LABELS: Record<RequisitionStatus, string> = {
   draft: 'Draft',
   submitted: 'Awaiting approval',
+  under_review: 'Under review',
   approved: 'Approved',
   rejected: 'Rejected',
   cancelled: 'Withdrawn',
@@ -202,4 +206,126 @@ export function requisitionStageLabel(
 ): string {
   if (status !== 'approved') return REQUISITION_STATUS_LABELS[status];
   return `${REQUISITION_STATUS_LABELS.approved} · ${PAYMENT_STATUS_LABELS[paymentStatus]}`;
+}
+
+/* ------------------------------------------------------------------------ *
+ * Requisition kind, and retirement (client feedback 2026-09-11 #14)
+ * ------------------------------------------------------------------------ */
+
+/**
+ * WHAT is being requested. Distinct from `category`, which describes a LINE:
+ * a motorcycle-purchase requisition may well have a line for registration and
+ * a line for insurance. The type is what the request is FOR, and it is what
+ * the reports filter on.
+ */
+export const REQUISITION_TYPES = [
+  'general',
+  'phone',
+  'motorcycle',
+  'department_expense',
+] as const;
+export type RequisitionType = (typeof REQUISITION_TYPES)[number];
+
+export const REQUISITION_TYPE_LABELS: Record<RequisitionType, string> = {
+  general: 'General / operational',
+  phone: 'Phone purchase',
+  motorcycle: 'Motorcycle purchase',
+  department_expense: 'Department expense',
+};
+
+/**
+ * Whether money already released has been ACCOUNTED FOR.
+ *
+ * A third orthogonal axis alongside `status` (what the Director decided) and
+ * `paymentStatus` (whether money moved), for the reason 0029 gave when it
+ * refused to fold payment into status: three independent questions need three
+ * independent answers, and one enum carrying all of them makes 'approved'
+ * ambiguous and breaks every existing status check.
+ */
+export type RequisitionRetirementStatus = 'not_started' | 'pending' | 'completed';
+
+export const RETIREMENT_STATUSES: readonly RequisitionRetirementStatus[] = [
+  'not_started',
+  'pending',
+  'completed',
+] as const;
+
+export const RETIREMENT_STATUS_LABELS: Record<RequisitionRetirementStatus, string> = {
+  not_started: 'Not due yet',
+  pending: 'Retirement pending',
+  completed: 'Retired',
+};
+
+export const RETIREMENT_STATUS_DESCRIPTIONS: Record<RequisitionRetirementStatus, string> = {
+  not_started: 'Nothing to account for yet — the money has not been released.',
+  pending: 'The money has been paid out and is waiting to be accounted for with receipts.',
+  completed: 'Accounted for: receipts filed and the actual spend recorded.',
+};
+
+/** What documents may be attached, and when (enforced by the 0033 trigger). */
+export const REQUISITION_DOC_TYPES = [
+  'supporting',
+  'invoice',
+  'proof_of_payment',
+  'receipt',
+  'retirement',
+] as const;
+export type RequisitionDocType = (typeof REQUISITION_DOC_TYPES)[number];
+
+export const DOC_TYPE_LABELS: Record<RequisitionDocType, string> = {
+  supporting: 'Supporting document',
+  invoice: 'Invoice / proforma',
+  proof_of_payment: 'Proof of payment',
+  receipt: 'Receipt',
+  retirement: 'Retirement document',
+};
+
+/** Attachable while the request is still a draft (what the decision is made on). */
+export const PRE_DECISION_DOC_TYPES: readonly RequisitionDocType[] = ['supporting', 'invoice'];
+/** Attachable only after approval (evidence of what happened to the money). */
+export const POST_DECISION_DOC_TYPES: readonly RequisitionDocType[] = [
+  'proof_of_payment',
+  'receipt',
+  'retirement',
+];
+
+/**
+ * The ONE sentence a human should read, from all three axes.
+ *
+ * Extends `requisitionStageLabel` rather than replacing it: that function is
+ * already on the printed PDF and in the list, and a printed requisition must
+ * keep saying what it said. This adds the retirement half only when there is
+ * something to say.
+ */
+export function requisitionFullStageLabel(
+  status: RequisitionStatus,
+  paymentStatus: RequisitionPaymentStatus,
+  retirementStatus: RequisitionRetirementStatus,
+): string {
+  const base = requisitionStageLabel(status, paymentStatus);
+  if (status !== 'approved' || retirementStatus === 'not_started') return base;
+  return `${base} · ${RETIREMENT_STATUS_LABELS[retirementStatus]}`;
+}
+
+/**
+ * What should happen next, and who does it. Returning null means "nothing is
+ * waiting on anybody" — a closed request, or one whose money was never
+ * released. Used by the queues so neither the Director nor the accountant has
+ * to work out whose turn it is.
+ */
+export function nextRequisitionAction(
+  status: RequisitionStatus,
+  paymentStatus: RequisitionPaymentStatus,
+  retirementStatus: RequisitionRetirementStatus,
+): { actor: 'accountant' | 'owner'; action: string } | null {
+  if (status === 'draft') return { actor: 'accountant', action: 'Submit the request' };
+  if (status === 'submitted' || status === 'under_review') {
+    return { actor: 'owner', action: 'Approve or reject' };
+  }
+  if (status !== 'approved') return null;
+  if (paymentStatus !== 'paid') return { actor: 'owner', action: 'Release the payment' };
+  if (retirementStatus !== 'completed') {
+    return { actor: 'accountant', action: 'Retire: file receipts and record the actual spend' };
+  }
+  return null;
 }

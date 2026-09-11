@@ -131,3 +131,70 @@ export async function triggerPush(reference: string): Promise<SnippeResult<true>
   if (!res.ok) return { ok: false, error: 'snippe_error', code: res.status };
   return { ok: true, data: true };
 }
+
+/*
+ * Account balance (Integration Guide §"Get Account Balance",
+ * GET /v1/payments/balance). Needs the `collection:read` scope — a key issued
+ * with `collection:create` alone answers 403 AUTHZ_002, which is exactly what
+ * the live key did at go-live. That is reported as a distinct `forbidden`
+ * result rather than a generic failure so the dashboard can tell the owner the
+ * ONE thing that fixes it (regenerate the key with read scope) instead of
+ * showing them "error".
+ */
+export type SnippeBalance = {
+  /** Withdrawable now. */
+  available: number;
+  /** Ledger balance, including money not yet settled by the provider. */
+  balance: number;
+  currency: string;
+};
+
+export async function getCollectionBalance(): Promise<SnippeResult<SnippeBalance>> {
+  const { apiKey, base } = config();
+  if (!apiKey) return { ok: false, error: 'not_configured' };
+
+  let res: Response;
+  try {
+    res = await fetch(`${base}/v1/payments/balance`, {
+      signal: AbortSignal.timeout(10_000),
+      // The dashboard renders this on every load; never serve a cached figure
+      // for money the owner is about to reconcile against.
+      cache: 'no-store',
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+  } catch {
+    return { ok: false, error: 'network_error' };
+  }
+
+  const json = (await res.json().catch(() => null)) as
+    | {
+        status?: string;
+        data?: {
+          available?: { currency?: string; value?: number };
+          balance?: { currency?: string; value?: number };
+        };
+        message?: string;
+      }
+    | null;
+
+  if (res.status === 401 || res.status === 403) {
+    return { ok: false, error: 'forbidden', code: res.status };
+  }
+  if (!res.ok || json?.status !== 'success' || !json.data) {
+    return { ok: false, error: json?.message ?? 'snippe_error', code: res.status };
+  }
+
+  const available = json.data.available?.value;
+  const balance = json.data.balance?.value;
+  if (typeof available !== 'number' && typeof balance !== 'number') {
+    return { ok: false, error: 'snippe_error', code: res.status };
+  }
+  return {
+    ok: true,
+    data: {
+      available: Math.round(available ?? balance ?? 0),
+      balance: Math.round(balance ?? available ?? 0),
+      currency: json.data.available?.currency ?? json.data.balance?.currency ?? 'TZS',
+    },
+  };
+}

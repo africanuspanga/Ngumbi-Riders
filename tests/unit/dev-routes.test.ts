@@ -134,7 +134,21 @@ describe('discoverPageRoutes over this repository', () => {
     // run, so an unmapped one must surface here instead.
     const unmapped = routes
       .filter((r) => r.params.length > 0)
-      .filter((r) => fillRoute(r.pattern, { riders: 'x', contracts: 'x', motorcycles: 'x', rider_applications: 'x', cash_payment_requests: 'x', purchase_requisitions: 'x', payments: 'x' }) === null)
+      .filter(
+        (r) =>
+          fillRoute(r.pattern, {
+            riders: 'x',
+            contracts: 'x',
+            motorcycles: 'x',
+            rider_applications: 'x',
+            cash_payment_requests: 'x',
+            purchase_requisitions: 'x',
+            payments: 'x',
+            contract_completion_requests: 'x',
+            departments: 'x',
+            profiles: 'x',
+          }) === null,
+      )
       .map((r) => r.pattern);
     expect(unmapped).toEqual([]);
   });

@@ -49,6 +49,13 @@ export type ContractDetail = {
   payment_days_target: number | null;
   /** First lease obligation date — later than start_date when a phone is financed. */
   lease_start_date: string | null;
+  /* Set by a completion sign-off (0034). While non-null the contract's terms
+     are frozen and a change needs a recorded amendment (client feedback #10). */
+  locked_at: string | null;
+  lock_reason: string | null;
+  completion_request_id: string | null;
+  /* Non-null while the lease is paused for an active phone loan (0031). */
+  lease_paused_for_loan_id: string | null;
   phone_loan: {
     id: string;
     principal: number;
@@ -216,6 +223,10 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
     ownership_transfer_notes: (raw.ownership_transfer_notes as string) ?? null,
     start_date: (raw.start_date as string) ?? null,
     end_date: (raw.end_date as string) ?? null,
+    locked_at: (raw.locked_at as string) ?? null,
+    lock_reason: (raw.lock_reason as string) ?? null,
+    completion_request_id: (raw.completion_request_id as string) ?? null,
+    lease_paused_for_loan_id: (raw.lease_paused_for_loan_id as string) ?? null,
     duration_months: (raw.duration_months as number) ?? null,
     duration_years: (raw.duration_years as number) ?? 0,
     duration_weeks: (raw.duration_weeks as number) ?? 0,

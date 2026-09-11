@@ -5,6 +5,153 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-045 · A locked record is amended, never edited (2026-09-11)
+
+Client feedback #10: "after completion and final print, contract and
+registration details should become locked; any change should require a special
+amendment process, not normal editing."
+
+`contracts.locked_at` and `motorcycles.locked_at` (migration `0034`) are that
+line, set by the completion sign-off. While non-null, triggers refuse any change
+to the contract's terms or the motorcycle's registration identity — plate,
+chassis, engine and internal code — while still allowing bookkeeping columns to
+move.
+
+The amendment is deliberately NOT an owner override flag. `unlockContractForAmendment`
+demands a reason, writes the audit row BEFORE unlocking, and leaves the reason on
+the row. The whole difference between amending a completed contract and quietly
+editing one is that an amendment leaves a trace, so the trace is the mechanism.
+
+Unlocking does not reverse the completion, reissue the certificate or undo the
+ownership transfer: those record things that happened.
+
+---
+
+## D-044 · The end-of-contract chain is a table of statuses, not a flag (2026-09-11)
+
+Client feedback #6. Twelve statuses (`contract_completion_status`, migration
+`0034`) because each one names a different person's desk, and the chain crosses
+three roles plus an outside process — the registration transfer — that takes
+days. The statuses ARE the handover protocol; a pair of booleans would make
+"where is this request?" a question you answer by reading code.
+
+Two invariants are enforced in the DATABASE as well as in
+`lib/completion/machine.ts`, because the client asked for a control and a
+control that lives only in application code is an assumption:
+
+1. the Director cannot approve completion unless `finance_cleared` is true;
+2. a request cannot reach `completed` without an approval, a sign-off, AND a
+   live re-check that the rider owes nothing.
+
+Point 2's re-check matters: finance clears a balance that was true when they
+looked, and days accrue. The outstanding figure is recomputed from the ledger at
+the clearance, again at the approval, and a third time inside the trigger at
+sign-off — the last point at which a mistake is still cheap.
+`finance_outstanding_snapshot` is kept as EVIDENCE of what was decided and is
+never read back as the current balance.
+
+`contractCompletionTask` now stands down for any contract with an open request,
+so the nightly sweep cannot race the Director's sign-off.
+
+---
+
+## D-043 · A phone loan pauses the lease by POSTPONING days, one at a time (2026-09-11)
+
+Client feedback #13: "motorcycle collections pause… when the phone loan is fully
+completed, motorcycle collections resume automatically."
+
+Nothing is written off. A lease day falling during the pause is postponed — the
+original obligation kept in history as `postponed`, an identical replacement
+created after the end of the calendar — exactly as an approved postponement has
+worked since `0015`. One day out, one day in, same amount, so the contract total
+cannot drift and every derived figure follows on its own.
+
+Three consequences that make this the safe design:
+
+* **Arrears are not paused.** Only `scheduled` days move. A day the rider had
+  already failed to pay stays overdue; pausing it would forgive a real debt.
+* **Days move ONE AT A TIME, as they fall due**, from `phoneLoanLeasePauseTask`
+  — which runs BEFORE the status sweep, so a day about to be postponed is never
+  first announced to the rider as owing. An early repayment therefore needs no
+  unwinding: the flag clears and the next morning's day is simply not postponed.
+  There is no projected resume date anywhere that could turn out to be wrong.
+* **Resumption is immediate, not nightly.** `completePhoneLoansFor` runs from
+  every settlement path — webhook, status poll, reconcile cron, confirmed cash —
+  so the lease resumes in the same breath as the final instalment. The nightly
+  sweep is only a backstop for a loan closed by waiver rather than payment.
+
+Phone instalments remain ordinary obligations carrying `kind='phone_loan'`
+(0026). That is what stops a phone loan corrupting a motorcycle balance: there
+is one ledger, and it was already whole.
+
+---
+
+## D-042 · Three orthogonal axes on a requisition, not one longer enum (2026-09-11)
+
+Client feedback #14 lists nine "statuses". They are not nine values of one
+thing; they are three independent facts, and migration `0033` keeps them apart
+for the reason D-039 gave when it refused to fold payment into status:
+
+    status            what the Director decided      (0028)
+    payment_status    whether the money moved        (0029)
+    retirement_status whether it has been accounted  (0033)
+
+One enum carrying all three makes `approved` ambiguous and silently breaks every
+existing `status = 'approved'` check. `requisitionFullStageLabel()` derives the
+single sentence a human reads. Only `under_review` is genuinely a new DECISION
+state, so only it was added to the enum — in its own migration (`0032`), because
+Postgres refuses to use a new label in the transaction that created it (the
+0024/0025 split).
+
+`retired_amount` is stored SEPARATELY from the approved total and never
+overwrites it: a purchase that came in under or over budget reports the variance
+while the Director's authorisation stays exactly as they signed it (spec rule 6).
+
+---
+
+## D-041 · Requisitions are excluded from the cashflow net balance (2026-09-11)
+
+Client feedback #4 asks for a period statement of "income received, expenses
+made, requisitions made, net balance". `net` is income minus RECORDED EXPENSES,
+and requisitions are reported alongside without entering it.
+
+Putting them in the expense column would be wrong twice: an approved requisition
+is an AUTHORISATION, not a cost — the money may not have moved, or may come back
+unspent — and when it IS spent the accountant retires it into a department
+expense, which is already in the net. Counting both double-counts every purchase,
+and the error compounds monthly.
+
+`commitmentsOutstanding` (approved − paid) is the figure the Director actually
+wants from requisitions: authorised money that has not yet left. The report page
+says all of this in a box, because a reader who does not know it will assume the
+opposite.
+
+---
+
+## D-040 · Two expense ledgers, one department total (2026-09-11)
+
+Client feedback #2 adds department budgets. `motorcycle_expenses` is NOT
+migrated or absorbed into the new `department_expenses`: it has live history, a
+per-motorcycle meaning, and it feeds the cash-operating-margin report — and
+rewriting money history to fit a new shape is what spec rule 6 forbids.
+
+Instead it gains a nullable `department_id`, and a department's spend is defined
+as `sum(department_expenses for D) + sum(motorcycle_expenses tagged D)`. Every
+row lives in exactly one table, so no expense can be counted twice however it is
+tagged.
+
+Nothing derived is stored (D-034 rule 3): there is no `spent` and no `remaining`
+column. A budget row holds only what a human allocated; the rest is computed on
+read by `lib/departments/compute.ts`. A budget is also a PERIOD, not a year
+field — expenses match it by DATE, so nobody has to keep a "Q1" label spelled
+the same way in two places.
+
+Expenses with no department are surfaced separately by `untagged()` rather than
+folded into "Other": the Director needs to see how much of the books is
+unclassified.
+
+---
+
 ## D-039 · Approving a purchase and paying for it are separate acts (2026-09-06)
 
 Migration `0029` adds a payment stage — unpaid / processing / paid — that only

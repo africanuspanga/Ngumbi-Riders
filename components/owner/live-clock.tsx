@@ -38,18 +38,37 @@ function getSnapshot(): string {
 export function LiveClock({
   initialDate,
   initialTime,
+  variant = 'page',
 }: {
   initialDate: string;
   initialTime: string;
+  /**
+   * 'band' drops the date and the city — inside the dashboard hero both are
+   * already stated beside it, and repeating them makes a corner readout into a
+   * paragraph. A plain string, not a style object: only components cross the
+   * client/server boundary (spec rule 16).
+   */
+  variant?: 'page' | 'band';
 }) {
   const serverSnapshot = `${initialDate}|${initialTime}`;
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, () => serverSnapshot);
   const [date, time] = snapshot.split('|');
 
+  if (variant === 'band') {
+    return (
+      <p
+        className="font-display text-lg font-medium leading-tight text-white sm:text-xl"
+        suppressHydrationWarning
+      >
+        {time}
+      </p>
+    );
+  }
+
   return (
     <div className="text-right leading-tight">
       <p className="text-muted-foreground text-xs sm:text-sm">{date}</p>
-      <p className="text-base font-semibold tabular-nums sm:text-lg" suppressHydrationWarning>
+      <p className="font-display text-base font-medium sm:text-lg" suppressHydrationWarning>
         {time}
       </p>
       <p className="text-muted-foreground text-[10px] tracking-wide uppercase">Dar es Salaam</p>

@@ -11,6 +11,8 @@ import {
   CalendarOffIcon,
   ChevronRightIcon,
   CheckCircle2Icon,
+  SmartphoneIcon,
+  AwardIcon,
 } from 'lucide-react';
 
 /*
@@ -152,7 +154,9 @@ export default async function RiderHome() {
             </CardContent>
           </Card>
 
-          {/* Quick actions not covered by the bottom nav */}
+          {/* Quick actions not covered by the bottom nav. The bottom bar is a
+              five-column grid sized for a thumb on a small screen, so a sixth
+              tab would shrink every target rather than add one. */}
           <div className="grid grid-cols-2 gap-3">
             <QuickAction
               href="/rider/incidents/new"
@@ -163,6 +167,16 @@ export default async function RiderHome() {
               href="/rider/exemptions"
               label="Misamaha"
               icon={<CalendarOffIcon className="size-5" />}
+            />
+            <QuickAction
+              href="/rider/loans"
+              label="Mkopo wa simu"
+              icon={<SmartphoneIcon className="size-5" />}
+            />
+            <QuickAction
+              href="/rider/completion"
+              label="Kumaliza mkataba"
+              icon={<AwardIcon className="size-5" />}
             />
           </div>
 

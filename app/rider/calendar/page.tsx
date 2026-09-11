@@ -1,3 +1,4 @@
+import { OBLIGATION_STATUS_LABELS_SW } from '@/lib/payments/labels';
 import Link from 'next/link';
 import { requireRider } from '@/lib/auth/session';
 import { getRiderCalendar } from '@/lib/dashboard/queries';
@@ -24,17 +25,10 @@ const LEGEND: { color: CalendarColor; label: string }[] = [
   { color: 'neutral', label: 'Ijayo' },
 ];
 
-// Rider-facing: Swahili labels, never raw status enums (spec §36.11).
-const STATUS_LABEL: Record<string, string> = {
-  scheduled: 'Ijayo',
-  due: 'Ya leo',
-  overdue: 'Deni',
-  paid: 'Imelipwa',
-  paid_in_advance: 'Malipo ya awali',
-  exempted: 'Msamaha',
-  postponed: 'Imeahirishwa',
-  cancelled: 'Imeghairiwa',
-};
+// Rider-facing: Swahili labels, never raw status enums (spec §36.11). The
+// table now lives in lib/payments/labels.ts, shared with the phone-loan
+// instalment list so the two screens cannot drift apart.
+const STATUS_LABEL = OBLIGATION_STATUS_LABELS_SW;
 
 // Sunday-first, matching getUTCDay().
 const WEEKDAYS = ['Jpi', 'Jtt', 'Jnn', 'Jtn', 'Alh', 'Ijm', 'Jms'];

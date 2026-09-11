@@ -77,3 +77,25 @@ docs/           MIGRATION_PLAN ROUTE_MAP RLS_MATRIX      ← engineering docs
 
 Organised by business feature, not only technical file type. `lib/snippe`,
 `lib/resend`, `lib/pdf`, `lib/exports`, `lib/jobs` are added in their phases.
+
+
+---
+
+## Client-feedback build #4 (2026-09-11) — new routes
+
+| Route | Role | What it is |
+| --- | --- | --- |
+| `/owner/departments`, `/owner/departments/[id]` | owner | Budget board: create departments, assign budgets, record spend, see remaining. |
+| `/accountant/departments`, `/accountant/departments/[id]` | accountant | The same board, spend-recording only — budgets are the Director's. |
+| `/owner/phone-loans` | owner | Phone-loan portfolio + every request; the Director's own decision point is the purchase requisition. |
+| `/accountant/phone-loans` | accountant | Finance's worklist: review, raise the requisition, mark purchased, activate. |
+| `/owner/completions`, `/owner/completions/[id]` | owner | End-of-contract queue: approve completion (issues the certificate) and sign off the transfer. |
+| `/accountant/completions`, `/accountant/completions/[id]` | accountant | Finance's two steps: confirm the rider owes nothing, and handle the ownership transfer. |
+| `/owner/staff-profiles`, `/owner/staff-profiles/[id]` | owner | Staff HR records and their review. |
+| `/accountant/profile` | accountant | An employee's own HR record. |
+| `/rider/loans` | rider | Ask for a phone loan, see the terms before submitting, track repayment (Swahili). |
+| `/rider/completion` | rider | Ask to finish the contract; download the certificate (Swahili). |
+| `/api/completions/certificates/[id]` | rider + staff | Signed certificate download. A rider may fetch their OWN and nobody else's. |
+| `/api/completions/transfer-documents/[id]` | staff | Signed ownership-transfer document. Staff only — the rider receives the physical copy. |
+| `/api/staff/certificates/[id]` | owner + self | Signed staff certificate. The Director reads anyone's; everybody else only their own. |
+| `/api/reports/{cashflow,income,expense-ledger,requisitions}/export` | owner + accountant | CSV/XLSX, scoped by the SAME filter set the report page uses. |

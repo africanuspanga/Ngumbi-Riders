@@ -33,6 +33,11 @@ export type Permission =
   | 'reports.export'
   | 'notes.read'
   | 'requisitions.read'
+  | 'departments.read'
+  | 'budgets.read'
+  | 'phone_loans.read'
+  | 'completion.read'
+  | 'staff_profiles.read'
   | 'applications.read'
   | 'incidents.read'
   | 'exemptions.read'
@@ -52,6 +57,34 @@ export type Permission =
   // different acts, and only the owner holds the second.
   | 'requisitions.pay'
   | 'expenses.write'
+  // The GENERAL operating ledger (0030), as distinct from 'expenses.write',
+  // which is the motorcycle ledger. Bookkeeping the business's own spend is
+  // the accountant's daily job; attaching a cost to a specific motorcycle
+  // changes that motorcycle's margin and stays with the owner.
+  | 'expenses.record'
+  // Creating a cost centre and setting its budget is the Director's act. An
+  // accountant who could raise their own budget could authorise their own
+  // spending, which is the separation 'requisitions.decide' exists to keep.
+  | 'departments.write'
+  | 'budgets.write'
+  // Phone loans: finance prepares (raises the requisition, records the
+  // purchase), the Director decides. Same split as requisitions.
+  | 'phone_loans.review'
+  | 'phone_loans.decide'
+  // Accounting for money already released against an approved requisition.
+  | 'requisitions.retire'
+  // End-of-contract completion. Three distinct acts, three permissions, so
+  // the chain cannot be short-circuited by whoever happens to be logged in:
+  //   review   finance confirms the rider owes nothing
+  //   transfer finance handles and uploads the ownership transfer
+  //   decide   the Director approves completion and signs off
+  | 'completion.review'
+  | 'completion.transfer'
+  | 'completion.decide'
+  // Staff records. An employee may maintain their own profile; only the
+  // Director approves it or changes an employment status.
+  | 'staff_profiles.write'
+  | 'staff_profiles.review'
   | 'applications.write'
   | 'incidents.write'
   | 'exemptions.decide'
@@ -82,6 +115,11 @@ const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   'reports.export',
   'notes.read',
   'requisitions.read',
+  'departments.read',
+  'budgets.read',
+  'phone_loans.read',
+  'completion.read',
+  'staff_profiles.read',
   'exemptions.read',
   // The three things they may change: record an authorised manual payment, add
   // an internal financial note (append-only), and raise a purchase requisition
@@ -93,6 +131,20 @@ const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   'payments.record',
   'notes.write',
   'requisitions.write',
+  // Recording what the business spent, and accounting for approved money
+  // afterwards. Neither creates authority to spend: 'departments.write' and
+  // 'budgets.write' (setting the budget) and 'requisitions.decide' and
+  // 'requisitions.pay' (approving and releasing money) are all absent.
+  'expenses.record',
+  'requisitions.retire',
+  // Finance's two steps in the end-of-contract chain. 'completion.decide' is
+  // NOT here: the Director approves completion and signs off the transfer.
+  'completion.review',
+  'completion.transfer',
+  // Finance prepares a phone-loan request for decision; it cannot approve one.
+  'phone_loans.review',
+  // An employee maintains their own staff record; the Director approves it.
+  'staff_profiles.write',
 ] as const;
 
 const RIDER_PERMISSIONS: readonly Permission[] = [] as const;

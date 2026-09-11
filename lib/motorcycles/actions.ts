@@ -152,6 +152,26 @@ export async function setMotorcycleRegistration(
   const normalized = normalizeRegistration(value);
 
   const admin = createAdminClient();
+
+  /*
+   * A TRANSFERRED motorcycle's registration identity is locked (client
+   * feedback #10, migration 0034). Once a contract has been signed off and
+   * ownership has moved to the rider, the plate on our record is the plate on
+   * the transfer document we handed over; changing it would make the two
+   * disagree with no trace.
+   *
+   * The 0034 trigger refuses this write anyway — checking here turns a raised
+   * exception into a sentence, and names the fix (an amendment).
+   */
+  const { data: existing } = await admin
+    .from('motorcycles')
+    .select('id, locked_at')
+    .eq('id', id)
+    .maybeSingle();
+  const moto = existing as { id: string; locked_at: string | null } | null;
+  if (!moto) return { ok: false, error: 'not_found' };
+  if (moto.locked_at) return { ok: false, error: 'locked' };
+
   const { data: updated, error } = await admin
     .from('motorcycles')
     .update({ registration_number: normalized })

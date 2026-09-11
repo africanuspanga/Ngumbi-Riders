@@ -5,9 +5,12 @@ import { requisitionTotal, lineAmount } from './compute';
 import type {
   RequisitionBudgetCover,
   RequisitionDepartment,
+  RequisitionDocType,
   RequisitionItemCategory,
   RequisitionStatus,
   RequisitionPaymentStatus,
+  RequisitionRetirementStatus,
+  RequisitionType,
   RequisitionUnit,
 } from './constants';
 
@@ -38,6 +41,8 @@ export type RequisitionDocumentRow = {
   mimeType: string;
   sizeBytes: number;
   createdAt: string;
+  /** What the file IS: quotation, invoice, proof of payment, receipt (0033). */
+  docType: RequisitionDocType;
 };
 
 export type RequisitionSummary = {
@@ -54,6 +59,16 @@ export type RequisitionSummary = {
   paymentMarkedByName: string | null;
   paymentMarkedAt: string | null;
   paymentNote: string | null;
+  /* Whether money already released has been accounted for (0033). The third
+     independent axis after the decision and the payment. */
+  retirementStatus: RequisitionRetirementStatus;
+  retiredByName: string | null;
+  retiredAt: string | null;
+  retiredAmount: number | null;
+  retirementNote: string | null;
+  requisitionType: RequisitionType;
+  departmentId: string | null;
+  phoneLoanRequestId: string | null;
   total: number;
   itemCount: number;
   requestedById: string;
@@ -96,6 +111,14 @@ type RawRequisition = {
   payment_marked_by: string | null;
   payment_marked_at: string | null;
   payment_note: string | null;
+  retirement_status: string | null;
+  retired_by: string | null;
+  retired_at: string | null;
+  retired_amount: number | null;
+  retirement_note: string | null;
+  requisition_type: string | null;
+  department_id: string | null;
+  phone_loan_request_id: string | null;
   created_at: string;
   requisition_items: {
     id: string;
@@ -113,6 +136,8 @@ const SELECT =
   'id, requisition_number, title, description, department, fiscal_year, request_date, currency, ' +
   'payment_information, status, approver_id, requested_by, submitted_at, decided_by, decided_at, ' +
   'decision_note, payment_status, payment_marked_by, payment_marked_at, payment_note, ' +
+  'retirement_status, retired_by, retired_at, retired_amount, retirement_note, ' +
+  'requisition_type, department_id, phone_loan_request_id, ' +
   'created_at, requisition_items(id, position, description, category, quantity, unit, unit_price, budget_cover)';
 
 /** Display names for a set of profile ids, in one query. */
@@ -166,6 +191,14 @@ function toSummary(raw: RawRequisition, names: Map<string, string>): Requisition
       : null,
     paymentMarkedAt: raw.payment_marked_at,
     paymentNote: raw.payment_note,
+    retirementStatus: (raw.retirement_status ?? 'not_started') as RequisitionRetirementStatus,
+    retiredByName: raw.retired_by ? (names.get(raw.retired_by) ?? null) : null,
+    retiredAt: raw.retired_at,
+    retiredAmount: raw.retired_amount,
+    retirementNote: raw.retirement_note,
+    requisitionType: (raw.requisition_type ?? 'general') as RequisitionType,
+    departmentId: raw.department_id,
+    phoneLoanRequestId: raw.phone_loan_request_id,
     total: requisitionTotal(items),
     itemCount: items.length,
     requestedById: raw.requested_by,
@@ -205,7 +238,13 @@ export async function listRequisitions(options?: {
   const rows = (data ?? []) as unknown as RawRequisition[];
   const names = await profileNames(
     supabase,
-    rows.flatMap((r) => [r.requested_by, r.approver_id, r.decided_by, r.payment_marked_by]),
+    rows.flatMap((r) => [
+      r.requested_by,
+      r.approver_id,
+      r.decided_by,
+      r.payment_marked_by,
+      r.retired_by,
+    ]),
   );
   return rows.map((r) => toSummary(r, names));
 }
@@ -223,10 +262,16 @@ export async function getRequisition(id: string): Promise<RequisitionDetail | nu
   const raw = data as unknown as RawRequisition;
 
   const [names, docs] = await Promise.all([
-    profileNames(supabase, [raw.requested_by, raw.approver_id, raw.decided_by, raw.payment_marked_by]),
+    profileNames(supabase, [
+      raw.requested_by,
+      raw.approver_id,
+      raw.decided_by,
+      raw.payment_marked_by,
+      raw.retired_by,
+    ]),
     supabase
       .from('requisition_documents')
-      .select('id, file_name, mime_type, size_bytes, created_at')
+      .select('id, file_name, mime_type, size_bytes, created_at, doc_type')
       .eq('requisition_id', id)
       .order('created_at', { ascending: true }),
   ]);
@@ -244,12 +289,15 @@ export async function getRequisition(id: string): Promise<RequisitionDetail | nu
       mime_type: string;
       size_bytes: number;
       created_at: string;
+      doc_type: string | null;
     }[]).map((d) => ({
       id: d.id,
       fileName: d.file_name,
       mimeType: d.mime_type,
       sizeBytes: d.size_bytes,
       createdAt: d.created_at,
+      // Rows written before 0033 carry no kind; they are all quotations.
+      docType: (d.doc_type ?? 'supporting') as RequisitionDocType,
     })),
   };
 }

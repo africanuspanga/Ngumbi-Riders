@@ -36,18 +36,26 @@ export function requisitionTotal(lines: readonly RequisitionLine[]): number {
 /*
  * Allowed status transitions.
  *
- *   draft     -> submitted            (the accountant sends it up)
- *   draft     -> cancelled            (abandoned before it was ever seen)
- *   submitted -> approved | rejected  (the Director's decision — theirs alone)
- *   submitted -> cancelled            (the accountant withdraws it)
+ *   draft        -> submitted             (the accountant sends it up)
+ *   draft        -> cancelled             (abandoned before it was ever seen)
+ *   submitted    -> under_review          (the Director picks it up)
+ *   submitted    -> approved | rejected   (the Director's decision — theirs alone)
+ *   submitted    -> cancelled             (the accountant withdraws it)
+ *   under_review -> approved | rejected   (the decision, after looking)
+ *   under_review -> cancelled             (withdrawn while being looked at)
  *
  * approved, rejected and cancelled are terminal: a decided request is a record
  * of what was authorised and is never reopened (spec rule 6). Re-deciding
  * means raising a new request, which leaves both on file.
+ *
+ * 'under_review' (0032) is an OPTIONAL waypoint, never a required one: a
+ * Director who wants to approve immediately still can, so the queue never
+ * grows an extra click for the common case.
  */
 const TRANSITIONS: Record<RequisitionStatus, readonly RequisitionStatus[]> = {
   draft: ['submitted', 'cancelled'],
-  submitted: ['approved', 'rejected', 'cancelled'],
+  submitted: ['under_review', 'approved', 'rejected', 'cancelled'],
+  under_review: ['approved', 'rejected', 'cancelled'],
   approved: [],
   rejected: [],
   cancelled: [],
@@ -69,7 +77,7 @@ export function isClosed(status: RequisitionStatus): boolean {
 
 /** True when the request is sitting on the Managing Director's desk. */
 export function awaitsDecision(status: RequisitionStatus): boolean {
-  return status === 'submitted';
+  return status === 'submitted' || status === 'under_review';
 }
 
 /* ------------------------------------------------------------------------ *

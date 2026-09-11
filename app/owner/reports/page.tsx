@@ -1,6 +1,16 @@
 import Link from 'next/link';
 import { requireOwner } from '@/lib/auth/session';
-import { getCollectionReport, getArrearsReport, getFinancialReport } from '@/lib/reports/queries';
+import {
+  getCollectionReport,
+  getArrearsReport,
+  getFinancialReport,
+  getCashflowReport,
+} from '@/lib/reports/queries';
+import { parseFilters, filtersToQuery } from '@/lib/reports/cashflow';
+import { listRiders } from '@/lib/riders/queries';
+import { listMotorcycles } from '@/lib/motorcycles/queries';
+import { ReportFilterBar } from '@/components/reports/ReportFilterBar';
+import { CashflowSections } from '@/components/reports/CashflowSections';
 import { localDateString } from '@/lib/dates/tz';
 import { formatTZS } from '@/lib/money/format';
 import { formatDate, formatDateRange } from '@/lib/dates/format';
@@ -11,20 +21,28 @@ export const metadata = { title: 'Reports' };
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
   await requireOwner();
   const sp = await searchParams;
-  const to = sp.to ?? localDateString();
-  const from = sp.from ?? `${to.slice(0, 7)}-01`;
+  const today = localDateString();
+  // One parser for the whole filter set (dates, department, rider, motorcycle,
+  // payment type, requisition type), so the page and every export link below
+  // are scoped identically — a filter that applies on screen but not in the
+  // downloaded file is the worst kind of report bug.
+  const filters = parseFilters(sp, { from: `${today.slice(0, 7)}-01`, to: today });
+  const { from, to } = filters;
 
-  const [collections, arrears, financial] = await Promise.all([
+  const [collections, arrears, financial, cashflow, riders, motorcycles] = await Promise.all([
     getCollectionReport(from, to),
     getArrearsReport(),
     getFinancialReport(from, to),
+    getCashflowReport(filters),
+    listRiders(),
+    listMotorcycles(),
   ]);
   const rate = collections.collectionRate === null ? '—' : `${Math.round(collections.collectionRate * 100)}%`;
-  const q = `?from=${from}&to=${to}`;
+  const q = filtersToQuery(filters);
 
   return (
     <div className="flex flex-col gap-6">
@@ -33,20 +51,23 @@ export default async function ReportsPage({
         <p className="text-sm text-muted-foreground">All amounts in TZS · Africa/Dar_es_Salaam.</p>
       </header>
 
-      {/* Date range */}
-      <form className="flex flex-wrap items-end gap-3 rounded-[--radius-card] border border-border bg-white p-4">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-muted-foreground">From</span>
-          <input type="date" name="from" defaultValue={from} className="input" />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-muted-foreground">To</span>
-          <input type="date" name="to" defaultValue={to} className="input" />
-        </label>
-        <button type="submit" className="rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover">
-          Apply
-        </button>
-      </form>
+      <ReportFilterBar
+        filters={filters}
+        departments={cashflow.departments}
+        riders={riders.map((r) => ({
+          id: r.id,
+          label: `${r.first_name} ${r.last_name} (${r.rider_number})`,
+        }))}
+        motorcycles={motorcycles.map((m) => ({
+          id: m.id,
+          label: m.registration_number
+            ? `${m.motorcycle_number} · ${m.registration_number}`
+            : m.motorcycle_number,
+        }))}
+      />
+
+      {/* Income, expenses, requisitions and the period statement (#4). */}
+      <CashflowSections report={cashflow} basePath="/owner" />
 
       {/* Collections */}
       <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
@@ -196,8 +217,11 @@ export default async function ReportsPage({
         )}
       </section>
 
+      {/* The motorcycle-only expense ledger keeps its own export: it is the
+          input to the per-motorcycle margin, which the department view does
+          not replace. */}
       <section className="flex items-center justify-between rounded-[--radius-card] border border-border bg-white p-4">
-        <h2 className="font-semibold text-primary-dark">Expenses ({from} → {to})</h2>
+        <h2 className="font-semibold text-primary-dark">Motorcycle expense ledger</h2>
         <div className="flex items-center gap-3">
           <Link href="/owner/expenses" className="text-sm font-medium text-primary underline">Manage expenses</Link>
           <ExportLinks report="expenses" q={q} />

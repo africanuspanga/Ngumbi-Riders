@@ -3,7 +3,27 @@ import ExcelJS from 'exceljs';
 import { checkPermission } from '@/lib/auth/session';
 import { localDateString } from '@/lib/dates/tz';
 import { toCsv, type CsvCell } from '@/lib/reports/csv';
-import { getCollectionReport, getArrearsReport, getExpenseReport, getFinancialReport } from '@/lib/reports/queries';
+import {
+  getCollectionReport,
+  getArrearsReport,
+  getExpenseReport,
+  getFinancialReport,
+  getCashflowReport,
+} from '@/lib/reports/queries';
+import { parseFilters, type ReportFilters } from '@/lib/reports/cashflow';
+import { EXPENSE_SOURCE_LABELS } from '@/lib/reports/filter-labels';
+import {
+  ITEM_CATEGORY_LABELS,
+  REQUISITION_STATUS_LABELS,
+  REQUISITION_TYPE_LABELS,
+  PAYMENT_STATUS_LABELS,
+  RETIREMENT_STATUS_LABELS,
+  type RequisitionItemCategory,
+  type RequisitionPaymentStatus,
+  type RequisitionRetirementStatus,
+  type RequisitionStatus,
+  type RequisitionType,
+} from '@/lib/requisitions/constants';
 import { getRiderStatement } from '@/lib/payments/queries';
 import { formatDate } from '@/lib/dates/format';
 import { methodLabel } from '@/lib/payments/statement';
@@ -23,7 +43,140 @@ async function buildTable(
   from: string,
   to: string,
   riderId: string | null,
+  filters: ReportFilters,
 ): Promise<Table | null> {
+  /*
+   * The four report families added for client feedback #4. Each one is built
+   * from getCashflowReport(filters) — the SAME call the report page makes —
+   * so an export can never be scoped differently from the screen it was
+   * downloaded from.
+   */
+  if (report === 'cashflow' || report === 'income' || report === 'expense-ledger' || report === 'requisitions') {
+    const r = await getCashflowReport(filters);
+    const st = r.statement;
+
+    if (report === 'income') {
+      return {
+        title: `Income ${from}..${to}`,
+        headers: ['Date', 'Rider #', 'Rider', 'Method', 'Received by', 'Receipt', 'Amount'],
+        rows: [
+          ...r.transactions.map((t) => [
+            formatDate(t.date),
+            t.riderNumber,
+            t.riderName,
+            methodLabel(t.method),
+            t.receivedByName ?? '',
+            t.receiptNumber ?? '',
+            t.amount,
+          ]),
+          [],
+          ['TOTAL', '', '', '', '', '', st.income.total],
+          ['Snippe (mobile money)', '', '', '', '', '', st.income.mobile],
+          ['Cash', '', '', '', '', '', st.income.cash],
+        ],
+      };
+    }
+
+    if (report === 'expense-ledger') {
+      return {
+        title: `Expenses ${from}..${to}`,
+        headers: ['Date', 'Department', 'Category', 'Description', 'Source', 'Supplier', 'Amount'],
+        rows: [
+          ...r.expenses.map((e) => [
+            formatDate(e.date),
+            e.departmentId
+              ? (r.departments.find((d) => d.id === e.departmentId)?.name ?? '')
+              : 'Not assigned',
+            ITEM_CATEGORY_LABELS[e.category as RequisitionItemCategory] ?? e.category,
+            e.description,
+            EXPENSE_SOURCE_LABELS[e.source] + (e.motorcycleLabel ? ` ${e.motorcycleLabel}` : ''),
+            e.supplier ?? '',
+            e.amount,
+          ]),
+          [],
+          ['TOTAL', '', '', '', '', '', st.expenses.total],
+          [],
+          ['By department', '', '', '', '', '', ''],
+          ...st.expenses.byDepartment.map((d) => [d.name, '', '', '', '', d.count, d.amount]),
+          [],
+          ['By category', '', '', '', '', '', ''],
+          ...st.expenses.byCategory.map((c) => [
+            ITEM_CATEGORY_LABELS[c.category as RequisitionItemCategory] ?? c.category,
+            '',
+            '',
+            '',
+            '',
+            c.count,
+            c.amount,
+          ]),
+        ],
+      };
+    }
+
+    if (report === 'requisitions') {
+      return {
+        title: `Requisitions ${from}..${to}`,
+        headers: [
+          'Number',
+          'Date',
+          'Title',
+          'Type',
+          'Department',
+          'Status',
+          'Payment',
+          'Retirement',
+          'Approved amount',
+          'Actual spend',
+        ],
+        rows: [
+          ...r.requisitions.map((q) => [
+            q.requisitionNumber,
+            formatDate(q.date),
+            q.title,
+            REQUISITION_TYPE_LABELS[q.requisitionType as RequisitionType] ?? q.requisitionType,
+            q.departmentName,
+            REQUISITION_STATUS_LABELS[q.status as RequisitionStatus] ?? q.status,
+            PAYMENT_STATUS_LABELS[q.paymentStatus as RequisitionPaymentStatus] ?? q.paymentStatus,
+            RETIREMENT_STATUS_LABELS[q.retirementStatus as RequisitionRetirementStatus] ??
+              q.retirementStatus,
+            q.total,
+            q.retiredAmount ?? '',
+          ]),
+          [],
+          ['Raised', '', '', '', '', '', '', st.requisitions.raisedCount, st.requisitions.raised, ''],
+          ['Approved', '', '', '', '', '', '', st.requisitions.approvedCount, st.requisitions.approved, ''],
+          ['Paid', '', '', '', '', '', '', st.requisitions.paidCount, st.requisitions.paid, ''],
+          ['Retired', '', '', '', '', '', '', st.requisitions.retiredCount, '', st.requisitions.retired],
+          ['Approved but unpaid', '', '', '', '', '', '', '', st.requisitions.commitmentsOutstanding, ''],
+        ],
+      };
+    }
+
+    // cashflow — the period statement itself.
+    return {
+      title: `Cashflow ${from}..${to}`,
+      headers: ['Line', 'Count', 'Amount'],
+      rows: [
+        ['Income received', st.income.count, st.income.total],
+        ['  Snippe (mobile money)', '', st.income.mobile],
+        ['  Cash', '', st.income.cash],
+        ['Expenses made', st.expenses.count, st.expenses.total],
+        ...st.expenses.byDepartment.map((d) => [`  ${d.name}`, d.count, d.amount]),
+        ['NET BALANCE (income − expenses)', '', st.net],
+        [],
+        ['Requisitions are authorisations, not costs — excluded from net', '', ''],
+        ['Requisitions raised', st.requisitions.raisedCount, st.requisitions.raised],
+        ['Requisitions approved', st.requisitions.approvedCount, st.requisitions.approved],
+        ['Requisitions paid', st.requisitions.paidCount, st.requisitions.paid],
+        ['Requisitions retired', st.requisitions.retiredCount, st.requisitions.retired],
+        ['Approved but not yet paid', '', st.requisitions.commitmentsOutstanding],
+        [],
+        ['Month', 'Income', 'Expenses'],
+        ...st.byMonth.map((m) => [m.month, m.income, m.expenses]),
+      ],
+    };
+  }
+
   // General financial report — the bank-statement export the owner asked for:
   // every transaction, then a per-rider contribution summary in the same sheet.
   if (report === 'financial') {
@@ -143,7 +296,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ repo
   const riderParam = url.searchParams.get('rider');
   const riderId =
     riderParam && /^[0-9a-f-]{36}$/i.test(riderParam) ? riderParam : null;
-  const table = await buildTable(report, from, to, riderId);
+  const filters = parseFilters(
+    Object.fromEntries(url.searchParams.entries()),
+    { from, to },
+  );
+  const table = await buildTable(report, from, to, riderId, filters);
   if (!table) return NextResponse.json({ error: 'unknown_report' }, { status: 404 });
 
   const filename = `${report.replace(/[^\w-]/g, '')}-${from}_${to}`;

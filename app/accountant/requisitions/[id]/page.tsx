@@ -4,8 +4,14 @@ import { requireAccountant } from '@/lib/auth/session';
 import { getRequisition } from '@/lib/requisitions/queries';
 import { RequisitionView } from '@/components/requisitions/RequisitionView';
 import { RequesterActions } from '@/components/requisitions/RequesterActions';
-import { StatusBadge, PaymentBadge } from '@/components/requisitions/StatusBadge';
+import {
+  StatusBadge,
+  PaymentBadge,
+  RetirementBadge,
+} from '@/components/requisitions/StatusBadge';
 import { RequisitionPdfLink } from '@/components/requisitions/RequisitionPdfLink';
+import { RetirementActions } from '@/components/requisitions/RetirementActions';
+import { listDepartments } from '@/lib/departments/queries';
 import { formatTZS } from '@/lib/money/format';
 
 export const metadata = { title: 'Purchase request' };
@@ -23,7 +29,7 @@ export default async function AccountantRequisitionPage({
 }) {
   const profile = await requireAccountant();
   const { id } = await params;
-  const requisition = await getRequisition(id);
+  const [requisition, departments] = await Promise.all([getRequisition(id), listDepartments()]);
   if (!requisition) notFound();
   if (profile.role !== 'owner' && requisition.requestedById !== profile.userId) notFound();
 
@@ -42,6 +48,10 @@ export default async function AccountantRequisitionPage({
           </h1>
           <StatusBadge status={requisition.status} />
           <PaymentBadge status={requisition.status} paymentStatus={requisition.paymentStatus} />
+          <RetirementBadge
+            status={requisition.status}
+            retirementStatus={requisition.retirementStatus}
+          />
           <RequisitionPdfLink requisitionId={requisition.id} />
         </div>
         <p className="text-muted-foreground text-sm">
@@ -60,6 +70,19 @@ export default async function AccountantRequisitionPage({
         requisition={requisition}
         documentHref={(documentId) => `/api/requisitions/documents/${documentId}`}
       />
+
+      {/* Retirement: account for money the Director has released
+          (client feedback #14). Only ever shown on an approved request. */}
+      {requisition.status === 'approved' && (
+        <RetirementActions
+          requisitionId={requisition.id}
+          approvedTotal={requisition.total}
+          paymentStatus={requisition.paymentStatus}
+          retirementStatus={requisition.retirementStatus}
+          departments={departments.map((d) => ({ id: d.id, name: d.name }))}
+          defaultDepartmentId={requisition.departmentId}
+        />
+      )}
     </div>
   );
 }

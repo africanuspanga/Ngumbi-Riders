@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { requireAccountant } from '@/lib/auth/session';
-import { getOwnerDashboard } from '@/lib/dashboard/queries';
+import { getOwnerDashboard, getCollectionsOverview } from '@/lib/dashboard/queries';
+import { CollectionBalancePanel } from '@/components/owner/collection-balance';
+import { PhoneLoanPanel } from '@/components/loans/PhoneLoanPanel';
+import { getPhoneLoanPortfolio } from '@/lib/loans/queries';
 import { listRequisitionsForDashboard } from '@/lib/requisitions/queries';
 import { StatusBadge } from '@/components/requisitions/StatusBadge';
 import { formatTZS } from '@/lib/money/format';
@@ -15,8 +18,10 @@ export const metadata = { title: 'Accountant dashboard' };
  */
 export default async function AccountantDashboard() {
   const profile = await requireAccountant();
-  const [d, requisitions] = await Promise.all([
+  const [d, collections, phoneLoans, requisitions] = await Promise.all([
     getOwnerDashboard(),
+    getCollectionsOverview(),
+    getPhoneLoanPortfolio(),
     listRequisitionsForDashboard(
       profile.role === 'owner'
         ? { statuses: ['draft', 'submitted'], limit: 8 }
@@ -39,6 +44,10 @@ export default async function AccountantDashboard() {
         <Kpi label="Outstanding today" value={formatTZS(d.kpis.outstandingToday)} tone="warning" />
         <Kpi label="Total arrears" value={formatTZS(d.kpis.totalArrears)} tone="overdue" />
       </section>
+
+      <CollectionBalancePanel overview={collections} basePath="/accountant" />
+
+      <PhoneLoanPanel portfolio={phoneLoans} basePath="/accountant" />
 
       <section className="grid gap-3 md:grid-cols-2">
         <Card title="Riders who have not paid today" href="/accountant/outstanding" cta="See outstanding">

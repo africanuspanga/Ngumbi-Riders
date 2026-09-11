@@ -10,6 +10,7 @@ import { formatDate } from '@/lib/dates/format';
 import { formatTZS } from '@/lib/money/format';
 import { createNotification, notifyOwner, notifyRider } from '@/lib/notifications/service';
 import { enqueueSms, isMobishastraConfigured } from '@/lib/messaging/outbox';
+import { completePhoneLoansFor } from '@/lib/loans/settle';
 
 /*
  * Cash-payment APPROVAL workflow (client feedback 2026-09-05).
@@ -378,6 +379,10 @@ export async function approveCashRequest(
   }
 
   await admin.from('cash_payment_requests').update({ payment_id: paymentId }).eq('id', requestId);
+
+  // A confirmed cash payment can be the one that finishes a phone loan, in
+  // which case the motorcycle lease resumes immediately (client feedback #13).
+  await completePhoneLoansFor(req.obligation_ids);
 
   await writeAudit({
     actorId: actor.userId,

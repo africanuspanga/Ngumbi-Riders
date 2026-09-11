@@ -21,6 +21,10 @@ import {
   CheckCheckIcon,
   ListIcon,
   ClipboardCheckIcon,
+  SmartphoneIcon,
+  WalletIcon,
+  AwardIcon,
+  BriefcaseIcon,
 } from 'lucide-react';
 
 export type SidebarNavItem = {
@@ -49,6 +53,7 @@ export const navGroups: SidebarNavGroup[] = [
       { title: 'Riders', path: '/owner/riders', icon: <UsersIcon /> },
       { title: 'Motorcycles', path: '/owner/motorcycles', icon: <BikeIcon /> },
       { title: 'Contracts', path: '/owner/contracts', icon: <FileTextIcon /> },
+      { title: 'Completions', path: '/owner/completions', icon: <AwardIcon /> },
       { title: 'Applications', path: '/owner/applications', icon: <ClipboardListIcon /> },
     ],
   },
@@ -65,6 +70,8 @@ export const navGroups: SidebarNavGroup[] = [
         ],
       },
       { title: 'Purchase requests', path: '/owner/requisitions', icon: <ClipboardCheckIcon /> },
+      { title: 'Phone loans', path: '/owner/phone-loans', icon: <SmartphoneIcon /> },
+      { title: 'Departments', path: '/owner/departments', icon: <WalletIcon /> },
       { title: 'Reconciliation', path: '/owner/reconciliation', icon: <ScaleIcon /> },
       { title: 'Expenses', path: '/owner/expenses', icon: <ReceiptIcon /> },
       { title: 'Reports', path: '/owner/reports', icon: <BarChart3Icon /> },
@@ -86,6 +93,7 @@ export const footerNavLinks: SidebarNavItem[] = [
   { title: 'System health', path: '/owner/system', icon: <ActivityIcon /> },
   { title: 'Audit trail', path: '/owner/audit', icon: <ScrollTextIcon /> },
   { title: 'Staff', path: '/owner/staff', icon: <UserCogIcon /> },
+  { title: 'Staff profiles', path: '/owner/staff-profiles', icon: <BriefcaseIcon /> },
 ];
 
 /*
@@ -108,6 +116,8 @@ export const accountantNavGroups: SidebarNavGroup[] = [
       { title: 'Awaiting confirmation', path: '/accountant/payments/approvals', icon: <CheckCheckIcon /> },
       { title: 'Outstanding', path: '/accountant/outstanding', icon: <ScaleIcon /> },
       { title: 'Purchase requests', path: '/accountant/requisitions', icon: <ClipboardCheckIcon /> },
+      { title: 'Phone loans', path: '/accountant/phone-loans', icon: <SmartphoneIcon /> },
+      { title: 'Departments', path: '/accountant/departments', icon: <WalletIcon /> },
     ],
   },
   {
@@ -116,6 +126,8 @@ export const accountantNavGroups: SidebarNavGroup[] = [
       { title: 'Riders', path: '/accountant/riders', icon: <UsersIcon /> },
       { title: 'Motorcycles', path: '/accountant/motorcycles', icon: <BikeIcon /> },
       { title: 'Contracts', path: '/accountant/contracts', icon: <FileTextIcon /> },
+      { title: 'Completions', path: '/accountant/completions', icon: <AwardIcon /> },
+      { title: 'My staff profile', path: '/accountant/profile', icon: <BriefcaseIcon /> },
       { title: 'Notes', path: '/accountant/notes', icon: <NotebookPenIcon /> },
       { title: 'Notifications', path: '/accountant/notifications', icon: <BellIcon /> },
     ],

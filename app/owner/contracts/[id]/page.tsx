@@ -24,6 +24,10 @@ import {
 import { formatLongDate } from '@/lib/dates/format';
 import { describePhoneLoan } from '@/lib/loans/phone';
 import { ENDED_DISPLAY_STATUSES } from '@/lib/contracts/status';
+import { LockNotice } from '@/components/contracts/LockNotice';
+import { CompletionStatusChip } from '@/components/completion/CompletionTimeline';
+import { listCompletionRequests } from '@/lib/completion/queries';
+import { AwardIcon } from 'lucide-react';
 
 export const metadata = { title: 'Contract' };
 
@@ -36,6 +40,12 @@ export default async function ContractDetailPage({
   const { id } = await params;
   const c = await getContract(id);
   if (!c) notFound();
+
+  // The end-of-contract request for THIS contract, if one exists. Newest first,
+  // so a rejected earlier attempt never hides the live one.
+  const completion = (await listCompletionRequests({ limit: 50 })).find(
+    (r) => r.contractId === c.id,
+  );
 
   const hasOwnerSig = c.signatures.some((s) => s.signer_role === 'owner');
   const hasRiderSig = c.signatures.some((s) => s.signer_role === 'rider');
@@ -80,12 +90,14 @@ export default async function ContractDetailPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href={`/owner/contracts/${c.id}/edit`}
-            className="flex min-h-9 items-center rounded-[--radius-card] border border-border bg-white px-3 text-sm font-semibold text-primary-dark hover:bg-surface"
-          >
-            Edit
-          </Link>
+          {!c.locked_at && (
+            <Link
+              href={`/owner/contracts/${c.id}/edit`}
+              className="flex min-h-9 items-center rounded-[--radius-card] border border-border bg-white px-3 text-sm font-semibold text-primary-dark hover:bg-surface"
+            >
+              Edit
+            </Link>
+          )}
           <span
             className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${CONTRACT_STATUS_TONE[displayStatus]}`}
           >
@@ -93,6 +105,64 @@ export default async function ContractDetailPage({
           </span>
         </div>
       </header>
+
+      {/* Completion: the locked banner, the request, and the certificate
+          (client feedback #6, #7, #10). Rendered above the money so the state
+          of the record is the first thing read. */}
+      {c.locked_at && (
+        <LockNotice
+          entity="contract"
+          entityId={c.id}
+          lockedAt={c.locked_at}
+          lockReason={c.lock_reason}
+          canAmend
+        />
+      )}
+
+      {completion && (
+        <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 font-semibold text-primary-dark">
+              <AwardIcon className="size-4 shrink-0" />
+              End-of-contract request
+            </h2>
+            <CompletionStatusChip status={completion.status} />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {completion.requestNumber} · requested {formatDate(completion.requestedAt)} by{' '}
+            {completion.requestedByName}
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href={`/owner/completions/${completion.id}`}
+              className="text-sm font-semibold text-primary-dark underline"
+            >
+              Open request
+            </Link>
+            {completion.certificate && (
+              <a
+                href={`/api/completions/certificates/${completion.certificate.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-[--radius-card] bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-hover"
+              >
+                Download certificate
+              </a>
+            )}
+            {completion.transferDocuments.map((d) => (
+              <a
+                key={d.id}
+                href={`/api/completions/transfer-documents/${d.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm font-semibold text-primary underline"
+              >
+                {d.fileName}
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Money position + expected completion (client feedback 2026-09-05) */}
       {c.obligationStats.total > 0 && (
