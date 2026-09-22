@@ -4,7 +4,8 @@ import { createServerSupabase } from '@/lib/supabase/server';
 import { fetchAllPages } from '@/lib/supabase/fetch-all';
 import { localDateString } from '@/lib/dates/tz';
 import { computeContractProgress, type ContractProgress } from '@/lib/contracts/completion';
-import type { ContractStatus, ScheduleType } from '@/lib/supabase/types';
+import { summariseForReprice, type RepriceSummary } from '@/lib/contracts/reprice';
+import type { ContractStatus, ObligationStatus, ScheduleType } from '@/lib/supabase/types';
 
 export type ContractListItem = {
   id: string;
@@ -273,4 +274,36 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
       localDateString(),
     ),
   };
+}
+
+/**
+ * The four totals the repricing screen previews from (client feedback
+ * 2026-09-22).
+ *
+ * A summary rather than the rows themselves because a daily contract runs to
+ * well over a thousand obligations, and shipping all of them to a browser so
+ * it can add up two numbers would be absurd on the low-cost Android phones
+ * this is built for. `summariseForReprice` does exactly this bucketing on the
+ * server side of the same correction, so the preview and the write agree by
+ * construction.
+ */
+export async function getRepriceSummary(contractId: string): Promise<RepriceSummary> {
+  const supabase = await createServerSupabase();
+  const rows = await fetchAllPages<{ id: string; due_date: string; amount_due: number; status: ObligationStatus }>(
+    (from, to) =>
+      supabase
+        .from('payment_obligations')
+        .select('id, due_date, amount_due, status')
+        .eq('contract_id', contractId)
+        .order('due_date', { ascending: true })
+        .range(from, to),
+  );
+  return summariseForReprice(
+    rows.map((o) => ({
+      id: o.id,
+      dueDate: o.due_date,
+      amountDue: o.amount_due,
+      status: o.status,
+    })),
+  );
 }

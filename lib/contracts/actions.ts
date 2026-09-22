@@ -14,12 +14,27 @@ import {
 } from '@/lib/contracts/duration';
 import { resolveContractTerm, TermError, type EndDateMode } from '@/lib/contracts/term';
 import { instalmentFromDailyRate } from '@/lib/contracts/pricing';
+import {
+  planReprice,
+  addDaysIso,
+  extensionHorizon,
+  RepriceError,
+  REPRICEABLE_STATUSES,
+  type RepricePlan,
+} from '@/lib/contracts/reprice';
+import { fetchAllPages, chunkIds } from '@/lib/supabase/fetch-all';
+import { notifyRider } from '@/lib/notifications/service';
 import { dueTimestampUtc } from '@/lib/obligations/schedule';
 import { normalizePlan, planToObligations, validatePlan, type PlanEntry } from '@/lib/obligations/plan';
 import { phoneLoanSchedule, splitLoanTotal } from '@/lib/loans/phone';
 import { renderContractPdf } from './pdf';
-import { contractBuilderSchema, contractEditSchema } from './validation';
-import type { ContractStatus, Database, ScheduleType } from '@/lib/supabase/types';
+import { contractBuilderSchema, contractEditSchema, contractRepriceSchema } from './validation';
+import type {
+  ContractStatus,
+  Database,
+  ObligationStatus,
+  ScheduleType,
+} from '@/lib/supabase/types';
 
 type ContractUpdate = Database['public']['Tables']['contracts']['Update'];
 
@@ -1173,4 +1188,253 @@ export async function reactivateContract(
     ok: true,
     data: { restored: (restored ?? []).length, generated, endDate: effectiveEnd },
   };
+}
+
+/**
+ * Correct the repayment amount of a LIVE contract (client feedback 2026-09-22).
+ *
+ * THE GAP THIS CLOSES
+ *
+ * `updateContract` refuses every price edit once a contract is active, for a
+ * good reason: after activation the obligations ARE the money record, and
+ * rewriting the price underneath settled days would restate history (spec
+ * rule 6). But that left NO path at all for the case the client reported —
+ * a contract entered at TZS 10,000 per week when the agreed daily rate of
+ * 10,000 makes the week 70,000. The owner could only terminate and re-issue,
+ * throwing away the rider's payment history to fix a typo.
+ *
+ * So the correction is split exactly where immutability actually bites:
+ *
+ *   • Unsettled days (scheduled / due / overdue) are re-priced in place. Their
+ *     DUE DATES are never touched, so arrears keep their clock — an overdue
+ *     day stays overdue from the same date, at the corrected price.
+ *   • Settled days are never touched. Where the old price under-collected on
+ *     them, the difference is recovered by ADDING payment days at the end of
+ *     the term (the owner's decision, 2026-09-22) — new obligations, not
+ *     rewritten ones.
+ *
+ * `planReprice` does all the arithmetic and is unit tested, including this
+ * contract's real numbers. This function does the I/O and the guards.
+ *
+ * WHAT IT REFUSES
+ *   • a locked (completed + signed-off) contract — 0034's trigger would refuse
+ *     it anyway; this returns a sentence instead of a database exception;
+ *   • a contract that is not active or paused — a draft belongs in the normal
+ *     editor, and a terminated contract has no live calendar to re-price;
+ *   • any obligation reserved by an in-flight payment. The rider has money
+ *     moving against the OLD amount right now; re-pricing underneath it is how
+ *     you strand a mobile-money payment (the same reservation guard
+ *     `record_completed_payment` has carried since 0018).
+ */
+export async function repriceContract(
+  contractId: string,
+  input: unknown,
+): Promise<ActionResult<{ plan: RepricePlan; repriced: number; added: number; endDate: string | null }>> {
+  const ownerId = await assertOwner();
+  const parsed = contractRepriceSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'validation' };
+  const { dailyRate, recoverShortfall, reason } = parsed.data;
+
+  const admin = createAdminClient();
+  const { data: current, error: readErr } = await admin
+    .from('contracts')
+    .select(
+      'id, rider_id, motorcycle_id, status, locked_at, end_date, schedule_type, selected_weekdays, due_day_of_month, installment_amount, daily_rate, payment_deadline_time, current_version',
+    )
+    .eq('id', contractId)
+    .maybeSingle();
+  if (readErr) return { ok: false, error: 'read_failed' };
+  if (!current) return { ok: false, error: 'not_found' };
+  const c = current as {
+    rider_id: string;
+    motorcycle_id: string;
+    status: ContractStatus;
+    locked_at: string | null;
+    end_date: string | null;
+    schedule_type: ScheduleType;
+    selected_weekdays: number[] | null;
+    due_day_of_month: number | null;
+    installment_amount: number;
+    daily_rate: number | null;
+    payment_deadline_time: string;
+    current_version: number;
+  };
+
+  if (c.locked_at) return { ok: false, error: 'locked' };
+  if (c.status !== 'active' && c.status !== 'paused') {
+    return { ok: false, error: 'not_live' };
+  }
+  if (!c.end_date) return { ok: false, error: 'missing_dates' };
+
+  const newInstalment = instalmentFromDailyRate(dailyRate, c.schedule_type);
+  if (!newInstalment || newInstalment <= 0) return { ok: false, error: 'invalid_amount' };
+
+  // Read the WHOLE calendar, not the first page. A daily contract runs to
+  // hundreds of rows and PostgREST caps a plain select at 1000 (D-033) — a
+  // truncated read here would silently leave the tail of the term mis-priced.
+  const rows = await fetchAllPages<{
+    id: string;
+    due_date: string;
+    amount_due: number;
+    status: ObligationStatus;
+  }>((from, to) =>
+    admin
+      .from('payment_obligations')
+      .select('id, due_date, amount_due, status')
+      .eq('contract_id', contractId)
+      .order('due_date', { ascending: true })
+      .range(from, to),
+  );
+
+  let plan: RepricePlan;
+  try {
+    plan = planReprice(
+      rows.map((o) => ({
+        id: o.id,
+        dueDate: o.due_date,
+        amountDue: o.amount_due,
+        status: o.status,
+      })),
+      newInstalment,
+    );
+  } catch (e) {
+    return { ok: false, error: e instanceof RepriceError ? 'invalid_amount' : 'plan_failed' };
+  }
+
+  // An obligation with live money moving against it is not ours to re-price.
+  if (plan.repriceIds.length > 0) {
+    for (const batch of chunkIds(plan.repriceIds)) {
+      const { data: held, error } = await admin
+        .from('payment_reservations')
+        .select('obligation_id')
+        .in('obligation_id', batch)
+        .eq('is_active', true)
+        .limit(1);
+      if (error) return { ok: false, error: 'read_failed' };
+      if (held && held.length > 0) return { ok: false, error: 'obligation_reserved' };
+    }
+  }
+
+  /*
+   * Write order matters. The obligations are re-priced FIRST, because a
+   * contract whose header says 70,000 while its calendar still says 10,000 is
+   * the more dangerous half-applied state: every dashboard and report reads the
+   * ledger, so they would all under-report until someone noticed. The reverse
+   * (calendar corrected, header stale) is visible on the contract page itself.
+   */
+  let repriced = 0;
+  for (const batch of chunkIds(plan.repriceIds)) {
+    const { data: updated, error } = await admin
+      .from('payment_obligations')
+      .update({ amount_due: newInstalment })
+      .in('id', batch)
+      // Re-assert the status in the WHERE clause: a day that settled between
+      // the read above and this write must not be re-priced after the fact.
+      .in('status', [...REPRICEABLE_STATUSES])
+      .select('id');
+    if (error) return { ok: false, error: 'reprice_failed' };
+    repriced += (updated ?? []).length;
+  }
+
+  // Recover the under-collection by adding payment days at the corrected
+  // price — never by restating the settled ones.
+  let endDate = c.end_date;
+  let added = 0;
+  const wantsExtension = recoverShortfall && plan.extraPaymentDays > 0;
+  if (wantsExtension) {
+    const from = addDaysIso(c.end_date, 1);
+    let generated;
+    try {
+      generated = generateSchedule({
+        startDate: from,
+        endDate: extensionHorizon(from, c.schedule_type, plan.extraPaymentDays),
+        scheduleType: c.schedule_type,
+        selectedWeekdays: c.selected_weekdays ?? [],
+        dueDayOfMonth: c.due_day_of_month ?? undefined,
+        monthlyCount: c.schedule_type === 'monthly' ? plan.extraPaymentDays : undefined,
+        deadlineTime: String(c.payment_deadline_time).slice(0, 5),
+      });
+    } catch {
+      return { ok: false, error: 'extension_failed', };
+    }
+    const extra = generated.slice(0, plan.extraPaymentDays);
+    if (extra.length < plan.extraPaymentDays) return { ok: false, error: 'extension_failed' };
+
+    const { data: inserted, error } = await admin
+      .from('payment_obligations')
+      .upsert(
+        extra.map((o) => ({
+          contract_id: contractId,
+          rider_id: c.rider_id,
+          motorcycle_id: c.motorcycle_id,
+          due_date: o.dueDate,
+          due_at: o.dueAtUtc,
+          local_due_time: o.localDueTime,
+          amount_due: newInstalment,
+          status: 'scheduled' as const,
+          contract_version: c.current_version,
+          kind: 'lease' as const,
+        })),
+        { onConflict: 'contract_id,due_date', ignoreDuplicates: true },
+      )
+      .select('id');
+    if (error) return { ok: false, error: 'extension_failed' };
+    added = (inserted ?? []).length;
+    endDate = extra[extra.length - 1]!.dueDate;
+  }
+
+  const { error: updErr } = await admin
+    .from('contracts')
+    .update({
+      daily_rate: dailyRate,
+      installment_amount: newInstalment,
+      end_date: endDate,
+      last_edited_at: new Date().toISOString(),
+      last_edited_by: ownerId,
+    })
+    .eq('id', contractId);
+  if (updErr) return { ok: false, error: 'update_failed' };
+
+  await writeAudit({
+    actorId: ownerId,
+    actorRole: 'owner',
+    action: 'contract.repriced',
+    entityType: 'contract',
+    entityId: contractId,
+    metadata: {
+      reason,
+      dailyRate,
+      instalmentBefore: c.installment_amount,
+      instalmentAfter: newInstalment,
+      dailyRateBefore: c.daily_rate,
+      repriced,
+      settledUntouched: plan.settledCount,
+      shortfall: plan.shortfall,
+      recoverShortfall,
+      extraPaymentDaysAdded: added,
+      unrecovered: recoverShortfall ? plan.unrecovered : plan.shortfall,
+      endDateBefore: c.end_date,
+      endDateAfter: endDate,
+    },
+  });
+
+  // The rider's instalment just changed. Telling them is not optional — they
+  // budget against this number, and the next Lipa Sasa screen will show it.
+  try {
+    await notifyRider(c.rider_id, {
+      type: 'contract_repriced',
+      title: 'Kiasi cha malipo kimebadilika',
+      body:
+        `Kiasi cha kila malipo sasa ni TZS ${newInstalment.toLocaleString('en-US')}` +
+        (added > 0 ? `. Siku ${added} za malipo zimeongezwa mwishoni mwa mkataba.` : '.'),
+      deepLink: '/rider/calendar',
+    });
+  } catch {
+    /* the correction is done; a failed notification never un-does it */
+  }
+
+  revalidatePath(`/owner/contracts/${contractId}`);
+  revalidatePath('/owner/contracts');
+  revalidatePath('/owner/payments');
+  return { ok: true, data: { plan, repriced, added, endDate } };
 }

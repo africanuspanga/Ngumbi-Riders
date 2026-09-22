@@ -9,10 +9,12 @@ import { NavUser } from '@/components/nav-user';
 
 export function AppHeader({
   ownerName,
+  role = 'owner',
   roleLabel,
   notifications,
 }: {
   ownerName: string;
+  role?: 'owner' | 'accountant';
   roleLabel?: string;
   /*
    * The unread-notification bell, rendered by the SERVER and handed down as an
@@ -42,7 +44,7 @@ export function AppHeader({
             {roleLabel}
           </span>
         )}
-        <NavUser name={ownerName} />
+        <NavUser name={ownerName} role={role} roleLabel={roleLabel} />
       </div>
     </header>
   );

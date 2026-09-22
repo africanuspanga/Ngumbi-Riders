@@ -26,7 +26,7 @@ import type { ScheduleType } from '@/lib/supabase/types';
 const ERRORS: Record<string, string> = {
   validation: 'Some fields are invalid — check the highlighted values.',
   locked_after_activation:
-    'The term, schedule and amounts cannot be changed once the contract is active — the payment days are already the money record. Use "Extend term" on the contract page, or terminate and re-issue.',
+    'The term and schedule cannot be changed once the contract is active — the payment days are already the money record. To correct a wrong PRICE, use "Correct the repayment amount" below; to add days, use "Extend term" on the contract page.',
   motorcycle_in_contract: 'That motorcycle is already under another contract.',
   motorcycle_unavailable: 'That motorcycle is inactive and cannot be leased.',
   motorcycle_not_found: 'That motorcycle no longer exists — reload the page.',
@@ -230,9 +230,10 @@ export function ContractEditor({
         {!termEditable ? (
           <p className="rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 p-3 text-sm text-amber-900">
             This contract is <strong>{contract.status}</strong>, so its payment days already exist and
-            ARE the money record. Changing the term or the price underneath them would restate
-            settled history. Use <strong>Extend term</strong> on the contract page to add days, or
-            terminate and issue a new contract.
+            ARE the money record. Re-dating them would restate settled history, which is why the
+            term and schedule are closed here. A wrong PRICE is different and can be corrected:
+            use <strong>Correct the repayment amount</strong> below, which re-prices only the unpaid
+            days. To add days at the end, use <strong>Extend term</strong> on the contract page.
           </p>
         ) : (
           <>

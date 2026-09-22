@@ -37,6 +37,53 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
 
+**🆕 LIVE CONTRACT REPRICING + AVATAR CRASH FIX (2026-09-22, no migration).**
+Two client reports, both fixed; the contract correction is **APPLIED LIVE**.
+⚠ **Deploy to Vercel is the remaining step.**
+
+1. **"Clicking the JN profile initials crashes the app."** `DropdownMenuLabel`
+   is Base UI's `Menu.GroupLabel`, which **throws** without a `<Menu.Group>`
+   ancestor — and `components/nav-user.tsx` rendered it directly in the popup.
+   A popup only mounts when its trigger is CLICKED, so every page rendered
+   perfectly until somebody clicked the avatar, then went to the error
+   boundary. **`npm run build` never opens a menu and `npm run test:smoke`
+   never clicks**, which is why 65 green pages said nothing about it. Fixed,
+   and the menu now also carries a **Profile** link (`/accountant/profile` for
+   staff, `/owner/staff-profiles` for the Director) and the correct role label
+   — it previously said "Mmiliki · Owner" to accountants too.
+   New guard: `lib/dev/menu-structure.ts` + `tests/unit/menu-structure.test.ts`,
+   a source scanner in `npm run verify` (D-047).
+2. **"Alfred's contract was entered at 10,000 per WEEK instead of 70,000."**
+   The daily→weekly rule was already right (`pricing.ts`, 10,000 × 7 = 70,000
+   since 2026-09-05); what was missing is that **`updateContract` refused every
+   price edit after activation**, so a mis-priced LIVE contract could not be
+   corrected at all. New `repriceContract` action + **Correct the repayment
+   amount** panel on `/owner/contracts/[id]/edit`, backed by the pure, tested
+   `lib/contracts/reprice.ts` (D-046):
+   - **unsettled days are re-priced in place, dates untouched** — arrears keep
+     their clock, an overdue day stays overdue from the same date;
+   - **settled days are never touched**; the under-collection on them is
+     recovered by **ADDING payment days** at the corrected price;
+   - exempted / postponed / cancelled days are in neither half (a waiver is not
+     a debt); an **overpayment is reported, never auto-corrected** (no rider
+     credit balance, by design); whole days only, remainder reported;
+   - a **reason is mandatory** and audited; an obligation **reserved by an
+     in-flight payment blocks the whole correction** (the 0018 guard).
+   - Re-DATING a live contract stays closed — moving a due date moves what a
+     rider already missed.
+   **Applied live to NGR-C-0012** after a dry run
+   (`scripts/reprice-contract.ts`, `--apply` required): 15 unpaid weeks
+   150,000 → 1,050,000, **7 settled weeks untouched at 70,000**, 420,000
+   shortfall recovered as 6 extra weekly days, end date 05/01/2027 →
+   **14/02/2027**, contract total **1,540,000 = 22 × 70,000**. Verified live +
+   audit row written. Alfred's next payment day is 27/09/2026 at 70,000.
+
+Verified: **625 unit tests** (+37), typecheck ✅, lint ✅, `npm run build` ✅,
+**65-page smoke run ✅** (owner + accountant). ⚠ The avatar menu itself was
+**not** click-tested in a browser — a local owner session could not be minted
+without the live owner password; the crash cause is proven from Base UI's
+source and the structure is covered by the new scanner.
+
 **🆕 DASHBOARD VISUAL PASS (2026-09-11, no migration).** The back office had no
 visual hierarchy: every section was a white card with a hairline border on a
 near-white page, so eight equally-weighted blocks competed and nothing said
@@ -873,11 +920,15 @@ lib/loans/           phone (pure terms) · constants · portfolio (pure dashboar
 lib/staff/           actions (accounts) · validation · profile (HR record) ·
                      profile-constants · profile-queries
 lib/dev/             rsc-boundary (client/server boundary scanner) · routes
-                     (smoke-test route discovery) — build-quality tooling, not app code
+                     (smoke-test route discovery) · menu-structure (Base UI menu
+                     parts used outside their group, D-047)
+                     — build-quality tooling, not app code
 lib/notifications/   service · queries · actions · labels (sw/en, plain module)
 lib/payments/        …· grouping (transaction outcome groups, pure)
 lib/pwa/             install-labels (sw/en, plain module)
-lib/contracts/       actions · queries · validation · pdf · duration (#9) · status (#8)
+lib/contracts/       actions · queries · validation · pdf · duration (#9) · status (#8) ·
+                     pricing (daily → instalment) · term (single resolver) ·
+                     reprice (correct a LIVE contract's price, pure, D-046)
 lib/obligations/     schedule (cadence engine) · plan (bulk generator, #1) · transitions
 lib/riders/          actions · queries · validation · numbering · directory (#2, pure) ·
                      profile (#3) · photo + photo-constants
@@ -887,11 +938,13 @@ lib/money/ dates/ i18n/ validation/          domain utilities
 
 supabase/migrations/ 0001..0035 + seed.sql    supabase/config.toml
 scripts/seed.ts      owner + demo rider seeding
+scripts/db-query.ts  live SQL via the Management API (D-029)
+scripts/reprice-contract.ts  the D-046 correction from a shell; --apply required
 tests/unit/          phone, pin, lockout, money, rsc-boundary, dev-routes,
                      payment-grouping, requisition-payment-stage,
                      collections-summary, cashflow, auto-allocate, departments,
                      phone-loan-workflow, completion-machine,
-                     requisition-retirement
+                     requisition-retirement, reprice, menu-structure
 tests/integration/rls/   isolation suite (opt-in via RLS_TEST_ENABLED)
 tests/integration/smoke/ every page as every role (opt-in via SMOKE_TEST_ENABLED)
 messages/sw.json en.json                      i18n catalogs
@@ -950,6 +1003,19 @@ Migration-by-migration contents + planned future migrations: `docs/MIGRATION_PLA
     executes a dynamic page and vitest is node-only, so before a release run
     `npm run test:smoke` against a live server. That is the only gate that
     actually requests the pages.
+19. **A page that PASSES the smoke test has not been clicked.** The smoke run
+    requests pages; it opens no menu and submits no form. A component-library
+    part that needs context from a parent part (Base UI's `Menu.GroupLabel`
+    inside `Menu.Group`) therefore crashes only on a user gesture, in
+    production — exactly how the avatar menu shipped broken (D-047). When a
+    part's docs name a required parent, put that requirement in
+    `npm run verify`; a source scanner is enough, and
+    `lib/dev/menu-structure.ts` is the pattern.
+20. **Immutability applies to what MONEY DID, not to what it is forecast to
+    do** (D-046). An unsettled obligation is a forecast and may be re-priced; a
+    settled one is history and may not. Recover a correction's shortfall by
+    ADDING obligations, never by restating settled ones — and never price an
+    exempted, postponed or cancelled day into it.
 
 ---
 

@@ -1,14 +1,24 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireOwner } from '@/lib/auth/session';
-import { getContract } from '@/lib/contracts/queries';
+import { getContract, getRepriceSummary } from '@/lib/contracts/queries';
 import { listAvailableMotorcycles } from '@/lib/motorcycles/queries';
 import { ContractEditor } from './ContractEditor';
+import { ContractRepriceForm } from './ContractRepriceForm';
 import { LockNotice } from '@/components/contracts/LockNotice';
 
 export const metadata = { title: 'Edit contract' };
 
 const PRE_ACTIVATION = ['draft', 'awaiting_signatures', 'scheduled'];
+
+/*
+ * Contracts whose price can be CORRECTED after the fact (client feedback
+ * 2026-09-22). A live contract has a calendar under it, so the ordinary term
+ * editor stays closed; the correction form below re-prices only the unpaid
+ * days and adds new ones to recover any under-collection, which restates no
+ * history. A terminal contract has no live calendar to correct.
+ */
+const REPRICEABLE = ['active', 'paused'];
 
 export default async function EditContractPage({
   params,
@@ -19,6 +29,8 @@ export default async function EditContractPage({
   const { id } = await params;
   const [c, motorcycles] = await Promise.all([getContract(id), listAvailableMotorcycles()]);
   if (!c) notFound();
+  const repriceSummary =
+    !c.locked_at && REPRICEABLE.includes(c.status) ? await getRepriceSummary(c.id) : null;
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-5">
@@ -82,6 +94,17 @@ export default async function EditContractPage({
         }))}
         termEditable={PRE_ACTIVATION.includes(c.status)}
       />
+      )}
+
+      {repriceSummary && (
+        <ContractRepriceForm
+          contractId={c.id}
+          scheduleType={c.schedule_type}
+          currentInstalment={c.installment_amount}
+          currentDailyRate={c.daily_rate}
+          endDate={c.end_date}
+          summary={repriceSummary}
+        />
       )}
     </div>
   );

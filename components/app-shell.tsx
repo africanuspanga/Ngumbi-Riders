@@ -28,6 +28,7 @@ export function AppShell({
         <SidebarInset className="md:peer-data-[variant=inset]:ml-0">
           <AppHeader
             ownerName={ownerName}
+            role={role}
             roleLabel={roleLabel}
             notifications={<NotificationBell basePath={role === 'accountant' ? '/accountant' : '/owner'} />}
           />

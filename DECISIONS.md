@@ -5,6 +5,80 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-047 · A Base UI menu part outside its group is a click-time crash (2026-09-22)
+
+Client feedback: "when the admin clicks the 'JN' profile initials, the
+application crashes instead of opening the profile."
+
+`DropdownMenuLabel` is Base UI's `Menu.GroupLabel`, which calls
+`useMenuGroupRootContext()` and THROWS without a `<Menu.Group>` ancestor.
+`components/nav-user.tsx` rendered it directly inside the popup. A menu popup
+is only mounted when its trigger is clicked, so the back office rendered
+perfectly until somebody clicked the avatar, and then every page went to the
+error boundary.
+
+Every existing gate was blind to it for the same reason each time: `npm run
+build` never opens a menu, `npm run test:smoke` requests pages without clicking
+anything, and vitest here is node-only so no component is ever rendered. The
+defect was, however, plain in the source.
+
+`lib/dev/menu-structure.ts` + `tests/unit/menu-structure.test.ts` now scan for
+it inside `npm run verify`, in the same spirit as the RSC boundary scanner
+(D-033 / rule 16). The general rule this records: **a component library part
+that requires context from a parent part is a runtime crash waiting on a user
+gesture, and a page-level smoke test cannot see it.** When a part's docs name a
+required parent, that requirement belongs in the verify gate.
+
+---
+
+## D-046 · A live contract's PRICE can be corrected; its DATES cannot (2026-09-22)
+
+Client feedback: Alfred Francis Msangi's contract was entered as TZS 10,000 per
+WEEK when the agreed daily rate of TZS 10,000 makes the week TZS 70,000, and he
+could not pay. `updateContract` refused every price edit after activation, so
+the only remedies were to terminate and re-issue (discarding the rider's
+payment history to fix a typo) or to leave it wrong.
+
+Rule 6 (financial records are immutable) bites in exactly one place, and the
+correction is split there:
+
+1. **Unsettled days are a forecast, not a record.** `scheduled`, `due` and
+   `overdue` obligations are re-priced in place. Their DUE DATES are never
+   touched, so arrears keep their clock — an overdue day stays overdue from the
+   same date, at the corrected price.
+2. **Settled days are history and are never touched.** Where the old price
+   under-collected on them, the difference is recovered by ADDING payment days
+   at the corrected price — new obligations, never rewritten ones.
+3. **Exempted, postponed and cancelled days are in neither half.** An exemption
+   is money the owner chose not to collect, a postponement has already moved
+   its money to a replacement obligation, and a cancelled day is not owed.
+   Pricing any of them into the shortfall would bill a rider for a day the
+   business had already forgiven.
+4. **An overpayment is reported, never auto-corrected.** If the corrected price
+   is LOWER than what settled days collected, no days are added and the owner
+   is told: this system deliberately keeps no rider credit balance (it would be
+   a second source of truth for what a rider owes).
+5. **Whole days only.** The ledger bills whole obligations, so a shortfall too
+   small for one more day is surfaced as `unrecovered` rather than rounded away.
+6. **A reason is mandatory** and audited — "who changed the price of a live
+   contract, and why" must be answerable from `audit_logs` alone.
+
+Re-DATING a live contract remains closed. Moving a due date moves what a rider
+already missed, which is a different and unsafe operation; the term and schedule
+therefore stay pre-activation-only, and `extendContractTerm` adds days at the end.
+
+`lib/contracts/reprice.ts` is pure and split in two so the owner's screen can
+preview the correction from four totals while the server plans it from the rows
+— the same reason `term.ts` exists, so the confirmed number and the written
+number cannot disagree.
+
+Applied live to NGR-C-0012 on 2026-09-22 (owner-approved): 15 unpaid weeks
+150,000 → 1,050,000, 7 settled weeks untouched at 70,000, 420,000 shortfall
+recovered as 6 extra weekly days, end date 05/01/2027 → 14/02/2027, contract
+total 1,540,000 = 22 × 70,000.
+
+---
+
 ## D-045 · A locked record is amended, never edited (2026-09-11)
 
 Client feedback #10: "after completion and final print, contract and

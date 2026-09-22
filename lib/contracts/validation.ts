@@ -231,3 +231,22 @@ export const contractEditSchema = z.object({
 
 export type ContractEditInput = z.infer<typeof contractEditSchema>;
 export type ContractEditFormInput = z.input<typeof contractEditSchema>;
+
+/*
+ * Correcting the price of a LIVE contract (client feedback 2026-09-22).
+ *
+ * Separate from `contractEditSchema` on purpose. That schema edits a contract
+ * nobody has paid against yet, where every field is fair game. This one edits
+ * a contract with a ledger under it, so it accepts the three things that are
+ * safe to change — the agreed daily rate, whether to recover what was
+ * under-collected, and WHY — and nothing else. A reason is mandatory: this is
+ * an amendment to a live money record, and "who changed the price of an active
+ * contract, and why" has to be answerable from the audit log alone.
+ */
+export const contractRepriceSchema = z.object({
+  dailyRate: z.coerce.number().int().positive().max(100_000_000),
+  recoverShortfall: z.boolean().optional().default(true),
+  reason: z.string().trim().min(10).max(500),
+});
+
+export type ContractRepriceInput = z.infer<typeof contractRepriceSchema>;
