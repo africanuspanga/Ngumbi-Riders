@@ -24,7 +24,7 @@ export function CollectionBalancePanel({
   basePath: string;
 }) {
   const { balance, summary, reconciliation } = overview;
-  const note = balanceExplanation(balance);
+  const note = balance ? balanceExplanation(balance) : null;
   const needsAttention = reconciliation.pending.count + reconciliation.failed.count > 0;
 
   return (
@@ -47,33 +47,37 @@ export function CollectionBalancePanel({
         </Link>
       </div>
 
-      {/* --- The provider balance, clearly labelled as the provider's ----- */}
-      <div className="rounded-[--radius-card] border border-border bg-surface p-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <span className="eyebrow text-muted-foreground">
-              Snippe balance — held by the provider
-            </span>
-            <p className="font-display mt-1.5 text-[1.75rem] font-bold leading-none text-primary-dark">
-              {balance.state === 'ok' ? formatTZS(balance.available) : '—'}
-            </p>
+      {/* --- The provider balance, clearly labelled as the provider's -----
+          Owner only: `balance` is null for every other role (decided in
+          getCollectionsOverview from the session). */}
+      {balance && (
+        <div className="rounded-[--radius-card] border border-border bg-surface p-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <span className="eyebrow text-muted-foreground">
+                Snippe balance — held by the provider
+              </span>
+              <p className="font-display mt-1.5 text-[1.75rem] font-bold leading-none text-primary-dark">
+                {balance.state === 'ok' ? formatTZS(balance.available) : '—'}
+              </p>
+            </div>
+            {balance.state === 'ok' && balance.balance !== balance.available && (
+              <p className="text-xs text-muted-foreground">
+                {formatTZS(balance.balance)} including unsettled
+              </p>
+            )}
           </div>
-          {balance.state === 'ok' && balance.balance !== balance.available && (
-            <p className="text-xs text-muted-foreground">
-              {formatTZS(balance.balance)} including unsettled
+          {note ? (
+            <p className="mt-2 text-xs text-muted-foreground">{note}</p>
+          ) : (
+            <p className="mt-2 text-xs text-muted-foreground">
+              This is the provider&rsquo;s float — collections in, withdrawals and fees out. It is
+              not expected to equal the mobile-money total below, which is a
+              cumulative inflow and never goes down.
             </p>
           )}
         </div>
-        {note ? (
-          <p className="mt-2 text-xs text-muted-foreground">{note}</p>
-        ) : (
-          <p className="mt-2 text-xs text-muted-foreground">
-            This is the provider&rsquo;s float — collections in, withdrawals and fees out. It is
-            not expected to equal the mobile-money total below, which is a
-            cumulative inflow and never goes down.
-          </p>
-        )}
-      </div>
+      )}
 
       {/* --- What this system collected, by source ------------------------ */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

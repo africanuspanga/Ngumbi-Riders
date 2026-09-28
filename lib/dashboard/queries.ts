@@ -3,6 +3,7 @@ import 'server-only';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { fetchAllPages, chunkIds } from '@/lib/supabase/fetch-all';
 import { isSnippeConfigured, getCollectionBalance } from '@/lib/snippe/client';
+import { getSessionProfile } from '@/lib/auth/session';
 import {
   summariseCollections,
   reconciliationSnapshot,
@@ -478,7 +479,12 @@ export async function getRiderBalances(limit = 12): Promise<RiderBalances> {
  * beside it are ours and remain correct regardless.
  */
 export type CollectionsOverview = {
-  balance: BalanceState;
+  /**
+   * The live Snippe provider balance — OWNER ONLY. `null` for every other
+   * role: the balance is never even requested from Snippe for them, so it
+   * cannot leak through props, logs or a future render of the panel.
+   */
+  balance: BalanceState | null;
   summary: CollectionsSummary;
   reconciliation: ReconciliationSnapshot;
 };
@@ -486,6 +492,11 @@ export type CollectionsOverview = {
 export async function getCollectionsOverview(): Promise<CollectionsOverview> {
   const supabase = await createServerSupabase();
   const today = localDateString();
+  // The provider balance is the Director's figure alone (client request
+  // 2026-09-28). Decided here, server-side, from the session — not by the
+  // caller — so no page can show it to an accountant by passing a flag.
+  const viewer = await getSessionProfile();
+  const canSeeBalance = viewer?.role === 'owner' && viewer.isActive;
 
   const [completed, unresolved, balance] = await Promise.all([
     fetchAllPages<{ id: string; amount: number; method: string; completed_at: string | null }>(
@@ -518,7 +529,7 @@ export async function getCollectionsOverview(): Promise<CollectionsOverview> {
           .range(from, to),
       { label: 'collections overview unresolved' },
     ),
-    readSnippeBalance(),
+    canSeeBalance ? readSnippeBalance() : Promise.resolve(null),
   ]);
 
   const payments: CollectionPayment[] = completed
