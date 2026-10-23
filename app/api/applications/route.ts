@@ -10,7 +10,6 @@ import { getClientIp } from '@/lib/security/request';
 import { localDateString } from '@/lib/dates/tz';
 import { enqueueSms, processOutbox } from '@/lib/messaging/outbox';
 import { notifyOwner } from '@/lib/notifications/service';
-import { serverEnv } from '@/lib/env';
 
 /*
  * Public rider application submission (spec §8, §23.3). Anonymous users have no
@@ -226,17 +225,10 @@ export async function POST(request: NextRequest) {
       body: `${applicantName} amewasilisha ombi (${reference}).`,
       deepLink: `/owner/applications/${applicationId}`,
       dedupeKey: `application_submitted:${applicationId}`,
+      sms:
+        `Ng'umbi Riders: Ombi jipya la pikipiki limewasilishwa na ${applicantName} (${reference}). ` +
+        `Tafadhali likague mfumoni.`,
     });
-    const ownerPhone = serverEnv().OWNER_NOTIFY_PHONE;
-    if (ownerPhone) {
-      await enqueueSms({
-        recipient: ownerPhone,
-        subject: 'application_submitted',
-        text:
-          `Ombi jipya la pikipiki limewasilishwa na ${applicantName} (${reference}). ` +
-          `Tafadhali likague katika mfumo wa Ng'umbi Riders.`,
-      });
-    }
   } catch {
     /* best-effort owner alert; the application still succeeds */
   }

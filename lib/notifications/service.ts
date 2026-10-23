@@ -2,6 +2,8 @@ import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendPushToProfile } from '@/lib/push/webpush';
+import { enqueueSms } from '@/lib/messaging/outbox';
+import { serverEnv } from '@/lib/env';
 
 /*
  * In-app notifications (spec §17.1) — the SOURCE OF TRUTH for notifications;
@@ -17,8 +19,12 @@ export type NotificationInput = {
   dedupeKey?: string;
 };
 
-/** Insert a notification; a unique dedupe_key makes repeats a no-op. */
-export async function createNotification(n: NotificationInput): Promise<void> {
+/**
+ * Insert a notification; a unique dedupe_key makes repeats a no-op. Returns
+ * true when a NEW row was written, so callers can attach a side effect (an
+ * SMS) that must happen once per event, not once per retry.
+ */
+export async function createNotification(n: NotificationInput): Promise<boolean> {
   const admin = createAdminClient();
   const { error } = await admin.from('notifications').insert({
     recipient_profile_id: n.profileId,
@@ -29,9 +35,11 @@ export async function createNotification(n: NotificationInput): Promise<void> {
     dedupe_key: n.dedupeKey ?? null,
   });
   // Ignore duplicate-key (dedupe) errors; surface anything else to the caller.
-  if (error && !/duplicate key/i.test(error.message)) {
+  if (error) {
+    if (error.code === '23505' || /duplicate key/i.test(error.message)) return false;
     throw new Error(`notification insert failed: ${error.message}`);
   }
+  return true;
 }
 
 /** Resolve a rider's profile id and notify them. */
@@ -56,11 +64,38 @@ export async function notifyRider(riderId: string, n: Omit<NotificationInput, 'p
   }
 }
 
-/** Notify the owner account(s). */
-export async function notifyOwner(n: Omit<NotificationInput, 'profileId'>): Promise<void> {
+/** The owner's phone numbers for important-update SMS (OWNER_NOTIFY_PHONE). */
+export function ownerPhones(): string[] {
+  return (serverEnv().OWNER_NOTIFY_PHONE ?? '')
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Notify the owner account(s) in-app and, when `sms` is given, by SMS to
+ * OWNER_NOTIFY_PHONE (client request 2026-10-23: "Owner should be given
+ * important update via sms"). The SMS is sent only when the in-app row is NEW,
+ * so a retried job or a double-clicked button never texts the owner twice, and
+ * it is best-effort: an SMS failure never fails the action that caused it.
+ */
+export async function notifyOwner(
+  n: Omit<NotificationInput, 'profileId'> & { sms?: string },
+): Promise<void> {
+  const { sms, ...notification } = n;
   const admin = createAdminClient();
   const { data: owners } = await admin.from('profiles').select('id').eq('role', 'owner');
+  let fresh = false;
   for (const o of (owners ?? []) as { id: string }[]) {
-    await createNotification({ ...n, profileId: o.id });
+    if (await createNotification({ ...notification, profileId: o.id })) fresh = true;
+  }
+  // No dedupe key means every call is an event of its own.
+  if (!sms || (!fresh && notification.dedupeKey)) return;
+  for (const phone of ownerPhones()) {
+    try {
+      await enqueueSms({ recipient: phone, text: sms, subject: n.type });
+    } catch (e) {
+      console.error('[notify] owner sms failed:', n.type, (e as Error).message);
+    }
   }
 }

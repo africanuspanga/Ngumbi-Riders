@@ -201,6 +201,7 @@ export async function submitPhoneLoanRequest(input: unknown): Promise<ActionResu
     body: `${rider.name} asked for ${formatTZS(terms.principal)} over ${terms.termMonths} month(s) — ${formatTZS(terms.totalAmount)} to repay.`,
     deepLink: '/owner/phone-loans',
     dedupeKey: `phone_loan_request:${requestId}`,
+    sms: `Ng'umbi Riders: ${rider.name} ameomba mkopo wa simu ${formatTZS(terms.principal)}. Tafadhali kagua mfumoni.`,
   });
   await notifyStaff(admin, 'accountant', {
     type: 'phone_loan_request',

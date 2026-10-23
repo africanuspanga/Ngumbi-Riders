@@ -38,7 +38,8 @@ export default async function AccountantRiderProfilePage({
       <RiderProfileView
         profile={profile}
         audience="accountant"
-        motorcycleHref={(mid) => `/accountant/motorcycles/${mid}`}
+        // The finance team has no motorcycle detail page; the register is read-only.
+        motorcycleHref={() => '/accountant/motorcycles'}
         contractHref={(cid) => `/accountant/contracts/${cid}`}
       />
 

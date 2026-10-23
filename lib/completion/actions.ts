@@ -249,6 +249,7 @@ export async function requestContractCompletion(input: {
     body,
     deepLink: '/owner/completions',
     dedupeKey: `completion_requested_owner:${id}`,
+    sms: `Ng'umbi Riders: Ombi la kukamilisha mkataba limewasilishwa. ${body}`.slice(0, 300),
   });
 
   await writeAudit({
@@ -373,6 +374,7 @@ export async function sendCompletionToDirector(
       body: `${rider.name} — ${req.request_number}. Finance has confirmed nothing is outstanding.`,
       deepLink: `/owner/completions/${requestId}`,
       dedupeKey: `completion_director_review:${requestId}`,
+      sms: `Ng'umbi Riders: Ukamilishaji wa mkataba wa ${rider.name} (${req.request_number}) unasubiri idhini yako.`,
     });
   }
   return { ok: true };
@@ -828,6 +830,7 @@ export async function sendTransferForFinalReview(
       body: `${rider.name} — ${req.request_number}. The transfer document is on file; your sign-off completes the contract.`,
       deepLink: `/owner/completions/${requestId}`,
       dedupeKey: `completion_final_review:${requestId}`,
+      sms: `Ng'umbi Riders: Hati ya umiliki ya ${rider.name} (${req.request_number}) iko tayari. Thibitisha kukamilisha mkataba.`,
     });
   }
   return { ok: true };

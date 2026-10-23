@@ -2719,6 +2719,7 @@ export type Database = {
           id: string
           mime_type: string
           requisition_id: string
+          retirement_id: string | null
           sha256_hash: string
           size_bytes: number
           storage_path: string
@@ -2731,6 +2732,7 @@ export type Database = {
           id?: string
           mime_type: string
           requisition_id: string
+          retirement_id?: string | null
           sha256_hash: string
           size_bytes: number
           storage_path: string
@@ -2743,6 +2745,7 @@ export type Database = {
           id?: string
           mime_type?: string
           requisition_id?: string
+          retirement_id?: string | null
           sha256_hash?: string
           size_bytes?: number
           storage_path?: string
@@ -2754,6 +2757,13 @@ export type Database = {
             columns: ["requisition_id"]
             isOneToOne: false
             referencedRelation: "purchase_requisitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisition_documents_retirement_id_fkey"
+            columns: ["retirement_id"]
+            isOneToOne: false
+            referencedRelation: "requisition_retirements"
             referencedColumns: ["id"]
           },
           {
@@ -2808,6 +2818,96 @@ export type Database = {
             columns: ["requisition_id"]
             isOneToOne: false
             referencedRelation: "purchase_requisitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      requisition_retirements: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          department_id: string | null
+          description: string
+          expense_id: string | null
+          id: string
+          requisition_id: string
+          returned_amount: number
+          spent_amount: number
+          spent_on: string
+          status: Database["public"]["Enums"]["requisition_retirement_entry_status"]
+          submitted_at: string
+          submitted_by: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          department_id?: string | null
+          description: string
+          expense_id?: string | null
+          id?: string
+          requisition_id: string
+          returned_amount?: number
+          spent_amount: number
+          spent_on: string
+          status?: Database["public"]["Enums"]["requisition_retirement_entry_status"]
+          submitted_at?: string
+          submitted_by: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          department_id?: string | null
+          description?: string
+          expense_id?: string | null
+          id?: string
+          requisition_id?: string
+          returned_amount?: number
+          spent_amount?: number
+          spent_on?: string
+          status?: Database["public"]["Enums"]["requisition_retirement_entry_status"]
+          submitted_at?: string
+          submitted_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requisition_retirements_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisition_retirements_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisition_retirements_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "department_expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisition_retirements_requisition_id_fkey"
+            columns: ["requisition_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requisitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisition_retirements_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -3436,6 +3536,7 @@ export type Database = {
         | "cancelled"
       phone_loan_status: "pending" | "active" | "completed" | "cancelled"
       requisition_payment_status: "unpaid" | "processing" | "paid"
+      requisition_retirement_entry_status: "submitted" | "approved" | "rejected"
       requisition_retirement_status: "not_started" | "pending" | "completed"
       requisition_status:
         | "draft"
@@ -3472,6 +3573,8 @@ export type Database = {
           created_at: string | null
           file_size_limit: number | null
           id: string
+          lifecycle_configuration: Json | null
+          lifecycle_configuration_generation: string | null
           name: string
           owner: string | null
           owner_id: string | null
@@ -3486,6 +3589,8 @@ export type Database = {
           created_at?: string | null
           file_size_limit?: number | null
           id: string
+          lifecycle_configuration?: Json | null
+          lifecycle_configuration_generation?: string | null
           name: string
           owner?: string | null
           owner_id?: string | null
@@ -3500,6 +3605,8 @@ export type Database = {
           created_at?: string | null
           file_size_limit?: number | null
           id?: string
+          lifecycle_configuration?: Json | null
+          lifecycle_configuration_generation?: string | null
           name?: string
           owner?: string | null
           owner_id?: string | null
@@ -3814,7 +3921,7 @@ export type Database = {
         Returns: string
       }
       get_size_by_bucket: {
-        Args: never
+        Args: { delete_markers?: string; noncurrent_versions?: string }
         Returns: {
           bucket_id: string
           size: number
@@ -3828,6 +3935,7 @@ export type Database = {
           next_key_token?: string
           next_upload_token?: string
           prefix_param: string
+          raw_prefix_param?: string
         }
         Returns: {
           created_at: string
@@ -3838,28 +3946,38 @@ export type Database = {
       list_objects_with_delimiter: {
         Args: {
           _bucket_id: string
+          delete_markers?: string
           delimiter_param: string
           max_keys?: number
           next_token?: string
+          next_token_archived_at?: string
+          next_token_version?: string
+          noncurrent_versions?: string
           prefix_param: string
           sort_order?: string
           start_after?: string
         }
         Returns: {
+          archived_at: string
           created_at: string
           id: string
+          is_delete_marker: boolean
+          is_versioned: boolean
           last_accessed_at: string
           metadata: Json
           name: string
           updated_at: string
+          version: string
         }[]
       }
       operation: { Args: never; Returns: string }
       search: {
         Args: {
           bucketname: string
+          delete_markers?: string
           levels?: number
           limits?: number
+          noncurrent_versions?: string
           offsets?: number
           prefix: string
           search?: string
@@ -3867,16 +3985,22 @@ export type Database = {
           sortorder?: string
         }
         Returns: {
+          archived_at: string
           created_at: string
           id: string
+          is_delete_marker: boolean
+          is_versioned: boolean
           last_accessed_at: string
           metadata: Json
           name: string
           updated_at: string
+          version: string
         }[]
       }
       search_by_timestamp: {
         Args: {
+          delete_markers?: string
+          noncurrent_versions?: string
           p_bucket_id: string
           p_level: number
           p_limit: number
@@ -3885,36 +4009,50 @@ export type Database = {
           p_sort_column_after: string
           p_sort_order: string
           p_start_after: string
+          p_start_after_version?: string
         }
         Returns: {
+          archived_at: string
           created_at: string
           id: string
+          is_delete_marker: boolean
+          is_versioned: boolean
           key: string
           last_accessed_at: string
           metadata: Json
           name: string
           updated_at: string
+          version: string
         }[]
       }
       search_v2: {
         Args: {
           bucket_name: string
+          delete_markers?: string
           levels?: number
           limits?: number
+          noncurrent_versions?: string
           prefix: string
           sort_column?: string
           sort_column_after?: string
           sort_order?: string
           start_after?: string
+          start_after_archived_at?: string
+          start_after_is_continuation?: boolean
+          start_after_version?: string
         }
         Returns: {
+          archived_at: string
           created_at: string
           id: string
+          is_delete_marker: boolean
+          is_versioned: boolean
           key: string
           last_accessed_at: string
           metadata: Json
           name: string
           updated_at: string
+          version: string
         }[]
       }
     }
@@ -4149,6 +4287,11 @@ export const Constants = {
       ],
       phone_loan_status: ["pending", "active", "completed", "cancelled"],
       requisition_payment_status: ["unpaid", "processing", "paid"],
+      requisition_retirement_entry_status: [
+        "submitted",
+        "approved",
+        "rejected",
+      ],
       requisition_retirement_status: ["not_started", "pending", "completed"],
       requisition_status: [
         "draft",

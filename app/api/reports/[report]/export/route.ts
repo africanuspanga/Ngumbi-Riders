@@ -27,6 +27,8 @@ import {
 import { getRiderStatement } from '@/lib/payments/queries';
 import { formatDate } from '@/lib/dates/format';
 import { methodLabel } from '@/lib/payments/statement';
+import { getRetirementBoard } from '@/lib/requisitions/retirement-queries';
+import { AGING_LABELS, STATE_LABELS } from '@/lib/requisitions/retirement';
 
 // Report exports (spec §19.3): CSV and XLSX. Owner + active accountant
 // (`reports.export`, build spec #10). Print-friendly output is the report page
@@ -44,7 +46,48 @@ async function buildTable(
   to: string,
   riderId: string | null,
   filters: ReportFilters,
+  raw: URLSearchParams,
 ): Promise<Table | null> {
+  /*
+   * Retirement board (client request 2026-10-23). Read with the board's OWN
+   * filters — payment-date range and staff — taken raw from the URL, because
+   * the default "from = to = today" below would silently narrow an unfiltered
+   * board to one day.
+   */
+  if (report === 'retirements') {
+    const date = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+    const staff = raw.get('staff');
+    const board = await getRetirementBoard({
+      from: date(raw.get('from')),
+      to: date(raw.get('to')),
+      staffId: staff && /^[0-9a-f-]{36}$/i.test(staff) ? staff : null,
+    });
+    return {
+      title: 'Retirements',
+      headers: [
+        'Request', 'Title', 'Held by', 'Department', 'Paid on', 'Paid out', 'Verified spent',
+        'Cash returned', 'Awaiting verification', 'Outstanding', 'Retired %', 'Status',
+        'Days since payment', 'Aging',
+      ],
+      rows: board.rows.map((r) => [
+        r.requisitionNumber,
+        r.title,
+        r.requestedByName,
+        r.departmentName,
+        formatDate(r.paidDate),
+        r.paidAmount,
+        r.spentAmount,
+        r.returnedAmount,
+        r.pendingAmount,
+        r.outstanding,
+        r.retiredPercent,
+        STATE_LABELS[r.state],
+        r.daysSincePayment ?? '',
+        r.aging ? AGING_LABELS[r.aging] : '',
+      ]),
+    };
+  }
+
   /*
    * The four report families added for client feedback #4. Each one is built
    * from getCashflowReport(filters) — the SAME call the report page makes —
@@ -300,7 +343,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ repo
     Object.fromEntries(url.searchParams.entries()),
     { from, to },
   );
-  const table = await buildTable(report, from, to, riderId, filters);
+  const table = await buildTable(report, from, to, riderId, filters, url.searchParams);
   if (!table) return NextResponse.json({ error: 'unknown_report' }, { status: 404 });
 
   const filename = `${report.replace(/[^\w-]/g, '')}-${from}_${to}`;

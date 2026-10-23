@@ -5,10 +5,11 @@ import { serverEnv, clientEnv } from '@/lib/env';
 import { fetchAllPages, chunkIds } from '@/lib/supabase/fetch-all';
 import { localDateString } from '@/lib/dates/tz';
 import { computeObligationTransitions, type TransitionObligation } from '@/lib/obligations/transitions';
-import { notifyRider, notifyOwner } from '@/lib/notifications/service';
+import { notifyRider, notifyOwner, createNotification } from '@/lib/notifications/service';
+import { planLateReminders, ownerWarningDigest, type LateRiderInput } from '@/lib/reminders/late-payment';
+import { enqueueSms, isMobishastraConfigured, processOutbox } from '@/lib/messaging/outbox';
 import { getPaymentStatus } from '@/lib/snippe/client';
 import { settlePaymentCompleted, markPaymentFailed, expireStalePayment } from '@/lib/payments/settle';
-import { processOutbox } from '@/lib/messaging/outbox';
 import { recomputeRiskForRider } from '@/lib/risk/recompute';
 import { planPostponements } from '@/lib/loans/lease-pause';
 import { sweepCompletedPhoneLoans } from '@/lib/loans/settle';
@@ -714,6 +715,189 @@ export const phoneLoanLeasePauseTask: CronTask = async () => {
 
   return counts;
 };
+
+/**
+ * Late-payment SMS reminders + the owner's morning summary (client request
+ * 2026-10-23). Runs at 08:00 EAT from /api/cron/morning — never from the
+ * midnight dispatcher, so nobody's phone buzzes at 00:05.
+ *
+ * The rules (2 days → "hujalipa", 7 days → "itapelekea kuvunja mkataba", once
+ * per stage per oldest unpaid day) live in lib/reminders/late-payment.ts.
+ *
+ * Does NOTHING until SMS is configured. Reminders are time-sensitive: queuing
+ * them while the gateway is unreachable would deliver "you owe 2 days" a week
+ * later to a rider who has since paid. Instead the first run after SMS goes
+ * live sends what is true that morning.
+ */
+export const latePaymentSmsTask: CronTask = async (): Promise<Record<string, number>> => {
+  if (!isMobishastraConfigured()) return { smsNotConfigured: 1 };
+
+  const admin = createAdminClient();
+  const today = localDateString();
+
+  // Only riders who are actively leasing: an active contract and an active
+  // rider. A paused contract was suspended by the owner on purpose.
+  const contracts = await fetchAllPages<{ id: string; rider_id: string }>(
+    (from, to) =>
+      admin
+        .from('contracts')
+        .select('id, rider_id')
+        .eq('status', 'active')
+        .order('id', { ascending: true })
+        .range(from, to),
+    { label: 'late-sms contracts' },
+  );
+  const contractIds = contracts.map((c) => c.id);
+
+  const owed = new Map<string, { oldestId: string; oldestDate: string; amount: number; count: number }>();
+  for (const ids of chunkIds(contractIds)) {
+    const rows = await fetchAllPages<{ id: string; rider_id: string; due_date: string; amount_due: number }>(
+      (from, to) =>
+        admin
+          .from('payment_obligations')
+          .select('id, rider_id, due_date, amount_due')
+          .in('contract_id', ids)
+          .in('status', ['due', 'overdue'])
+          .lt('due_date', today)
+          .order('due_date', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to),
+      { label: 'late-sms obligations' },
+    );
+    for (const o of rows) {
+      const cur = owed.get(o.rider_id);
+      if (!cur) {
+        owed.set(o.rider_id, { oldestId: o.id, oldestDate: o.due_date, amount: o.amount_due, count: 1 });
+      } else {
+        cur.amount += o.amount_due;
+        cur.count += 1;
+        if (o.due_date < cur.oldestDate) {
+          cur.oldestDate = o.due_date;
+          cur.oldestId = o.id;
+        }
+      }
+    }
+  }
+
+  const riderIds = [...owed.keys()];
+  const riders: LateRiderInput[] = [];
+  for (const ids of chunkIds(riderIds)) {
+    const { data, error } = await admin
+      .from('riders')
+      .select('id, profile_id, first_name, last_name, phone, status')
+      .in('id', ids)
+      .eq('status', 'active');
+    if (error) throw new Error(`late-sms riders failed: ${error.message}`);
+    for (const r of (data ?? []) as {
+      id: string;
+      profile_id: string | null;
+      first_name: string;
+      last_name: string;
+      phone: string | null;
+    }[]) {
+      const o = owed.get(r.id)!;
+      riders.push({
+        riderId: r.id,
+        profileId: r.profile_id,
+        firstName: r.first_name,
+        fullName: `${r.first_name} ${r.last_name}`.trim(),
+        phone: r.phone,
+        oldestObligationId: o.oldestId,
+        oldestDueDate: o.oldestDate,
+        owedAmount: o.amount,
+        owedCount: o.count,
+      });
+    }
+  }
+
+  const plan = planLateReminders(riders, today);
+  let sent2d = 0;
+  let sent7d = 0;
+  let smsFailed = 0;
+  let noPhone = 0;
+  const warnedToday: typeof plan = [];
+
+  for (const r of plan) {
+    if (!r.phone || !r.profileId) {
+      noPhone++;
+      continue;
+    }
+    try {
+      // The in-app row IS the dedupe: only a NEW row sends the SMS, so a
+      // re-run of this job (or a retry) never texts a rider twice.
+      const fresh = await createNotification({
+        profileId: r.profileId,
+        type: r.stage === 'warn_7d' ? 'contract_termination_warning' : 'payment_late',
+        title: r.stage === 'warn_7d' ? 'Onyo: mkataba hatarini' : 'Hujalipa',
+        body: r.text,
+        deepLink: '/rider/pay',
+        dedupeKey: r.dedupeKey,
+      });
+      if (!fresh) continue;
+      const res = await enqueueSms({ recipient: r.phone, text: r.text, subject: r.stage });
+      if (!res.sent) smsFailed++;
+      if (r.stage === 'warn_7d') {
+        sent7d++;
+        warnedToday.push(r);
+      } else {
+        sent2d++;
+      }
+    } catch {
+      smsFailed++;
+    }
+  }
+
+  // --- the owner's morning summary: one SMS a day ------------------------
+  const yesterday = localDateString(new Date(Date.now() - 86_400_000));
+  const collected = await fetchAllPages<{ amount: number }>(
+    (from, to) =>
+      admin
+        .from('payments')
+        .select('amount')
+        .eq('status', 'completed')
+        .gte('completed_at', `${yesterday}T00:00:00+03:00`)
+        .lt('completed_at', `${today}T00:00:00+03:00`)
+        .order('id', { ascending: true })
+        .range(from, to),
+    { label: 'late-sms collections' },
+  );
+  const collectedTotal = collected.reduce((sum, p) => sum + p.amount, 0);
+  const owing = riders.filter((r) => r.owedAmount > 0);
+  const owingTotal = owing.reduce((sum, r) => sum + r.owedAmount, 0);
+  const sevenPlus = plan.filter((r) => r.stage === 'warn_7d').length;
+  const fmt = (n: number) => `TZS ${n.toLocaleString('en-US')}`;
+
+  const summary =
+    `Ng'umbi Riders muhtasari ${today.split('-').reverse().join('/')}: ` +
+    `Makusanyo jana ${fmt(collectedTotal)} (malipo ${collected.length}). ` +
+    `Wanaodaiwa ${owing.length}, jumla ${fmt(owingTotal)}. Wamechelewa siku 7+: ${sevenPlus}.`;
+  const digest = ownerWarningDigest(warnedToday);
+  await notifyOwner({
+    type: 'owner_morning_summary',
+    title: 'Muhtasari wa asubuhi',
+    body: digest ? `${summary}\n${digest}` : summary,
+    deepLink: '/owner',
+    dedupeKey: `owner_morning_summary:${today}`,
+    sms: summary,
+  });
+  if (digest) {
+    await notifyOwner({
+      type: 'late_warning_digest',
+      title: 'Waendeshaji wameonywa',
+      body: digest,
+      deepLink: '/owner/payments',
+      dedupeKey: `late_warning_digest:${today}`,
+      sms: digest,
+    });
+  }
+
+  return { sent2d, sent7d, smsFailed, noPhone, ridersOwing: owing.length };
+};
+
+/** Morning (08:00 EAT) tasks: anything that texts people. */
+export const MORNING_TASKS: [name: string, task: CronTask][] = [
+  ['late-payment-sms', latePaymentSmsTask],
+];
 
 /**
  * All tasks in daily-dispatch order (midnight EAT): flip statuses for the new

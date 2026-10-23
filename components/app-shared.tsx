@@ -25,6 +25,7 @@ import {
   WalletIcon,
   AwardIcon,
   BriefcaseIcon,
+  ReceiptTextIcon,
 } from 'lucide-react';
 
 export type SidebarNavItem = {
@@ -70,6 +71,7 @@ export const navGroups: SidebarNavGroup[] = [
         ],
       },
       { title: 'Purchase requests', path: '/owner/requisitions', icon: <ClipboardCheckIcon /> },
+      { title: 'Retirements', path: '/owner/retirements', icon: <ReceiptTextIcon /> },
       { title: 'Phone loans', path: '/owner/phone-loans', icon: <SmartphoneIcon /> },
       { title: 'Departments', path: '/owner/departments', icon: <WalletIcon /> },
       { title: 'Reconciliation', path: '/owner/reconciliation', icon: <ScaleIcon /> },
@@ -116,6 +118,7 @@ export const accountantNavGroups: SidebarNavGroup[] = [
       { title: 'Awaiting confirmation', path: '/accountant/payments/approvals', icon: <CheckCheckIcon /> },
       { title: 'Outstanding', path: '/accountant/outstanding', icon: <ScaleIcon /> },
       { title: 'Purchase requests', path: '/accountant/requisitions', icon: <ClipboardCheckIcon /> },
+      { title: 'Retirements', path: '/accountant/retirements', icon: <ReceiptTextIcon /> },
       { title: 'Phone loans', path: '/accountant/phone-loans', icon: <SmartphoneIcon /> },
       { title: 'Departments', path: '/accountant/departments', icon: <WalletIcon /> },
     ],

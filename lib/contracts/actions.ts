@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { getSessionProfile } from '@/lib/auth/session';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { releaseContractMotorcycle, reclaimContractMotorcycle } from '@/lib/assignments/release';
 import { writeAudit } from '@/lib/audit/audit';
 import { localDateString, formatLocalDateTime } from '@/lib/dates/tz';
 import { generateSchedule } from '@/lib/obligations/schedule';
@@ -696,13 +697,48 @@ export async function contractLifecycle(
       .in('status', ['scheduled', 'due', 'overdue']);
   }
 
+  // Free the motorcycle (client request 2026-10-23). A terminated rider hands
+  // the motorcycle back, so it returns to the pool at once. An early
+  // completion frees it only when the lease does NOT transfer ownership — when
+  // it does, the motorcycle is the rider's and leaves through the completion
+  // chain instead. Best-effort: the status change above is the record that
+  // matters, and the outcome is audited either way.
+  let motorcycle: Awaited<ReturnType<typeof releaseContractMotorcycle>> | null = null;
+  if (action === 'terminate' || action === 'complete_early') {
+    const admin = createAdminClient();
+    const { data: row } = await admin
+      .from('contracts')
+      .select('rider_id, motorcycle_id, ownership_transfers')
+      .eq('id', contractId)
+      .maybeSingle();
+    const c = row as { rider_id: string; motorcycle_id: string | null; ownership_transfers: boolean } | null;
+    if (c && (action === 'terminate' || !c.ownership_transfers)) {
+      try {
+        motorcycle = await releaseContractMotorcycle(admin, {
+          contractId,
+          riderId: c.rider_id,
+          motorcycleId: c.motorcycle_id,
+          endDate: localDateString(),
+          reason: action === 'terminate' ? 'Contract terminated' : 'Contract completed early',
+        });
+      } catch (e) {
+        console.error('[contracts] motorcycle release failed:', contractId, (e as Error).message);
+      }
+      if (c.motorcycle_id) {
+        revalidatePath(`/owner/motorcycles/${c.motorcycle_id}`);
+        revalidatePath('/owner/motorcycles');
+        revalidatePath(`/owner/riders/${c.rider_id}`);
+      }
+    }
+  }
+
   await writeAudit({
     actorId: ownerId,
     actorRole: 'owner',
     action: `contract.${action}`,
     entityType: 'contract',
     entityId: contractId,
-    metadata: { to: cfg.to },
+    metadata: { to: cfg.to, motorcycle },
   });
   revalidatePath(`/owner/contracts/${contractId}`);
   revalidatePath('/owner/contracts');
@@ -1101,7 +1137,7 @@ export async function reactivateContract(
 
   const { data: current } = await admin
     .from('contracts')
-    .select('id, status, start_date, end_date')
+    .select('id, status, start_date, end_date, rider_id, motorcycle_id')
     .eq('id', contractId)
     .maybeSingle();
   if (!current) return { ok: false, error: 'not_found' };
@@ -1109,6 +1145,8 @@ export async function reactivateContract(
     status: ContractStatus;
     start_date: string | null;
     end_date: string | null;
+    rider_id: string;
+    motorcycle_id: string | null;
   };
 
   const REACTIVATABLE: ContractStatus[] = ['terminated', 'completed', 'completed_early', 'cancelled'];
@@ -1124,6 +1162,17 @@ export async function reactivateContract(
   // A contract whose term is already over would be auto-completed again by
   // tonight's job — say so instead of "reactivating" it for a few hours.
   if (effectiveEnd < today) return { ok: false, error: 'term_expired' };
+
+  // Termination released the motorcycle (client request 2026-10-23); give it
+  // back before anything else changes. If it has been leased to another rider
+  // since, stop here — two riders on one motorcycle is worse than a refusal.
+  const reclaim = await reclaimContractMotorcycle(admin, {
+    contractId,
+    riderId: c.rider_id,
+    motorcycleId: c.motorcycle_id,
+    startDate: today,
+  });
+  if (!reclaim.ok) return { ok: false, error: reclaim.error };
 
   // 1. Status back to active, conditional on it still being terminal.
   const { data: changed, error: statusErr } = await admin

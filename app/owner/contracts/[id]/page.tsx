@@ -90,6 +90,20 @@ export default async function ContractDetailPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Rider performance report — offered on every activated contract,
+              and promoted for a terminated one (client request 2026-10-23). */}
+          {!preActivation && (
+            <Link
+              href={`/owner/contracts/${c.id}/performance`}
+              className={`flex min-h-9 items-center rounded-[--radius-card] px-3 text-sm font-semibold ${
+                c.status === 'terminated'
+                  ? 'bg-primary text-white hover:bg-primary-hover'
+                  : 'border border-border bg-white text-primary-dark hover:bg-surface'
+              }`}
+            >
+              Performance report
+            </Link>
+          )}
           {!c.locked_at && (
             <Link
               href={`/owner/contracts/${c.id}/edit`}

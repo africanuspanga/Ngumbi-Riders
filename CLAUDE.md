@@ -37,6 +37,65 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
 
+**🆕 CLIENT-FEEDBACK BUILD #6 (2026-10-23, migration `0036` APPLIED LIVE; D-048…D-052).**
+⚠ **Deploy to Vercel + add 4 env vars is the remaining step** (below).
+
+1. **SMS finally works — via the VPS relay** (D-052). No SMS had ever left
+   production: Mobishastra whitelists IPs, Vercel has none fixed. New service
+   `ngumbi-sms` on 164.92.205.5 (localhost:8089, sender **GEAFA**, same
+   DRIFTMARK account as HAKIKI), public at
+   `https://sms.mikenovagroup.co.tz/ngumbi/send` via routes added to the
+   existing nginx site (`nginx -t` then reload; HAKIKI untouched). HMAC-signed,
+   5-min replay window, TZ numbers only. **Verified live**: balance 9,654 read
+   through the app's own client, one test SMS to the owner accepted ("Send
+   Successful", 1 credit). Ops notes: `scripts/sms-relay/README.md`. Owner →
+   System shows transport, sender, credit balance, outbox and a **Send test
+   SMS** button. SMS now sends IMMEDIATELY on enqueue; text folded to GSM-7.
+2. **Late-payment SMS** (D-051): 2 days → "Hujalipa - unadaiwa malipo ya siku
+   N (TZS X)"; 7 days → "…Kama hujalipa, hii itapelekea kuvunja mkataba". Once
+   per stage per oldest unpaid day. New cron `/api/cron/morning` at 05:00 UTC
+   = **08:00 EAT** (`vercel.json`), plus a one-SMS owner morning summary.
+3. **Owner SMS for important events**: `notifyOwner({ …, sms })` texts
+   `OWNER_NOTIFY_PHONE` (+255753522155) once per event (gated by the in-app
+   dedupe). Wired to: requisition submitted, retirement submitted, cash
+   payment awaiting confirmation, phone-loan request, completion requests,
+   payment issues, new applications.
+4. **Retirement flow + dashboards** (0036, D-049): itemised entries (spent +
+   cash returned + receipts), Director verifies/rejects each; unretired /
+   partial / full, outstanding, retired %, aging (0–7 / 8–14 / 15–30 / 30+)
+   all derived. `/owner/retirements` ("Retirement performance": verify queue,
+   active, fully retired, per-staff summary) and `/accountant/retirements`
+   (my retirements, eligible requests …), filters + Excel/CSV export
+   (`/api/reports/retirements/export`). Panel on every requisition page.
+   **Live finding: 7 of 8 paid requests are unretired, 6 for 45 days
+   (≈4.7M TZS).**
+5. **The 404s** (D-048): the accountant request page refused any request the
+   viewer hadn't written, yet dashboard/departments/reports linked them all.
+   Now any staff member can open any request (actions stay author-only); the
+   list shows the whole team's requests; the dashboard no longer drops
+   `under_review` ones. Dead links `/accountant/contracts/[id]` (now a real
+   page) and `/accountant/motorcycles/[id]` fixed, and **`lib/dev/dead-links.ts`
+   in `npm run verify` now fails CI on any link to a non-existent page.**
+6. **Termination frees the motorcycle** (D-050); reactivation reclaims it or
+   refuses if it was re-leased. Terminate/complete-early now ask for inline
+   confirmation (it was one click).
+7. **Rider performance report**: `/owner/contracts/[id]/performance` +
+   printable PDF `/api/contracts/[id]/performance-report` (started, total paid,
+   owed at termination, on-time vs late, month by month, signature lines),
+   cutoff = termination date from the audit trail. Grade is capped by
+   punctuality (all paid but mostly late ≠ excellent).
+
+Verified: **654 unit tests** (+66), typecheck ✅, lint ✅, build ✅, **69-page
+smoke run ✅**, PDF + export + dashboard fetched as owner from a local
+production server. Types regenerated from the live schema. Rider VIKTA
+MZOVELA is `inactive` but their contract NGR-C-0008 is still `active` with the
+motorcycle assigned — terminate it if the bike should be re-leased.
+
+**Vercel env vars to add before/with the deploy:**
+`SMS_RELAY_URL=https://sms.mikenovagroup.co.tz/ngumbi/send`,
+`SMS_RELAY_SECRET` (value in `.env.local` and `/opt/ngumbi-sms/.env`),
+`MOBISHASTRA_SENDER_ID=GEAFA`, `OWNER_NOTIFY_PHONE=+255753522155`.
+
 **🆕 LIVE CONTRACT REPRICING + AVATAR CRASH FIX (2026-09-22, no migration).**
 Two client reports, both fixed; the contract correction is **APPLIED LIVE**.
 ⚠ **Deploy to Vercel is the remaining step.**
@@ -921,7 +980,8 @@ lib/staff/           actions (accounts) · validation · profile (HR record) ·
                      profile-constants · profile-queries
 lib/dev/             rsc-boundary (client/server boundary scanner) · routes
                      (smoke-test route discovery) · menu-structure (Base UI menu
-                     parts used outside their group, D-047)
+                     parts used outside their group, D-047) · dead-links (any
+                     literal link to a page that does not exist, D-048)
                      — build-quality tooling, not app code
 lib/notifications/   service · queries · actions · labels (sw/en, plain module)
 lib/payments/        …· grouping (transaction outcome groups, pure)
@@ -936,7 +996,7 @@ lib/dates/           tz (timezone primitives) · format (DD/MM/YYYY, the shared 
 lib/security/        request (client IP)     lib/audit/  audit writer
 lib/money/ dates/ i18n/ validation/          domain utilities
 
-supabase/migrations/ 0001..0035 + seed.sql    supabase/config.toml
+supabase/migrations/ 0001..0036 + seed.sql    supabase/config.toml
 scripts/seed.ts      owner + demo rider seeding
 scripts/db-query.ts  live SQL via the Management API (D-029)
 scripts/reprice-contract.ts  the D-046 correction from a shell; --apply required

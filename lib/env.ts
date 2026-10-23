@@ -55,7 +55,14 @@ const serverSchema = z.object({
   MOBISHASTRA_PASSWORD: z.preprocess(emptyAsUndefined, z.string().optional()),
   MOBISHASTRA_SENDER_ID: z.preprocess(emptyAsUndefined, z.string().optional()),
   MOBISHASTRA_BASE_URL: z.preprocess(emptyAsUndefined, z.string().url().optional()),
+  // Owner's phone(s) for important-update SMS; comma-separated, local
+  // (0753…) or international (+255753…) form.
   OWNER_NOTIFY_PHONE: z.preprocess(emptyAsUndefined, z.string().optional()),
+  // SMS relay on the owner's VPS (client request 2026-10-23). Mobishastra
+  // whitelists caller IPs and Vercel has none fixed, so production sends via
+  // the relay; with both set it takes precedence over the direct credentials.
+  SMS_RELAY_URL: z.preprocess(emptyAsUndefined, z.string().url().optional()),
+  SMS_RELAY_SECRET: z.preprocess(emptyAsUndefined, z.string().min(32).optional()),
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().optional(),

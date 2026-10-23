@@ -2,6 +2,27 @@ import Link from 'next/link';
 import { requireOwner } from '@/lib/auth/session';
 import { getSystemHealth } from '@/lib/system/queries';
 import { formatLocalDateTime } from '@/lib/dates/tz';
+import { checkSmsBalance, smsTransport, senderId } from '@/lib/mobishastra/client';
+import { ownerPhones } from '@/lib/notifications/service';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { SmsTestForm } from '@/components/system/SmsTestForm';
+
+/** SMS outbox counts by status — "is anything stuck?" at a glance. */
+async function smsOutboxCounts(): Promise<Record<string, number>> {
+  const admin = createAdminClient();
+  const statuses = ['pending', 'sent', 'failed'] as const;
+  const counts = await Promise.all(
+    statuses.map(async (status) => {
+      const { count } = await admin
+        .from('message_outbox')
+        .select('id', { count: 'exact', head: true })
+        .eq('channel', 'sms')
+        .eq('status', status);
+      return [status, count ?? 0] as const;
+    }),
+  );
+  return Object.fromEntries(counts);
+}
 
 export const metadata = { title: 'System health' };
 
@@ -13,7 +34,12 @@ function ago(iso: string | null): string {
 
 export default async function SystemPage() {
   await requireOwner();
-  const h = await getSystemHealth();
+  const [h, balance, outbox] = await Promise.all([
+    getSystemHealth(),
+    checkSmsBalance(),
+    smsOutboxCounts(),
+  ]);
+  const transport = smsTransport();
 
   return (
     <div className="flex flex-col gap-6">
@@ -26,6 +52,31 @@ export default async function SystemPage() {
         <Dot label="Snippe" on={h.integrations.snippe} />
         <Dot label="Resend" on={h.integrations.resend} />
         <Dot label="Web push" on={h.integrations.push} />
+      </section>
+
+      {/* SMS (client request 2026-10-23): sent through the relay on the VPS,
+          whose IP Mobishastra has whitelisted. */}
+      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+        <h2 className="font-semibold text-primary-dark">SMS · Mobishastra</h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Metric
+            label="Transport"
+            value={transport === 'relay' ? 'VPS relay' : transport === 'direct' ? 'Direct' : 'Not configured'}
+            tone={transport ? 'ok' : 'bad'}
+          />
+          <Metric label="Sender ID" value={senderId()} />
+          <Metric
+            label="Credit balance"
+            value={balance.ok ? balance.balance.toLocaleString('en-US') : balance.error}
+            tone={!balance.ok ? 'bad' : balance.balance < 500 ? 'warn' : 'ok'}
+          />
+          <Metric
+            label="Outbox"
+            value={`${outbox.sent ?? 0} sent · ${outbox.pending ?? 0} pending · ${outbox.failed ?? 0} failed`}
+            tone={(outbox.failed ?? 0) > 0 ? 'warn' : 'ok'}
+          />
+        </div>
+        <SmsTestForm defaultPhone={ownerPhones()[0] ?? ''} />
       </section>
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3">

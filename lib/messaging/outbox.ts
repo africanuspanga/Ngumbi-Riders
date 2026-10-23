@@ -113,14 +113,56 @@ export async function processOutbox(limit = 50): Promise<{ sent: number; failed:
   return { sent, failed, skipped };
 }
 
-/** Enqueue an SMS for the outbox to deliver (build spec #4/#6). */
-export async function enqueueSms(input: { recipient: string; text: string; subject?: string }): Promise<void> {
-  await enqueueMessage({
-    channel: 'sms',
-    recipient: input.recipient,
-    subject: input.subject,
-    payload: { text: input.text },
-  });
+/**
+ * Queue an SMS and try to deliver it NOW (client request 2026-10-23: the owner
+ * must hear about a new requisition when it happens, not at midnight).
+ *
+ * The row is written first, so the message exists even if the send fails or
+ * the function dies mid-request; the nightly outbox run then retries it like
+ * any other pending/failed message. A not_configured result leaves it pending
+ * without burning an attempt, exactly as processOutbox does.
+ */
+export async function enqueueSms(input: {
+  recipient: string;
+  text: string;
+  subject?: string;
+  /** false = leave it for the next outbox run (bulk jobs pace themselves). */
+  deliverNow?: boolean;
+}): Promise<{ queued: boolean; sent: boolean; error?: string }> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from('message_outbox')
+    .insert({
+      channel: 'sms',
+      recipient: input.recipient,
+      subject: input.subject ?? null,
+      payload: { text: input.text } as Json,
+      status: 'pending',
+    })
+    .select('id')
+    .single();
+  if (error || !data) {
+    console.error('[outbox] sms enqueue failed:', error?.message);
+    return { queued: false, sent: false, error: 'enqueue_failed' };
+  }
+  if (input.deliverNow === false) return { queued: true, sent: false };
+
+  const id = (data as { id: string }).id;
+  const res = await sendSms({ to: input.recipient, text: input.text });
+  if (res.ok) {
+    const { error: sentErr } = await admin.from('message_outbox').update({ status: 'sent' }).eq('id', id);
+    if (sentErr) console.error('[outbox] sent-status update failed (may re-send):', id, sentErr.message);
+    return { queued: true, sent: true };
+  }
+  if (res.error === 'not_configured') {
+    await admin.from('message_outbox').update({ last_error: 'not_configured' }).eq('id', id);
+  } else {
+    await admin
+      .from('message_outbox')
+      .update({ status: 'failed', attempts: 1, last_error: res.error })
+      .eq('id', id);
+  }
+  return { queued: true, sent: false, error: res.error };
 }
 
 export { isMobishastraConfigured };

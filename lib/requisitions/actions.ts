@@ -300,6 +300,10 @@ export async function submitRequisition(requisitionId: string): Promise<ActionRe
     body: `${actor.fullName ?? 'An accountant'} raised ${found.row.requisition_number} — ${found.row.title} — for ${formatTZS(total.amount)}.`,
     deepLink: `/owner/requisitions/${requisitionId}`,
     dedupeKey: `requisition_submitted:${requisitionId}`,
+    sms:
+      `Ng'umbi Riders: Ombi jipya la manunuzi ${found.row.requisition_number} kutoka ` +
+      `${actor.fullName ?? 'mhasibu'}: ${found.row.title} - ${formatTZS(total.amount)}. ` +
+      `Tafadhali ingia kwenye mfumo kuidhinisha.`,
   });
 
   await writeAudit({

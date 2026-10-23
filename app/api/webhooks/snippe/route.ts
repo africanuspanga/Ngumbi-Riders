@@ -165,6 +165,7 @@ export async function POST(request: NextRequest) {
       body: `Payment ${p.id}: ${kind}. See /owner/reconciliation.`,
       deepLink: '/owner/reconciliation',
       dedupeKey: `payment_issue:${kind}:${p.id}`,
+      sms: `Ng'umbi Riders: TAHADHARI - malipo ya simu yanahitaji ukaguzi (${kind}). Angalia Reconciliation mfumoni.`,
     });
   }
 

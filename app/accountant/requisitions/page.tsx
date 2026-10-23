@@ -8,23 +8,29 @@ import { formatTZS } from '@/lib/money/format';
 export const metadata = { title: 'Purchase requests' };
 
 /**
- * The accountant's purchase requests (client feedback 2026-09-05). They raise
- * a request to buy motorcycles, spare parts, fuel or anything else; the
+ * Purchase requests (client feedback 2026-09-05). An accountant raises a
+ * request to buy motorcycles, spare parts, fuel or anything else; the
  * Managing Director approves or rejects it.
  *
- * An accountant sees ONLY the requests they raised — scoped in SQL, not by
- * hiding rows in the UI. The owner viewing this page sees everything, which is
- * consistent with requireAccountant() letting them see what their staff see.
+ * The finance team sees EVERY request, not only its own (client report
+ * 2026-10-23: requests raised by one accountant were invisible to the other,
+ * and links from the dashboard and reports landed on a 404). Their own come
+ * first. A colleague's DRAFT is still private work in progress and is left out.
  */
 export default async function AccountantRequisitionsPage() {
   const profile = await requireAccountant();
-  const requisitions = await listRequisitions(
-    profile.role === 'owner' ? {} : { authorId: profile.userId },
-  );
+  const all = await listRequisitions();
+  const isMine = (r: (typeof all)[number]) => r.requestedById === profile.userId;
+  // Stable sort: own requests first, each group still newest first.
+  const requisitions = all
+    .filter((r) => isMine(r) || r.status !== 'draft')
+    .sort((a, b) => Number(isMine(b)) - Number(isMine(a)));
 
-  const open = requisitions.filter((r) => r.status === 'draft' || r.status === 'submitted');
-  const closed = requisitions.filter((r) => r.status !== 'draft' && r.status !== 'submitted');
-  const awaiting = open.filter((r) => r.status === 'submitted');
+  const isOpen = (r: (typeof all)[number]) =>
+    r.status === 'draft' || r.status === 'submitted' || r.status === 'under_review';
+  const open = requisitions.filter(isOpen);
+  const closed = requisitions.filter((r) => !isOpen(r));
+  const awaiting = open.filter((r) => r.status !== 'draft');
 
   return (
     <div className="flex flex-col gap-6">
@@ -51,6 +57,7 @@ export default async function AccountantRequisitionsPage() {
         <h2 className="font-semibold text-primary-dark">Open</h2>
         <RequisitionTable
           requisitions={open}
+          showRequester
           hrefFor={(r) => `/accountant/requisitions/${r.id}`}
           emptyMessage="No open requests. Start one with “New request”."
         />
@@ -61,6 +68,7 @@ export default async function AccountantRequisitionsPage() {
           <h2 className="font-semibold text-primary-dark">Decided</h2>
           <RequisitionTable
             requisitions={closed}
+            showRequester
             hrefFor={(r) => `/accountant/requisitions/${r.id}`}
             emptyMessage="Nothing decided yet."
           />

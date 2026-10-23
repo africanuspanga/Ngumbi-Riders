@@ -14,6 +14,9 @@ import { RequisitionPdfLink } from '@/components/requisitions/RequisitionPdfLink
 import { awaitsDecision, canSetPaymentStatus } from '@/lib/requisitions/compute';
 import { formatTZS } from '@/lib/money/format';
 import { formatDate } from '@/lib/dates/format';
+import { listRetirementEntries } from '@/lib/requisitions/retirement-queries';
+import { listDepartments } from '@/lib/departments/queries';
+import { RetirementPanel } from '@/components/requisitions/RetirementPanel';
 
 export const metadata = { title: 'Purchase request' };
 
@@ -23,9 +26,13 @@ export default async function OwnerRequisitionPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireOwner();
+  const profile = await requireOwner();
   const { id } = await params;
-  const requisition = await getRequisition(id);
+  const [requisition, retirement, departments] = await Promise.all([
+    getRequisition(id),
+    listRetirementEntries(id),
+    listDepartments(),
+  ]);
   if (!requisition) notFound();
 
   return (
@@ -59,6 +66,17 @@ export default async function OwnerRequisitionPage({
         <PaymentActions
           requisitionId={requisition.id}
           paymentStatus={requisition.paymentStatus}
+        />
+      )}
+
+      {/* Retirement (client request 2026-10-23): verify what finance accounted
+          for. Shown once 0036 is live; before that the badge above is all. */}
+      {requisition.status === 'approved' && retirement.available && (
+        <RetirementPanel
+          requisition={requisition}
+          entries={retirement.entries}
+          viewer={profile}
+          departments={departments.map((d) => ({ id: d.id, name: d.name }))}
         />
       )}
 

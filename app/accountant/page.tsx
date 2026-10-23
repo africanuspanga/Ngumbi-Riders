@@ -18,16 +18,18 @@ export const metadata = { title: 'Accountant dashboard' };
  */
 export default async function AccountantDashboard() {
   const profile = await requireAccountant();
-  const [d, collections, phoneLoans, requisitions] = await Promise.all([
+  const [d, collections, phoneLoans, openRequisitions] = await Promise.all([
     getOwnerDashboard(),
     getCollectionsOverview(),
     getPhoneLoanPortfolio(),
-    listRequisitionsForDashboard(
-      profile.role === 'owner'
-        ? { statuses: ['draft', 'submitted'], limit: 8 }
-        : { statuses: ['draft', 'submitted'], authorId: profile.userId, limit: 8 },
-    ),
+    // Every OPEN request from the whole finance team — including those the
+    // Director has picked up ('under_review'), which used to vanish from here
+    // the moment he opened them. Drafts only when they are the viewer's own.
+    listRequisitionsForDashboard({ statuses: ['draft', 'submitted', 'under_review'], limit: 40 }),
   ]);
+  const requisitions = openRequisitions
+    .filter((r) => r.status !== 'draft' || r.requestedById === profile.userId)
+    .slice(0, 8);
 
   return (
     <div className="flex flex-col gap-6">

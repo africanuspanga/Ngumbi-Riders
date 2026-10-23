@@ -5,6 +5,74 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-052 · SMS goes through a relay on the whitelisted VPS (2026-10-23)
+
+Mobishastra accepts API calls only from whitelisted IPs; Vercel has no fixed
+egress IP, which is why no SMS ever left production (the outbox held three
+messages at `not_configured` since September). The mikenova-group project had
+already solved this on the same VPS (164.92.205.5) with a relay.
+
+- Ng'umbi runs its **own** relay (`ngumbi-sms`, localhost:8089, sender
+  **GEAFA**), reached at `https://sms.mikenovagroup.co.tz/ngumbi/send` through
+  routes added to the existing nginx site. A separate service, not a change to
+  HAKIKI's, so neither project can break the other. Same DRIFTMARK account and
+  credit balance.
+- Requests are **HMAC-signed over timestamp + raw body** with a 5-minute window
+  (stronger than HAKIKI's static header: a captured request cannot be
+  replayed). Only `255[67]…` numbers, ≤50 per call.
+- Success is confirmed only from the gateway body (`000` / "Send Successful");
+  "No More Credits" contains no error word (`lib/mobishastra/codes.ts`).
+- Text is folded to GSM-7 before sending: one curly apostrophe (as in
+  "Ng’umbi") switches a whole SMS to Unicode, 70 chars instead of 160.
+- SMS is now sent **immediately** when queued (`enqueueSms`); the nightly
+  outbox run only retries failures.
+
+## D-051 · Late-payment reminders: once per stage per oldest unpaid day (2026-10-23)
+
+2 days behind → "Hujalipa - unadaiwa malipo ya siku N"; 7 days → "Kama
+hujalipa, hii itapelekea kuvunja mkataba". Lateness is the age of the OLDEST
+unpaid obligation. Each stage is sent once per that obligation (the in-app
+notification's dedupe key gates the SMS), so nobody is texted daily for the
+same debt; paying the oldest day starts a new cycle. A rider already 7+ days
+behind gets only the warning. Runs at **08:00 EAT** (`/api/cron/morning`),
+never from the midnight dispatcher, and does nothing while SMS is unconfigured
+— a reminder queued for days would reach a rider who has since paid. The
+owner gets one morning summary SMS (yesterday's collections, who owes, who
+was warned).
+
+## D-050 · Ending a contract frees its motorcycle; reactivating reclaims it (2026-10-23)
+
+Termination closes the rider's assignment and sets the motorcycle
+`available`. Early completion does so only when ownership does NOT transfer;
+the nightly auto-completion does not (that motorcycle may be leaving through
+the ownership-transfer chain, D-044). A locked (transferred) motorcycle, or one
+another live contract names, is never freed. Reactivation re-assigns the same
+motorcycle and REFUSES if it has been leased to someone else since. Rider
+deactivation alone does not free a motorcycle under a live contract — the
+contract must be terminated, which is the deliberate act.
+
+## D-049 · Retirement is itemised entries the Director verifies (2026-10-23)
+
+Migration 0036. Released money is accounted for in one or more entries
+(spent + cash returned + receipts); the owner verifies or rejects each.
+Unretired / partially / fully retired, outstanding, retired % and aging are
+DERIVED from verified entries (`lib/requisitions/retirement.ts`), never
+stored. Cash returned can never exceed what is outstanding; overspend is
+allowed and reported. Requests retired the old one-click way (0033) read as
+fully retired. Aging buckets: 0–7 days (the retirement period), 8–14, 15–30,
+30+.
+
+## D-048 · Every back-office user may OPEN any requisition; only actions are scoped (2026-10-23)
+
+The accountant's request page 404'd for any request the viewer had not
+written, while the dashboard, departments and reports linked every request
+there. Staff already hold SELECT on all requisitions under RLS, so hiding the
+page protected nothing. The page now always renders; edit/submit/withdraw stay
+with the author and are re-checked server-side. A colleague's DRAFT stays out
+of the list. A source scanner (`lib/dev/dead-links.ts`, in `npm run verify`)
+now fails CI on any literal link to a page that does not exist — it found
+`/accountant/contracts/[id]` and `/accountant/motorcycles/[id]`.
+
 ## D-047 · A Base UI menu part outside its group is a click-time crash (2026-09-22)
 
 Client feedback: "when the admin clicks the 'JN' profile initials, the

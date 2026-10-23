@@ -197,6 +197,9 @@ export async function requestCashPayment(input: {
     body: `${actor.fullName ?? 'An accountant'} recorded ${formatTZS(check.data.amount)} from ${rider.name} on ${formatDate(input.paymentDate)}.`,
     deepLink: '/owner/payments/approvals',
     dedupeKey: `cash_approval_request:${requestId}`,
+    sms:
+      `Ng'umbi Riders: Malipo ya taslimu ${formatTZS(check.data.amount)} kutoka ${rider.name} ` +
+      `yanasubiri uthibitisho wako.`,
   });
 
   await writeAudit({

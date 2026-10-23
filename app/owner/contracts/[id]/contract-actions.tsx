@@ -258,14 +258,35 @@ export function LifecycleButtons({
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Ending a contract is not undone by a second click, so it asks first —
+  // inline, never a browser dialog (those block the page).
+  const [confirming, setConfirming] = useState<'complete_early' | 'terminate' | null>(null);
 
-  const actions: { key: 'pause' | 'resume' | 'complete_early' | 'terminate'; label: string }[] = [];
+  type Key = 'pause' | 'resume' | 'complete_early' | 'terminate';
+  const actions: { key: Key; label: string }[] = [];
   if (status === 'active') {
     actions.push({ key: 'pause', label: 'Pause' }, { key: 'complete_early', label: 'Complete early' }, { key: 'terminate', label: 'Terminate' });
   } else if (status === 'paused') {
     actions.push({ key: 'resume', label: 'Resume' }, { key: 'terminate', label: 'Terminate' });
   }
   if (actions.length === 0) return null;
+
+  function run(key: Key, label: string) {
+    start(async () => {
+      setError(null);
+      try {
+        const res = await contractLifecycle(contractId, key);
+        if (!res.ok) {
+          setError(`Could not ${label.toLowerCase()} this contract (${res.error}).`);
+          return;
+        }
+        setConfirming(null);
+        router.refresh();
+      } catch {
+        setError(`Could not ${label.toLowerCase()} this contract — network error. Reload and check the contract status before retrying.`);
+      }
+    });
+  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -275,25 +296,44 @@ export function LifecycleButtons({
             key={a.key}
             type="button"
             disabled={pending}
-            onClick={() => start(async () => {
-              setError(null);
-              try {
-                const res = await contractLifecycle(contractId, a.key);
-                if (!res.ok) {
-                  setError(`Could not ${a.label.toLowerCase()} this contract (${res.error}).`);
-                  return;
-                }
-                router.refresh();
-              } catch {
-                setError(`Could not ${a.label.toLowerCase()} this contract — network error. Reload and check the contract status before retrying.`);
-              }
-            })}
+            onClick={() =>
+              a.key === 'terminate' || a.key === 'complete_early'
+                ? setConfirming(a.key)
+                : run(a.key, a.label)
+            }
             className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
           >
             {a.label}
           </button>
         ))}
       </div>
+      {confirming && (
+        <div className="flex flex-col gap-2 rounded-[--radius-card] border border-overdue/40 bg-overdue/5 p-3 text-sm">
+          <p>
+            {confirming === 'terminate'
+              ? 'Terminate this contract? Future payment days are cancelled, days already missed stay owed, and the motorcycle is released so it can be leased to another rider. A performance report is available afterwards.'
+              : 'Complete this contract early? Future payment days are cancelled. If ownership does not transfer to the rider, the motorcycle is released back to the fleet.'}
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => run(confirming, confirming === 'terminate' ? 'Terminate' : 'Complete early')}
+              className="rounded-[--radius-card] bg-overdue px-3 py-2 font-semibold text-white disabled:opacity-60"
+            >
+              {pending ? 'Working…' : confirming === 'terminate' ? 'Yes, terminate' : 'Yes, complete early'}
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => setConfirming(null)}
+              className="rounded-[--radius-card] border border-border bg-white px-3 py-2 font-semibold"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
       {error && (
         <p role="alert" className="text-sm font-medium text-overdue">
           {error}
@@ -324,6 +364,11 @@ const REACTIVATE_ERRORS: Record<string, string> = {
   not_an_extension: 'The new end date must be after the current one.',
   restore_failed: 'The status changed but the payment days could not be restored — retry.',
   update_failed: 'The contract could not be updated. Reload and try again.',
+  motorcycle_reassigned:
+    'This motorcycle has been leased to another rider since the contract ended. Edit the contract to give it a different motorcycle first.',
+  rider_has_other_motorcycle:
+    'This rider already holds another motorcycle. Release it, or edit the contract to use that motorcycle.',
+  motorcycle_unavailable: 'The motorcycle is inactive or has been transferred, so the contract cannot use it.',
 };
 
 export function ReactivateButton({

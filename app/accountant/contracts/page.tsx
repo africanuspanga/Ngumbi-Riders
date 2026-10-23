@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { requireAccountant } from '@/lib/auth/session';
 import { listContracts } from '@/lib/contracts/queries';
 import { deriveContractDisplayStatus, CONTRACT_STATUS_LABELS, CONTRACT_STATUS_TONE } from '@/lib/contracts/status';
@@ -51,7 +52,11 @@ export default async function AccountantContractsPage() {
                 });
                 return (
                   <tr key={c.id} className="border-t border-border">
-                    <td className="px-3 py-2 font-medium">{c.contract_number}</td>
+                    <td className="px-3 py-2 font-medium">
+                      <Link href={`/accountant/contracts/${c.id}`} className="text-primary-dark underline">
+                        {c.contract_number}
+                      </Link>
+                    </td>
                     <td className="px-3 py-2 text-muted-foreground">{c.rider_name}</td>
                     <td className="px-3 py-2 text-muted-foreground">{c.registration}</td>
                     <td className="px-3 py-2 text-muted-foreground">{formatDate(c.start_date)}</td>

@@ -21,8 +21,14 @@ export default async function EditRequisitionPage({
   const { id } = await params;
   const [requisition, approvers] = await Promise.all([getRequisition(id), listApprovers()]);
   if (!requisition) notFound();
-  if (profile.role !== 'owner' && requisition.requestedById !== profile.userId) notFound();
-  if (requisition.status !== 'draft') redirect(`/accountant/requisitions/${id}`);
+  // Someone else's request, or one that is no longer a draft, is still worth
+  // seeing — send them to the read-only page rather than a 404.
+  if (
+    requisition.status !== 'draft' ||
+    (profile.role !== 'owner' && requisition.requestedById !== profile.userId)
+  ) {
+    redirect(`/accountant/requisitions/${id}`);
+  }
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
