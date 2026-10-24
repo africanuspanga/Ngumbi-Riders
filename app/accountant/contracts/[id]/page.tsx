@@ -37,7 +37,7 @@ export default async function AccountantContractPage({
           href={`/api/contracts/${id}/performance-report`}
           target="_blank"
           rel="noopener"
-          className="inline-flex items-center gap-2 rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
+          className="inline-flex items-center gap-2 rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
         >
           <PrinterIcon className="size-4" /> Print / download PDF
         </a>

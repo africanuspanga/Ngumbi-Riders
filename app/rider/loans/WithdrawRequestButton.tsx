@@ -55,7 +55,7 @@ export function WithdrawRequestButton({ requestId }: { requestId: string }) {
             type="button"
             disabled={busy}
             onClick={withdraw}
-            className="min-h-11 rounded-[--radius-card] bg-[color:var(--color-overdue)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="min-h-11 rounded-(--radius-card) bg-[color:var(--color-overdue)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
           >
             {busy ? 'Inaondoa…' : 'Ndiyo, ondoa ombi'}
           </button>
@@ -63,7 +63,7 @@ export function WithdrawRequestButton({ requestId }: { requestId: string }) {
             type="button"
             disabled={busy}
             onClick={() => setConfirming(false)}
-            className="min-h-11 rounded-[--radius-card] border border-border bg-white px-4 py-2.5 text-sm font-semibold"
+            className="min-h-11 rounded-(--radius-card) border border-border bg-white px-4 py-2.5 text-sm font-semibold"
           >
             Hapana
           </button>
@@ -72,7 +72,7 @@ export function WithdrawRequestButton({ requestId }: { requestId: string }) {
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          className="min-h-11 self-start rounded-[--radius-card] border border-border bg-white px-4 py-2.5 text-sm font-semibold text-overdue"
+          className="min-h-11 self-start rounded-(--radius-card) border border-border bg-white px-4 py-2.5 text-sm font-semibold text-overdue"
         >
           Ondoa ombi
         </button>

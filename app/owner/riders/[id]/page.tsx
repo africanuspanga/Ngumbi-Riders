@@ -55,14 +55,14 @@ export default async function RiderDetailPage({
         </Link>
         <Link
           href={`/owner/riders/${id}/edit`}
-          className="rounded-[--radius-card] border border-border bg-white px-4 py-2 text-sm font-semibold text-primary-dark hover:bg-surface"
+          className="rounded-(--radius-card) border border-border bg-white px-4 py-2 text-sm font-semibold text-primary-dark hover:bg-surface"
         >
           Edit rider information
         </Link>
       </div>
 
       {rider.complianceWarnings.length > 0 && (
-        <div className="rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 p-3 text-sm text-[color:var(--color-warning)]">
+        <div className="rounded-(--radius-card) border border-[color:var(--color-warning)] bg-amber-50 p-3 text-sm text-[color:var(--color-warning)]">
           ⚠ {rider.complianceWarnings.join(' · ')}
         </div>
       )}
@@ -75,7 +75,7 @@ export default async function RiderDetailPage({
       />
 
       {/* Payment history + money position (client feedback 2026-09-05) */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold text-primary-dark">Payments</h2>
           <Link
@@ -149,7 +149,7 @@ export default async function RiderDetailPage({
       </Section>
 
       {/* Destructive, so it sits last and apart from everything else. */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-[color:var(--color-overdue)]/40 bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-[color:var(--color-overdue)]/40 bg-white p-4">
         <h2 className="font-semibold text-[color:var(--color-overdue)]">Delete rider</h2>
         <RiderDelete id={profile.id} name={`${rider.first_name} ${rider.last_name}`} />
       </section>
@@ -159,7 +159,7 @@ export default async function RiderDetailPage({
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+    <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
       <h2 className="font-semibold text-primary-dark">{title}</h2>
       {children}
     </section>

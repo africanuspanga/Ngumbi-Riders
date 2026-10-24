@@ -273,7 +273,7 @@ export function ContractBuilder({
   return (
     <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="flex flex-col gap-5">
       {motorcycles.length === 0 && (
-        <p role="alert" className="rounded-[--radius-card] border border-warning bg-surface p-3 text-sm text-primary-dark">
+        <p role="alert" className="rounded-(--radius-card) border border-warning bg-surface p-3 text-sm text-primary-dark">
           No motorcycles are free to lease. A bike appears here when it is{' '}
           <em>available</em>, or already assigned to a rider but not yet under a
           contract; bikes that are inactive or under a live contract are hidden.{' '}
@@ -288,7 +288,7 @@ export function ContractBuilder({
         </p>
       )}
       {riders.length === 0 && (
-        <p role="alert" className="rounded-[--radius-card] border border-warning bg-surface p-3 text-sm text-primary-dark">
+        <p role="alert" className="rounded-(--radius-card) border border-warning bg-surface p-3 text-sm text-primary-dark">
           No eligible riders (only <em>active</em> or <em>onboarding</em> riders
           can hold a contract).{' '}
           <Link href="/owner/riders" className="font-semibold underline">
@@ -320,7 +320,7 @@ export function ContractBuilder({
       <TextField label="Start date" type="date" required error={errors.startDate?.message} {...register('startDate')} />
 
       {/* Flexible contract duration (#9) */}
-      <fieldset className="flex flex-col gap-3 rounded-[--radius-card] border border-border p-3">
+      <fieldset className="flex flex-col gap-3 rounded-(--radius-card) border border-border p-3">
         <legend className="px-1 text-sm font-semibold text-muted-foreground">Contract length</legend>
 
         <SelectField label="Set the end date by" {...register('endDateMode')}>
@@ -373,7 +373,7 @@ export function ContractBuilder({
           />
         )}
 
-        <div className="rounded-[--radius-card] bg-surface p-2 text-sm">
+        <div className="rounded-(--radius-card) bg-surface p-2 text-sm">
           {computedEndDate && term ? (
             <>
               <p>
@@ -424,7 +424,7 @@ export function ContractBuilder({
                 key={day}
                 type="button"
                 onClick={() => toggleWeekday(day)}
-                className={`min-h-11 rounded-[--radius-card] border px-3 text-sm font-semibold ${
+                className={`min-h-11 rounded-(--radius-card) border px-3 text-sm font-semibold ${
                   weekdays.includes(day) ? 'border-primary bg-primary text-white' : 'border-border bg-white text-muted-foreground'
                 }`}
               >
@@ -475,7 +475,7 @@ export function ContractBuilder({
         </div>
       )}
 
-      <fieldset className="flex flex-col gap-3 rounded-[--radius-card] border border-border p-3">
+      <fieldset className="flex flex-col gap-3 rounded-(--radius-card) border border-border p-3">
         <legend className="px-1 text-sm font-semibold text-muted-foreground">Payment amount</legend>
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField
@@ -502,7 +502,7 @@ export function ContractBuilder({
           />
         </div>
         {pricingHint && (
-          <p className="rounded-[--radius-card] bg-surface p-2 text-xs text-primary-dark">
+          <p className="rounded-(--radius-card) bg-surface p-2 text-xs text-primary-dark">
             {pricingHint}
           </p>
         )}
@@ -510,10 +510,10 @@ export function ContractBuilder({
       </fieldset>
 
       {/* Phone loan — motorcycle only, or motorcycle + phone? */}
-      <fieldset className="flex flex-col gap-3 rounded-[--radius-card] border border-border p-3">
+      <fieldset className="flex flex-col gap-3 rounded-(--radius-card) border border-border p-3">
         <legend className="px-1 text-sm font-semibold text-muted-foreground">Phone loan</legend>
         {selectedRiderWantsPhone && !values.includePhoneLoan && (
-          <p className="rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 p-2 text-xs text-amber-900">
+          <p className="rounded-(--radius-card) border border-[color:var(--color-warning)] bg-amber-50 p-2 text-xs text-amber-900">
             This rider asked for a motorcycle <strong>and a phone</strong> on their application
             {requestedPhoneAmount ? ` (${formatTZS(requestedPhoneAmount)})` : ''}. Tick the box below
             to add the phone loan.
@@ -555,7 +555,7 @@ export function ContractBuilder({
               />
             </div>
             {term?.phoneLoan && (
-              <div className="rounded-[--radius-card] bg-surface p-2 text-xs">
+              <div className="rounded-(--radius-card) bg-surface p-2 text-xs">
                 <p className="font-semibold text-primary-dark">{describePhoneLoan(term.phoneLoan)}</p>
                 <ul className="mt-1 flex flex-col gap-0.5 text-muted-foreground">
                   {term.phoneInstalments.map((i) => (
@@ -596,7 +596,7 @@ export function ContractBuilder({
       />
 
       {preview && (
-        <div className="rounded-[--radius-card] border border-primary bg-surface p-4 text-sm">
+        <div className="rounded-(--radius-card) border border-primary bg-surface p-4 text-sm">
           <p className="font-semibold text-primary-dark">Preview</p>
           <p className="text-foreground">
             {preview.count} payment{preview.count === 1 ? '' : 's'} · total{' '}
@@ -614,7 +614,7 @@ export function ContractBuilder({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+        className="rounded-(--radius-card) bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
       >
         {isSubmitting ? 'Creating…' : 'Create draft contract'}
       </button>

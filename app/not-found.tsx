@@ -7,7 +7,7 @@ export default function NotFound() {
       <p className="text-muted-foreground">Ukurasa haukupatikana.</p>
       <Link
         href="/"
-        className="rounded-[--radius-card] bg-primary px-6 py-3 font-semibold text-white hover:bg-primary-hover"
+        className="rounded-(--radius-card) bg-primary px-6 py-3 font-semibold text-white hover:bg-primary-hover"
       >
         Rudi mwanzo
       </Link>

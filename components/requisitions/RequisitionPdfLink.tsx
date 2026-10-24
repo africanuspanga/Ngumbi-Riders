@@ -13,7 +13,7 @@ export function RequisitionPdfLink({ requisitionId }: { requisitionId: string })
   return (
     <a
       href={`/api/requisitions/${requisitionId}/pdf`}
-      className="text-primary-dark inline-flex min-h-9 items-center gap-1.5 rounded-[--radius-card] border border-border bg-white px-3 text-sm font-semibold hover:bg-surface"
+      className="text-primary-dark inline-flex min-h-9 items-center gap-1.5 rounded-(--radius-card) border border-border bg-white px-3 text-sm font-semibold hover:bg-surface"
     >
       <DownloadIcon className="size-4 shrink-0" />
       PDF

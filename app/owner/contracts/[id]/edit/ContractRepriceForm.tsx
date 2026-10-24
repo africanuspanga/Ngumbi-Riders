@@ -98,7 +98,7 @@ export function ContractRepriceForm({
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50/40 p-4">
+    <section className="flex flex-col gap-4 rounded-(--radius-card) border border-[color:var(--color-warning)] bg-amber-50/40 p-4">
       <div>
         <h2 className="font-semibold text-primary-dark">Correct the repayment amount</h2>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -116,14 +116,14 @@ export function ContractRepriceForm({
       </dl>
 
       {done ? (
-        <p role="status" className="rounded-[--radius-card] bg-white p-3 text-sm font-medium text-primary-dark">
+        <p role="status" className="rounded-(--radius-card) bg-white p-3 text-sm font-medium text-primary-dark">
           {done}
         </p>
       ) : !open ? (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="min-h-12 self-start rounded-[--radius-card] border border-[color:var(--color-warning)] bg-white px-5 font-semibold text-amber-900"
+          className="min-h-12 self-start rounded-(--radius-card) border border-[color:var(--color-warning)] bg-white px-5 font-semibold text-amber-900"
         >
           Correct the amount
         </button>
@@ -145,13 +145,13 @@ export function ContractRepriceForm({
           </label>
 
           {pricingHint && (
-            <p className="rounded-[--radius-card] bg-white p-2 text-xs text-primary-dark">
+            <p className="rounded-(--radius-card) bg-white p-2 text-xs text-primary-dark">
               {pricingHint} New instalment: <strong>{formatTZS(newInstalment)}</strong>.
             </p>
           )}
 
           {math && !unchanged && (
-            <div className="flex flex-col gap-2 rounded-[--radius-card] bg-white p-3 text-sm">
+            <div className="flex flex-col gap-2 rounded-(--radius-card) bg-white p-3 text-sm">
               <p className="font-medium text-primary-dark">What this will do</p>
               <p className="text-muted-foreground">{describeReprice(math, recoverShortfall)}</p>
               <dl className="mt-1 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
@@ -171,7 +171,7 @@ export function ContractRepriceForm({
           )}
 
           {math?.overpaid && (
-            <p className="rounded-[--radius-card] border border-[color:var(--color-warning)] bg-white p-3 text-sm text-amber-900">
+            <p className="rounded-(--radius-card) border border-[color:var(--color-warning)] bg-white p-3 text-sm text-amber-900">
               The rider has already paid <strong>{formatTZS(-math.shortfall)}</strong> more than the
               corrected price on settled days. No payment days will be added — this system keeps no
               rider credit balance on purpose, so settle the difference with the rider directly.
@@ -223,7 +223,7 @@ export function ContractRepriceForm({
               type="button"
               onClick={submit}
               disabled={busy || unchanged || newInstalment <= 0 || reason.trim().length < 10}
-              className="min-h-12 rounded-[--radius-card] bg-primary px-5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+              className="min-h-12 rounded-(--radius-card) bg-primary px-5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
             >
               {busy ? 'Applying…' : 'Apply the correction'}
             </button>
@@ -231,7 +231,7 @@ export function ContractRepriceForm({
               type="button"
               onClick={() => setOpen(false)}
               disabled={busy}
-              className="min-h-12 rounded-[--radius-card] border border-border bg-white px-5 font-semibold"
+              className="min-h-12 rounded-(--radius-card) border border-border bg-white px-5 font-semibold"
             >
               Cancel
             </button>

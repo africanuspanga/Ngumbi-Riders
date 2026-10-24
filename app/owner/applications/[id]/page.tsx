@@ -60,13 +60,13 @@ export default async function ApplicationDetailPage({
       </header>
 
       {app.duplicate_flags.length > 0 && (
-        <div className="rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 p-3 text-sm text-[color:var(--color-warning)]">
+        <div className="rounded-(--radius-card) border border-[color:var(--color-warning)] bg-amber-50 p-3 text-sm text-[color:var(--color-warning)]">
           ⚠ Possible duplicate: {app.duplicate_flags.join(', ')}
         </div>
       )}
 
       {app.converted_rider_id && (
-        <div className="rounded-[--radius-card] border border-primary bg-surface p-3 text-sm text-primary-dark">
+        <div className="rounded-(--radius-card) border border-primary bg-surface p-3 text-sm text-primary-dark">
           Converted to rider.{' '}
           <Link href={`/owner/riders/${app.converted_rider_id}`} className="font-semibold underline">
             View rider
@@ -106,7 +106,7 @@ export default async function ApplicationDetailPage({
 
       <Section title="Applicant documents">
         {missingDocs.length > 0 && (
-          <p className="rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 p-3 text-sm text-[color:var(--color-warning)]">
+          <p className="rounded-(--radius-card) border border-[color:var(--color-warning)] bg-amber-50 p-3 text-sm text-[color:var(--color-warning)]">
             ⚠ Missing required documents for a {IDENTITY_LABELS[identityType] ?? identityType} applicant:{' '}
             {missingDocs.join(', ')}. Their upload may have been interrupted — ask
             them to re-apply or bring the documents physically before approving.
@@ -166,7 +166,7 @@ export default async function ApplicationDetailPage({
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+    <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
       <h2 className="font-semibold text-primary-dark">{title}</h2>
       {children}
     </section>

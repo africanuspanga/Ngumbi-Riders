@@ -68,7 +68,7 @@ const ERRORS: Record<string, string> = {
   items_failed: 'The items could not be saved. Nothing was recorded — try again.',
   too_large: 'That file is larger than 4MB.',
   too_many: `A request may carry at most ${MAX_REQUISITION_DOCUMENTS} documents.`,
-  invalid_type: 'Only PDF, JPG, PNG or WebP files can be attached.',
+  invalid_type: 'Only PDF, JPG, PNG or WebP files can be attached (iPhone HEIC photos are not accepted — send a screenshot or a JPG instead).',
   upload_failed: 'The file could not be uploaded. The request itself was saved.',
   insert_failed: 'The file could not be attached. The request itself was saved.',
   server_error: 'A server error occurred. Check the list before trying again.',
@@ -204,7 +204,18 @@ export function RequisitionForm({
         }
       }
       setDocs((current) => [...current, ...uploaded]);
-      setFiles([]);
+      // Keep the files that failed queued, so "try again" retries exactly them.
+      setFiles((current) => current.filter((f) => !uploaded.some((u) => u.fileName === f.name)));
+
+      // Never submit a request whose attachments did not arrive: the Director
+      // would decide without them, and nobody would know they were missing.
+      if (mode === 'submit' && failed.length > 0) {
+        setError(
+          `Saved as draft ${saved.data!.requisitionNumber} but NOT submitted — these files did not upload: ${failed.join(', ')}. Fix or remove them, then submit again.`,
+        );
+        router.refresh();
+        return;
+      }
 
       if (mode === 'submit') {
         const sent = await submitRequisition(requisitionId);
@@ -319,7 +330,7 @@ export function RequisitionForm({
           <button
             type="button"
             onClick={() => append(EMPTY_ITEM)}
-            className="inline-flex items-center gap-1.5 rounded-[--radius-card] bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover"
+            className="inline-flex items-center gap-1.5 rounded-(--radius-card) bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover"
           >
             <PlusIcon className="size-4" /> Add item
           </button>
@@ -414,7 +425,7 @@ export function RequisitionForm({
                       />
                       <FieldError message={rowErrors?.unitPrice?.message} />
                     </td>
-                    <td className="px-2 pb-3 text-right font-mono text-sm tabular-nums">
+                    <td className="px-2 pb-3 text-right text-sm tabular-nums">
                       <span className="inline-block min-h-11 py-3">{formatTZS(amount)}</span>
                     </td>
                     <td className="w-40 px-2 pb-3">
@@ -437,7 +448,7 @@ export function RequisitionForm({
                         onClick={() => remove(index)}
                         disabled={fields.length === 1}
                         aria-label={`Remove item ${index + 1}`}
-                        className="inline-flex size-11 items-center justify-center rounded-[--radius-card] border border-border text-[color:var(--color-overdue)] hover:bg-[color:var(--color-overdue)]/10 disabled:opacity-40"
+                        className="inline-flex size-11 items-center justify-center rounded-(--radius-card) border border-border text-[color:var(--color-overdue)] hover:bg-[color:var(--color-overdue)]/10 disabled:opacity-40"
                       >
                         <Trash2Icon className="size-4" />
                       </button>
@@ -451,7 +462,7 @@ export function RequisitionForm({
                 <td colSpan={5} className="px-2 pt-2 text-right font-semibold">
                   Total amount
                 </td>
-                <td className="border-t-2 border-primary px-2 pt-2 text-right font-mono text-base font-bold tabular-nums text-primary-dark">
+                <td className="border-t-2 border-primary px-2 pt-2 text-right text-base font-bold tabular-nums text-primary-dark">
                   {formatTZS(total)}
                 </td>
                 <td colSpan={2} />
@@ -475,7 +486,7 @@ export function RequisitionForm({
               addFiles(e.target.files);
               e.target.value = '';
             }}
-            className="block w-full text-sm text-muted-foreground file:mr-3 file:min-h-11 file:rounded-[--radius-card] file:border-0 file:bg-surface file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary-dark"
+            className="block w-full text-sm text-muted-foreground file:mr-3 file:min-h-11 file:rounded-(--radius-card) file:border-0 file:bg-surface file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary-dark"
           />
           <span className="text-xs text-muted-foreground">
             Allowed: PDF, JPG, PNG, WebP · max 4MB per file. Quotations and proformas
@@ -484,7 +495,7 @@ export function RequisitionForm({
         </div>
 
         {(docs.length > 0 || files.length > 0) && (
-          <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border">
+          <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border">
             {docs.map((d) => (
               <li key={d.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                 <span className="truncate">
@@ -523,7 +534,7 @@ export function RequisitionForm({
       </Section>
 
       {/* ---- Approver -------------------------------------------------- */}
-      <section className="rounded-[--radius-card] border border-border bg-white p-4 sm:p-5">
+      <section className="rounded-(--radius-card) border border-border bg-white p-4 sm:p-5">
         <h2 className="border-b-2 border-primary pb-2 font-semibold text-primary-dark">
           Managing Director
         </h2>
@@ -549,14 +560,14 @@ export function RequisitionForm({
       </section>
 
       {notice && (
-        <p className="rounded-[--radius-card] border border-[color:var(--color-paid)]/30 bg-[color:var(--color-paid)]/10 px-4 py-3 text-sm font-medium text-[color:var(--color-paid)]">
+        <p className="rounded-(--radius-card) border border-[color:var(--color-paid)]/30 bg-[color:var(--color-paid)]/10 px-4 py-3 text-sm font-medium text-[color:var(--color-paid)]">
           {notice}
         </p>
       )}
       {error && (
         <p
           role="alert"
-          className="rounded-[--radius-card] border border-[color:var(--color-overdue)]/30 bg-[color:var(--color-overdue)]/10 px-4 py-3 text-sm font-medium text-[color:var(--color-overdue)]"
+          className="rounded-(--radius-card) border border-[color:var(--color-overdue)]/30 bg-[color:var(--color-overdue)]/10 px-4 py-3 text-sm font-medium text-[color:var(--color-overdue)]"
         >
           {error}
         </p>
@@ -565,7 +576,7 @@ export function RequisitionForm({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           href={backHref}
-          className="inline-flex items-center gap-2 rounded-[--radius-card] border border-border bg-white px-4 py-2.5 font-semibold hover:bg-surface"
+          className="inline-flex items-center gap-2 rounded-(--radius-card) border border-border bg-white px-4 py-2.5 font-semibold hover:bg-surface"
         >
           <ArrowLeftIcon className="size-4" /> Back
         </Link>
@@ -574,7 +585,7 @@ export function RequisitionForm({
             type="button"
             disabled={busy !== null}
             onClick={handleSubmit((v) => persist(v, 'draft'))}
-            className="inline-flex items-center gap-2 rounded-[--radius-card] bg-primary-dark px-4 py-2.5 font-semibold text-white hover:opacity-90 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-(--radius-card) bg-primary-dark px-4 py-2.5 font-semibold text-white hover:opacity-90 disabled:opacity-60"
           >
             <SaveIcon className="size-4" />
             {busy === 'draft' ? 'Saving…' : 'Save as draft'}
@@ -583,7 +594,7 @@ export function RequisitionForm({
             type="button"
             disabled={busy !== null}
             onClick={handleSubmit((v) => persist(v, 'submit'))}
-            className="inline-flex items-center gap-2 rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
           >
             <SendIcon className="size-4" />
             {busy === 'submit' ? 'Submitting…' : 'Submit request'}
@@ -606,7 +617,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-4 rounded-[--radius-card] border border-border bg-white p-4 sm:p-5">
+    <section className="flex flex-col gap-4 rounded-(--radius-card) border border-border bg-white p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 font-semibold text-primary">
           {icon}

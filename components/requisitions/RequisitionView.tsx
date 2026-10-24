@@ -38,7 +38,7 @@ export function RequisitionView({
   const total = requisitionTotal(r.items);
   return (
     <div className="flex flex-col gap-5">
-      <section className="flex flex-col gap-4 rounded-[--radius-card] border border-border bg-white p-4 sm:p-5">
+      <section className="flex flex-col gap-4 rounded-(--radius-card) border border-border bg-white p-4 sm:p-5">
         <h2 className="flex items-center gap-2 font-semibold text-primary">
           <InfoIcon className="size-4" /> Request information
         </h2>
@@ -64,7 +64,7 @@ export function RequisitionView({
         </dl>
       </section>
 
-      <section className="flex flex-col gap-4 rounded-[--radius-card] border border-border bg-white p-4 sm:p-5">
+      <section className="flex flex-col gap-4 rounded-(--radius-card) border border-border bg-white p-4 sm:p-5">
         <h2 className="flex items-center gap-2 font-semibold text-primary">
           <ShoppingCartIcon className="size-4" /> Request items
         </h2>
@@ -88,12 +88,12 @@ export function RequisitionView({
                   <td className="px-2 py-2.5">
                     {ITEM_CATEGORY_LABELS[item.category] ?? item.category}
                   </td>
-                  <td className="px-2 py-2.5 text-right font-mono tabular-nums">{item.quantity}</td>
+                  <td className="px-2 py-2.5 text-right tabular-nums">{item.quantity}</td>
                   <td className="px-2 py-2.5">{UNIT_LABELS[item.unit] ?? item.unit}</td>
-                  <td className="px-2 py-2.5 text-right font-mono tabular-nums">
+                  <td className="px-2 py-2.5 text-right tabular-nums">
                     {formatTZS(item.unitPrice)}
                   </td>
-                  <td className="px-2 py-2.5 text-right font-mono font-semibold tabular-nums">
+                  <td className="px-2 py-2.5 text-right font-semibold tabular-nums">
                     {formatTZS(item.amount)}
                   </td>
                   <td className="px-2 py-2.5 text-muted-foreground">
@@ -107,7 +107,7 @@ export function RequisitionView({
                 <td colSpan={5} className="px-2 pt-3 text-right font-semibold">
                   Total amount
                 </td>
-                <td className="border-t-2 border-primary px-2 pt-3 text-right font-mono text-base font-bold tabular-nums text-primary-dark">
+                <td className="border-t-2 border-primary px-2 pt-3 text-right text-base font-bold tabular-nums text-primary-dark">
                   {formatTZS(r.total)}
                 </td>
                 <td />
@@ -121,7 +121,7 @@ export function RequisitionView({
           what happened to the money afterwards are different evidence, and
           reading them in one undifferentiated list is how a receipt gets
           mistaken for a quotation. */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4 sm:p-5">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4 sm:p-5">
         <h2 className="flex items-center gap-2 font-semibold text-primary">
           <PaperclipIcon className="size-4" /> Documents
         </h2>
@@ -135,7 +135,7 @@ export function RequisitionView({
               <h3 className="text-sm font-semibold text-primary-dark">
                 {DOC_TYPE_LABELS[kind]}
               </h3>
-              <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border">
+              <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border">
                 {r.documents
                   .filter((d) => d.docType === kind)
                   .map((d) => (
@@ -163,7 +163,7 @@ export function RequisitionView({
       {/* Retirement: what was ACTUALLY spent against what was approved
           (client feedback #14). Only shown once there is something to say. */}
       {r.status === 'approved' && r.retirementStatus !== 'not_started' && (
-        <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4 sm:p-5">
+        <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4 sm:p-5">
           <h2 className="flex items-center gap-2 font-semibold text-primary">
             <ClipboardCheckIcon className="size-4" />
             Retirement
@@ -205,7 +205,7 @@ export function RequisitionView({
         </section>
       )}
 
-      <section className="rounded-[--radius-card] border border-border bg-white p-4 sm:p-5">
+      <section className="rounded-(--radius-card) border border-border bg-white p-4 sm:p-5">
         <h2 className="border-b-2 border-primary pb-2 font-semibold text-primary-dark">
           Managing Director
         </h2>

@@ -29,7 +29,7 @@ export default async function ExpensesPage() {
         motorcycles={motorcycles.map((m) => ({ id: m.id, label: motorcycleLabel(m) }))}
       />
 
-      <section className="flex flex-col gap-2 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-2 rounded-(--radius-card) border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">This year · total {formatTZS(expenses.total)}</h2>
         {expenses.rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">No expenses recorded.</p>

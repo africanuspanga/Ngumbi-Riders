@@ -52,7 +52,7 @@ export function RequestCompletionForm({ warning }: { warning: string | null }) {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+    <div className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
       <div>
         <h2 className="font-semibold text-primary-dark">Omba kumaliza mkataba</h2>
         <p className="text-sm text-muted-foreground">
@@ -62,7 +62,7 @@ export function RequestCompletionForm({ warning }: { warning: string | null }) {
       </div>
 
       {warning && (
-        <p className="rounded-[--radius-card] border border-[color:var(--color-warning)]/40 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <p className="rounded-(--radius-card) border border-[color:var(--color-warning)]/40 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {warning}
         </p>
       )}
@@ -84,7 +84,7 @@ export function RequestCompletionForm({ warning }: { warning: string | null }) {
             type="button"
             disabled={busy}
             onClick={submit}
-            className="min-h-12 rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white disabled:opacity-60"
+            className="min-h-12 rounded-(--radius-card) bg-primary px-4 py-3 font-semibold text-white disabled:opacity-60"
           >
             {busy ? 'Inatuma…' : 'Ndiyo, tuma ombi'}
           </button>
@@ -92,7 +92,7 @@ export function RequestCompletionForm({ warning }: { warning: string | null }) {
             type="button"
             disabled={busy}
             onClick={() => setConfirming(false)}
-            className="min-h-12 rounded-[--radius-card] border border-border bg-white px-4 py-3 font-semibold"
+            className="min-h-12 rounded-(--radius-card) border border-border bg-white px-4 py-3 font-semibold"
           >
             Hapana
           </button>
@@ -101,7 +101,7 @@ export function RequestCompletionForm({ warning }: { warning: string | null }) {
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          className="min-h-12 self-start rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover"
+          className="min-h-12 self-start rounded-(--radius-card) bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover"
         >
           Tuma ombi
         </button>

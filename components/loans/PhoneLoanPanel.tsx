@@ -34,7 +34,7 @@ export function PhoneLoanPanel({
     portfolio.pendingCount === 0;
 
   return (
-    <section className="flex flex-col gap-4 rounded-[--radius-card] border border-border bg-white p-4">
+    <section className="flex flex-col gap-4 rounded-(--radius-card) border border-border bg-white p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="flex items-center gap-2 text-base font-semibold text-primary-dark">
@@ -78,7 +78,7 @@ export function PhoneLoanPanel({
           </div>
 
           {portfolio.pausedRiders.length > 0 && (
-            <div className="flex items-start gap-2 rounded-[--radius-card] border border-[color:var(--color-warning)]/40 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <div className="flex items-start gap-2 rounded-(--radius-card) border border-[color:var(--color-warning)]/40 bg-amber-50 px-3 py-2 text-sm text-amber-900">
               <PauseIcon className="mt-0.5 size-4 shrink-0" />
               <span>
                 <strong className="font-semibold">
@@ -175,7 +175,7 @@ function Stat({
   tone?: string;
 }) {
   return (
-    <div className="flex flex-col gap-1.5 rounded-[--radius-card] border border-border p-3.5">
+    <div className="flex flex-col gap-1.5 rounded-(--radius-card) border border-border p-3.5">
       <span className="eyebrow text-muted-foreground">{label}</span>
       <p className={`font-display break-words text-xl font-bold leading-none ${tone ?? 'text-primary-dark'}`}>
         {value}

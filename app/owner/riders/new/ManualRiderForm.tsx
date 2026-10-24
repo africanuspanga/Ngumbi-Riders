@@ -118,7 +118,7 @@ export function ManualRiderForm({ motorcycles }: { motorcycles: MotoOption[] }) 
           <button
             type="button"
             onClick={() => setValue('tempPin', suggestPin(), { shouldValidate: true })}
-            className="mb-[2px] rounded-[--radius-card] border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-surface"
+            className="mb-[2px] rounded-(--radius-card) border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-surface"
           >
             Suggest
           </button>
@@ -191,7 +191,7 @@ export function ManualRiderForm({ motorcycles }: { motorcycles: MotoOption[] }) 
       <button
         type="submit"
         disabled={isSubmitting}
-        className="rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+        className="rounded-(--radius-card) bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
       >
         {isSubmitting ? 'Creating…' : 'Create rider'}
       </button>

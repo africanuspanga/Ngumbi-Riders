@@ -28,13 +28,13 @@ export default async function LandingPage() {
       <div className="flex w-full flex-col gap-3">
         <Link
           href="/apply"
-          className="btn flex items-center justify-center rounded-[--radius-card] bg-primary px-6 py-3 font-semibold text-white hover:bg-primary-hover"
+          className="btn flex items-center justify-center rounded-(--radius-card) bg-primary px-6 py-3 font-semibold text-white hover:bg-primary-hover"
         >
           {t('apply')}
         </Link>
         <Link
           href="/login"
-          className="btn flex items-center justify-center rounded-[--radius-card] border border-border bg-white px-6 py-3 font-semibold text-primary-dark hover:bg-surface"
+          className="btn flex items-center justify-center rounded-(--radius-card) border border-border bg-white px-6 py-3 font-semibold text-primary-dark hover:bg-surface"
         >
           {t('login')}
         </Link>

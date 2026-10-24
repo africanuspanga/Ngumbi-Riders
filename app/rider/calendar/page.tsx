@@ -66,7 +66,7 @@ export default async function CalendarPage() {
         <h1 className="mt-1 text-xl font-bold text-primary-dark">Kalenda ya malipo</h1>
       </div>
 
-      <div className="flex flex-wrap gap-3 rounded-[--radius-card] border border-border bg-white p-3 text-xs">
+      <div className="flex flex-wrap gap-3 rounded-(--radius-card) border border-border bg-white p-3 text-xs">
         {LEGEND.map((l) => (
           <span key={l.color} className="flex items-center gap-1.5">
             <span className={`h-3 w-3 rounded-full ${DOT[l.color]}`} />

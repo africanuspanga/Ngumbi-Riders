@@ -21,11 +21,11 @@ export default async function AccountantOutstandingPage() {
       </header>
 
       {arrears.rows.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">
+        <p className="rounded-(--radius-card) border border-border bg-white p-6 text-center text-muted-foreground">
           Nothing outstanding — every rider is up to date.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-[--radius-card] border border-border bg-white">
+        <div className="overflow-x-auto rounded-(--radius-card) border border-border bg-white">
           <table className="w-full min-w-[36rem] text-sm">
             <thead>
               <tr className="text-left text-xs uppercase text-muted-foreground">

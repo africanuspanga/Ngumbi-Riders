@@ -148,7 +148,7 @@ export function CompletionActions({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+    <div className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
       <Messages notice={notice} error={error} />
 
       {/* --- finance: confirm whether the rider owes anything -------------- */}
@@ -356,7 +356,7 @@ export function CompletionActions({
       )}
 
       {(mode === 'reject' || mode === 'return') && (
-        <div className="flex flex-col gap-2 rounded-[--radius-card] border border-border bg-surface p-3">
+        <div className="flex flex-col gap-2 rounded-(--radius-card) border border-border bg-surface p-3">
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium">
               {mode === 'reject'
@@ -376,7 +376,7 @@ export function CompletionActions({
                     : returnCompletion(requestId, note),
                 )
               }
-              className={`min-h-11 rounded-[--radius-card] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60 ${
+              className={`min-h-11 rounded-(--radius-card) px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60 ${
                 mode === 'reject'
                   ? 'bg-[color:var(--color-overdue)]'
                   : 'bg-[color:var(--color-warning)]'
@@ -388,7 +388,7 @@ export function CompletionActions({
               type="button"
               disabled={busy}
               onClick={() => setMode('none')}
-              className="min-h-11 rounded-[--radius-card] border border-border bg-white px-4 py-2.5 text-sm font-semibold"
+              className="min-h-11 rounded-(--radius-card) border border-border bg-white px-4 py-2.5 text-sm font-semibold"
             >
               Cancel
             </button>
@@ -444,7 +444,7 @@ function Primary({
       type="button"
       disabled={busy || disabled}
       onClick={onClick}
-      className="min-h-11 rounded-[--radius-card] bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+      className="min-h-11 rounded-(--radius-card) bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
     >
       {busy ? 'Working…' : children}
     </button>
@@ -467,7 +467,7 @@ function Secondary({
       type={submit ? 'submit' : 'button'}
       disabled={busy}
       onClick={submit ? undefined : onClick}
-      className="min-h-11 self-start rounded-[--radius-card] border border-border bg-white px-4 py-2.5 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+      className="min-h-11 self-start rounded-(--radius-card) border border-border bg-white px-4 py-2.5 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
     >
       {children}
     </button>

@@ -64,7 +64,7 @@ export function CollectionsChart({ data }: { data: CollectionsPoint[] }) {
                 <ChartTooltipContent
                   labelFormatter={(value) => labelFor(String(value))}
                   formatter={(value) => (
-                    <span className="font-mono font-medium tabular-nums">
+                    <span className="font-medium tabular-nums">
                       {formatTZS(Number(value))}
                     </span>
                   )}

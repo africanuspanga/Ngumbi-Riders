@@ -112,7 +112,7 @@ export function BalanceChart({
                       <span className="text-muted-foreground">
                         {chartConfig[name as keyof typeof chartConfig]?.label ?? name}
                       </span>
-                      <span className="font-mono font-medium tabular-nums">
+                      <span className="font-medium tabular-nums">
                         {formatTZS(Number(value))}
                       </span>
                     </span>

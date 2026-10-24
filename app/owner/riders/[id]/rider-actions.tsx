@@ -53,7 +53,7 @@ export function RiskControls({ id, current, reasons }: { id: string; current: Ri
         type="button"
         disabled={pending}
         onClick={() => run(() => recomputeRiderRisk(id), 'Could not recompute risk.')}
-        className="self-start rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+        className="self-start rounded-(--radius-card) border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
       >
         {pending ? '…' : 'Recompute risk'}
       </button>
@@ -69,7 +69,7 @@ export function RiskControls({ id, current, reasons }: { id: string; current: Ri
           type="button"
           disabled={pending || !note.trim()}
           onClick={() => run(() => setManualRisk(id, override, note), 'Could not apply the override.')}
-          className="self-start rounded-[--radius-card] bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+          className="self-start rounded-(--radius-card) bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
         >
           Apply override
         </button>
@@ -87,7 +87,7 @@ export function RiderPinReset({ id }: { id: string }) {
 
   if (tempPin) {
     return (
-      <div className="flex flex-col gap-2 rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 p-3">
+      <div className="flex flex-col gap-2 rounded-(--radius-card) border border-[color:var(--color-warning)] bg-amber-50 p-3">
         <span className="text-sm font-semibold text-primary-dark">
           New temporary PIN: <span className="font-mono text-lg tracking-[0.3em]">{tempPin}</span>
         </span>
@@ -109,7 +109,7 @@ export function RiderPinReset({ id }: { id: string }) {
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          className="self-start rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface"
+          className="self-start rounded-(--radius-card) border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface"
         >
           Reset PIN…
         </button>
@@ -127,7 +127,7 @@ export function RiderPinReset({ id }: { id: string }) {
                 setConfirming(false);
               })
             }
-            className="rounded-[--radius-card] bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+            className="rounded-(--radius-card) bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
           >
             {pending ? '…' : 'Confirm reset'}
           </button>
@@ -135,7 +135,7 @@ export function RiderPinReset({ id }: { id: string }) {
             type="button"
             disabled={pending}
             onClick={() => setConfirming(false)}
-            className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+            className="rounded-(--radius-card) border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
           >
             Cancel
           </button>
@@ -179,7 +179,7 @@ export function RiderStatusActions({ id, current }: { id: string; current: Rider
                 setError(`Could not set status to "${s}" — network error.`);
               }
             })}
-            className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+            className="rounded-(--radius-card) border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
           >
             {s}
           </button>
@@ -245,7 +245,7 @@ export function RiderRevealSecrets({ id }: { id: string }) {
             setError('Could not reveal the documents — network error.');
           }
         })}
-        className="self-start rounded-[--radius-card] border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-surface disabled:opacity-60"
+        className="self-start rounded-(--radius-card) border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-surface disabled:opacity-60"
       >
         {pending ? '…' : 'Reveal identity documents'}
       </button>
@@ -293,7 +293,7 @@ export function AssignmentActions({
           type="button"
           disabled={pending || !motoId || !date}
           onClick={() => run(() => assignMotorcycle(riderId, motoId, date))}
-          className="rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+          className="rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
         >
           Assign motorcycle
         </button>
@@ -321,7 +321,7 @@ export function AssignmentActions({
             type="button"
             disabled={pending || !motoId || !date || !reason.trim()}
             onClick={() => run(() => transferMotorcycle(riderId, motoId, reason, date))}
-            className="flex-1 rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+            className="flex-1 rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
           >
             Transfer
           </button>
@@ -329,7 +329,7 @@ export function AssignmentActions({
             type="button"
             disabled={pending || !date}
             onClick={() => run(() => releaseAssignment(riderId, date, reason || undefined))}
-            className="flex-1 rounded-[--radius-card] border border-border bg-white px-4 py-2.5 font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+            className="flex-1 rounded-(--radius-card) border border-border bg-white px-4 py-2.5 font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
           >
             Release
           </button>
@@ -411,7 +411,7 @@ export function RiderDelete({ id, name }: { id: string; name: string }) {
       {error && (
         <p
           role="alert"
-          className="rounded-[--radius-card] border border-[color:var(--color-overdue)]/30 bg-[color:var(--color-overdue)]/10 px-3 py-2 text-sm font-medium text-[color:var(--color-overdue)]"
+          className="rounded-(--radius-card) border border-[color:var(--color-overdue)]/30 bg-[color:var(--color-overdue)]/10 px-3 py-2 text-sm font-medium text-[color:var(--color-overdue)]"
         >
           {error}
         </p>
@@ -427,7 +427,7 @@ export function RiderDelete({ id, name }: { id: string; name: string }) {
             type="button"
             disabled={pending}
             onClick={check}
-            className="self-start rounded-[--radius-card] border border-[color:var(--color-overdue)] bg-white px-3 py-2 text-sm font-semibold text-[color:var(--color-overdue)] hover:bg-[color:var(--color-overdue)]/10 disabled:opacity-60"
+            className="self-start rounded-(--radius-card) border border-[color:var(--color-overdue)] bg-white px-3 py-2 text-sm font-semibold text-[color:var(--color-overdue)] hover:bg-[color:var(--color-overdue)]/10 disabled:opacity-60"
           >
             {pending ? 'Checking…' : 'Delete this rider'}
           </button>
@@ -450,7 +450,7 @@ export function RiderDelete({ id, name }: { id: string; name: string }) {
           <button
             type="button"
             onClick={() => setImpact(null)}
-            className="self-start rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold hover:bg-surface"
+            className="self-start rounded-(--radius-card) border border-border bg-white px-3 py-2 text-sm font-semibold hover:bg-surface"
           >
             Close
           </button>
@@ -478,7 +478,7 @@ export function RiderDelete({ id, name }: { id: string; name: string }) {
               type="button"
               disabled={pending}
               onClick={confirmDelete}
-              className="rounded-[--radius-card] bg-[color:var(--color-overdue)] px-3 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
+              className="rounded-(--radius-card) bg-[color:var(--color-overdue)] px-3 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
             >
               {pending ? 'Deleting…' : `Yes, delete ${name} permanently`}
             </button>
@@ -486,7 +486,7 @@ export function RiderDelete({ id, name }: { id: string; name: string }) {
               type="button"
               disabled={pending}
               onClick={() => setImpact(null)}
-              className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold hover:bg-surface"
+              className="rounded-(--radius-card) border border-border bg-white px-3 py-2 text-sm font-semibold hover:bg-surface"
             >
               Cancel
             </button>

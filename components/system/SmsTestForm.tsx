@@ -41,14 +41,14 @@ export function SmsTestForm({ defaultPhone }: { defaultPhone: string }) {
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           inputMode="tel"
-          className="min-h-10 rounded-[--radius-card] border border-border px-3"
+          className="min-h-10 rounded-(--radius-card) border border-border px-3"
           placeholder="0753 522 155"
         />
       </label>
       <button
         type="submit"
         disabled={pending}
-        className="min-h-10 rounded-[--radius-card] bg-primary px-4 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+        className="min-h-10 rounded-(--radius-card) bg-primary px-4 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
       >
         {pending ? 'Sending…' : 'Send test SMS'}
       </button>

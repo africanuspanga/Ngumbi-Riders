@@ -80,7 +80,7 @@ export function RiderPhotoControls({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={busy}
-          className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+          className="rounded-(--radius-card) border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
         >
           {hasPhoto ? 'Replace picture' : 'Upload picture'}
         </button>
@@ -89,7 +89,7 @@ export function RiderPhotoControls({
             type="button"
             onClick={onRemove}
             disabled={busy}
-            className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-surface disabled:opacity-60"
+            className="rounded-(--radius-card) border border-border bg-white px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-surface disabled:opacity-60"
           >
             Remove
           </button>

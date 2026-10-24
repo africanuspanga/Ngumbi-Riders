@@ -28,18 +28,18 @@ export default async function ContractsPage() {
         </div>
         <Link
           href="/owner/contracts/new"
-          className="rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
+          className="rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
         >
           New contract
         </Link>
       </header>
 
       {contracts.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">
+        <p className="rounded-(--radius-card) border border-border bg-white p-6 text-center text-muted-foreground">
           No contracts yet.
         </p>
       ) : (
-        <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border bg-white">
+        <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border bg-white">
           {contracts.map((c) => (
             <li key={c.id}>
               <Link

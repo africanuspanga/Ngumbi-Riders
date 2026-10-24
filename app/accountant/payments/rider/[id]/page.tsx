@@ -45,7 +45,7 @@ export default async function AccountantRiderPaymentsPage({
         </div>
         <a
           href={`/api/reports/rider-statement/export?rider=${id}${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}&format=xlsx`}
-          className="flex min-h-11 items-center rounded-[--radius-card] border border-border bg-white px-4 text-sm font-semibold text-primary-dark hover:bg-surface"
+          className="flex min-h-11 items-center rounded-(--radius-card) border border-border bg-white px-4 text-sm font-semibold text-primary-dark hover:bg-surface"
         >
           Export
         </a>
@@ -77,7 +77,7 @@ export default async function AccountantRiderPaymentsPage({
             </label>
             <button
               type="submit"
-              className="min-h-10 rounded-[--radius-card] bg-primary px-4 font-semibold text-white hover:bg-primary-hover"
+              className="min-h-10 rounded-(--radius-card) bg-primary px-4 font-semibold text-white hover:bg-primary-hover"
             >
               Apply
             </button>

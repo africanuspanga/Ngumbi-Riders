@@ -70,7 +70,7 @@ export default async function ReportsPage({
       <CashflowSections report={cashflow} basePath="/owner" />
 
       {/* Collections */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-primary-dark">Collections ({from} → {to})</h2>
           <ExportLinks report="collections" q={q} />
@@ -88,7 +88,7 @@ export default async function ReportsPage({
       </section>
 
       {/* General financial report — bank-statement style (client feedback) */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold text-primary-dark">
             Financial statement{' '}
@@ -136,17 +136,17 @@ export default async function ReportsPage({
                         <span className="block text-xs text-muted-foreground">{r.riderNumber}</span>
                       </td>
                       <td className="py-1 pr-2 text-right tabular-nums">{r.payments}</td>
-                      <td className="py-1 pr-2 text-right font-mono tabular-nums">{formatTZS(r.cash)}</td>
-                      <td className="py-1 pr-2 text-right font-mono tabular-nums">{formatTZS(r.mobile)}</td>
-                      <td className="py-1 text-right font-mono font-semibold tabular-nums">{formatTZS(r.total)}</td>
+                      <td className="py-1 pr-2 text-right tabular-nums">{formatTZS(r.cash)}</td>
+                      <td className="py-1 pr-2 text-right tabular-nums">{formatTZS(r.mobile)}</td>
+                      <td className="py-1 text-right font-semibold tabular-nums">{formatTZS(r.total)}</td>
                     </tr>
                   ))}
                   <tr className="border-t-2 border-border">
                     <td className="py-1 pr-2 font-semibold">Total</td>
                     <td className="py-1 pr-2 text-right font-semibold tabular-nums">{financial.totals.payments}</td>
-                    <td className="py-1 pr-2 text-right font-mono font-semibold tabular-nums">{formatTZS(financial.totals.cash)}</td>
-                    <td className="py-1 pr-2 text-right font-mono font-semibold tabular-nums">{formatTZS(financial.totals.mobile)}</td>
-                    <td className="py-1 text-right font-mono font-bold tabular-nums">{formatTZS(financial.totals.total)}</td>
+                    <td className="py-1 pr-2 text-right font-semibold tabular-nums">{formatTZS(financial.totals.cash)}</td>
+                    <td className="py-1 pr-2 text-right font-semibold tabular-nums">{formatTZS(financial.totals.mobile)}</td>
+                    <td className="py-1 text-right font-bold tabular-nums">{formatTZS(financial.totals.total)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -176,7 +176,7 @@ export default async function ReportsPage({
                         <td className="py-1 pr-2">{methodLabel(t.method)}</td>
                         <td className="py-1 pr-2">{t.receivedByName ?? '—'}</td>
                         <td className="py-1 pr-2 font-mono text-xs">{t.receiptNumber ?? '—'}</td>
-                        <td className="py-1 text-right font-mono tabular-nums">{formatTZS(t.amount)}</td>
+                        <td className="py-1 text-right tabular-nums">{formatTZS(t.amount)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -188,7 +188,7 @@ export default async function ReportsPage({
       </section>
 
       {/* Arrears */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-primary-dark">Arrears ({arrears.totalCount} obligations · {formatTZS(arrears.totalAmount)})</h2>
           <ExportLinks report="arrears" q="" />
@@ -220,7 +220,7 @@ export default async function ReportsPage({
       {/* The motorcycle-only expense ledger keeps its own export: it is the
           input to the per-motorcycle margin, which the department view does
           not replace. */}
-      <section className="flex items-center justify-between rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex items-center justify-between rounded-(--radius-card) border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">Motorcycle expense ledger</h2>
         <div className="flex items-center gap-3">
           <Link href="/owner/expenses" className="text-sm font-medium text-primary underline">Manage expenses</Link>
@@ -235,8 +235,8 @@ function ExportLinks({ report, q }: { report: string; q: string }) {
   const sep = q ? '&' : '?';
   return (
     <div className="flex gap-2 text-sm">
-      <a href={`/api/reports/${report}/export${q}${sep}format=csv`} className="rounded-[--radius-card] border border-border px-3 py-1.5 font-medium text-primary-dark hover:bg-surface">CSV</a>
-      <a href={`/api/reports/${report}/export${q}${sep}format=xlsx`} className="rounded-[--radius-card] border border-border px-3 py-1.5 font-medium text-primary-dark hover:bg-surface">Excel</a>
+      <a href={`/api/reports/${report}/export${q}${sep}format=csv`} className="rounded-(--radius-card) border border-border px-3 py-1.5 font-medium text-primary-dark hover:bg-surface">CSV</a>
+      <a href={`/api/reports/${report}/export${q}${sep}format=xlsx`} className="rounded-(--radius-card) border border-border px-3 py-1.5 font-medium text-primary-dark hover:bg-surface">Excel</a>
     </div>
   );
 }

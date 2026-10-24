@@ -57,7 +57,7 @@ export function TodayBand({
   const settled = expectedToday > 0 && outstandingToday <= 0;
 
   return (
-    <section className="relative overflow-hidden rounded-[--radius-card] bg-[color:var(--color-band)] text-white">
+    <section className="relative overflow-hidden rounded-(--radius-card) bg-[color:var(--color-band)] text-white">
       {/* A single soft light from the top-left. Enough to stop the ground
           reading as flat black-green; not enough to become a "gradient card". */}
       <div
@@ -130,14 +130,14 @@ export function TodayBand({
           <div className="flex flex-wrap gap-2">
             <Link
               href="/owner/payments/cash"
-              className="inline-flex min-h-10 items-center rounded-[--radius-card] bg-[color:var(--color-signal)] px-4 text-sm font-semibold text-[color:var(--color-band)] transition-colors hover:bg-white"
+              className="inline-flex min-h-10 items-center rounded-(--radius-card) bg-[color:var(--color-signal)] px-4 text-sm font-semibold text-[color:var(--color-band)] transition-colors hover:bg-white"
             >
               Record cash payment
             </Link>
             {unpaidRiders > 0 && (
               <Link
                 href="/owner/riders"
-                className="inline-flex min-h-10 items-center gap-1 rounded-[--radius-card] border border-white/20 px-4 text-sm font-semibold text-white/90 transition-colors hover:bg-white/10"
+                className="inline-flex min-h-10 items-center gap-1 rounded-(--radius-card) border border-white/20 px-4 text-sm font-semibold text-white/90 transition-colors hover:bg-white/10"
               >
                 See who hasn&rsquo;t paid <ArrowRightIcon className="size-3.5" />
               </Link>

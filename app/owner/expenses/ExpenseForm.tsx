@@ -44,7 +44,7 @@ export function ExpenseForm({ motorcycles, today }: { motorcycles: Moto[]; today
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 rounded-[--radius-card] border border-border bg-white p-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 rounded-(--radius-card) border border-border bg-white p-4">
       <SelectField label="Motorcycle" required error={errors.motorcycleId?.message} defaultValue="" {...register('motorcycleId')}>
         <option value="" disabled>Select…</option>
         {motorcycles.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
@@ -59,7 +59,7 @@ export function ExpenseForm({ motorcycles, today }: { motorcycles: Moto[]; today
       </SelectField>
       <TextField label="Note (optional)" error={errors.note?.message} {...register('note')} />
       {error && <p role="alert" className="text-sm font-medium text-overdue">{error}</p>}
-      <button type="submit" disabled={isSubmitting} className="self-start rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60">
+      <button type="submit" disabled={isSubmitting} className="self-start rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60">
         {isSubmitting ? 'Saving…' : 'Add expense'}
       </button>
     </form>

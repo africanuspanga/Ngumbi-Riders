@@ -33,7 +33,7 @@ export function AppShell({
             notifications={<NotificationBell basePath={role === 'accountant' ? '/accountant' : '/owner'} />}
           />
           <div className="flex flex-1 flex-col overflow-y-auto p-4 md:p-6">
-            <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
+            <div className="workspace mx-auto flex w-full max-w-6xl flex-col gap-5">
               <InstallPrompt labels={INSTALL_LABELS_EN} />
               {children}
             </div>

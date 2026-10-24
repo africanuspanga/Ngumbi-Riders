@@ -185,7 +185,7 @@ export function LoginForm({ mode, next }: { mode: Mode; next?: string }) {
         <button
           type="submit"
           disabled={pending || code.length !== 6}
-          className="mt-1 cursor-pointer rounded-[--radius-card] bg-primary px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-default disabled:opacity-60"
+          className="mt-1 cursor-pointer rounded-(--radius-card) bg-primary px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-default disabled:opacity-60"
         >
           {pending ? t('pending') : t('otpSubmit')}
         </button>
@@ -281,7 +281,7 @@ export function LoginForm({ mode, next }: { mode: Mode; next?: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="mt-1 cursor-pointer rounded-[--radius-card] bg-primary px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-default disabled:opacity-60"
+        className="mt-1 cursor-pointer rounded-(--radius-card) bg-primary px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-default disabled:opacity-60"
       >
         {pending ? t('pending') : t('submit')}
       </button>

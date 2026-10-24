@@ -55,7 +55,7 @@ export function PushToggle() {
       type="button"
       onClick={enable}
       disabled={status === 'enabling'}
-      className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-medium text-primary-dark hover:bg-surface disabled:opacity-60"
+      className="rounded-(--radius-card) border border-border bg-white px-3 py-2 text-sm font-medium text-primary-dark hover:bg-surface disabled:opacity-60"
     >
       {status === 'enabling' ? '…' : status === 'error' ? 'Imeshindikana — jaribu tena' : 'Washa arifa za simu'}
     </button>

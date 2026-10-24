@@ -46,7 +46,7 @@ export function DepartmentDetailView({
 
       <form
         method="get"
-        className="flex flex-wrap items-end gap-3 rounded-[--radius-card] border border-border bg-white p-4"
+        className="flex flex-wrap items-end gap-3 rounded-(--radius-card) border border-border bg-white p-4"
       >
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted-foreground">From</span>
@@ -58,7 +58,7 @@ export function DepartmentDetailView({
         </label>
         <button
           type="submit"
-          className="min-h-11 rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
+          className="min-h-11 rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
         >
           Apply
         </button>
@@ -96,7 +96,7 @@ export function DepartmentDetailView({
         />
       </section>
 
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">Budget allocations</h2>
         {budgets.length === 0 ? (
           <p className="text-sm text-muted-foreground">
@@ -140,7 +140,7 @@ export function DepartmentDetailView({
         </p>
       </section>
 
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">
           Expenses ({formatDateRange(range.from, range.to)})
         </h2>
@@ -229,7 +229,7 @@ function Stat({
   tone?: string;
 }) {
   return (
-    <div className="rounded-[--radius-card] border border-border bg-white p-3">
+    <div className="rounded-(--radius-card) border border-border bg-white p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className={`break-words text-lg font-bold tabular-nums ${tone ?? 'text-primary-dark'}`}>
         {value}

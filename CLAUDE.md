@@ -37,12 +37,24 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
 
-**🆕 STAFF SMS SIGN-IN CODES (2026-10-24, migration `0037`, D-053) — NOT YET
-APPLIED LIVE.** Owner/accountant sign-in = password → 6-digit SMS code
+**🆕 2026-10-24 (later): 0038 staff_otp_phones APPLIED LIVE; staff set up;
+retirements; design pass 1 (D-054).** Code phones now live in `staff_otp_phones`
+(Daudi's number is also his rider login). Daudi → +255657551831; new
+accountant **LEAH MWILONGO** (office secretary, accountant access,
+`leah.mwilongo@staff.ngumbi.co.tz`, phone login +255792674427, temp password
+given to the owner). **EUFRASIA still has no phone — switch stays OFF until
+she does.** Retirements: "My retirements" lists the entries a person submitted
+with receipts; the Director's verify tab shows receipts inline; a requisition
+whose attachments failed to upload is no longer submitted silently. Design
+pass 1 = system fixes (radius bug ×485, unlayered `.input`, workspace table/
+heading/button normalisation, Geist Mono for identifiers only). 671 tests ✅.
+
+**🆕 STAFF SMS SIGN-IN CODES (2026-10-24, migration `0037`, D-053) — APPLIED
+LIVE 2026-10-24, switch OFF.** Owner/accountant sign-in = password → 6-digit SMS code
 (`lib/auth/staff-otp*.ts`, `/api/auth/owner-login{,/verify,/resend}`), enforced
 in RLS via `staff_session_ok()` inside `is_owner()`/`is_accountant()`. Kill
-switch `app_settings.staff_otp_required` ships OFF. **Rollout order:** apply
-0037 (+ record in schema_migrations) → deploy → owner adds both accountants'
+switch `app_settings.staff_otp_required` ships OFF. **Rollout order:** ~~apply
+0037~~ (done) → deploy → owner adds both accountants'
 phones at `/owner/staff` (neither has one today) → set the switch true.
 Dry-run proven (rollback-only): unverified owner session sees 0 payments,
 verified one is owner, another session/user id is refused. 670 unit tests (+16) ✅, build ✅.

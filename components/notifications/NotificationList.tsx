@@ -76,7 +76,7 @@ export function NotificationList({
       {notifications.length === 0 ? (
         <p className="text-muted-foreground">{labels.empty}</p>
       ) : (
-        <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border bg-white">
+        <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border bg-white">
           {notifications.map((n) => (
             <li
               key={n.id}

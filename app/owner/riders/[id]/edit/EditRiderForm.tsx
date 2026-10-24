@@ -93,7 +93,7 @@ export function EditRiderForm({
 
   if (issuedPin) {
     return (
-      <div className="flex flex-col gap-4 rounded-[--radius-card] border-2 border-primary bg-surface p-5">
+      <div className="flex flex-col gap-4 rounded-(--radius-card) border-2 border-primary bg-surface p-5">
         <div>
           <h2 className="font-semibold text-primary-dark">
             Saved — and the rider needs a new PIN
@@ -104,12 +104,12 @@ export function EditRiderForm({
             shown once and they must change it when they next sign in.
           </p>
         </div>
-        <p className="rounded-[--radius-card] border border-border bg-white px-5 py-4 text-center font-mono text-3xl font-bold tracking-[0.4em] text-primary-dark">
+        <p className="rounded-(--radius-card) border border-border bg-white px-5 py-4 text-center font-mono text-3xl font-bold tracking-[0.4em] text-primary-dark">
           {issuedPin}
         </p>
         <Link
           href={`/owner/riders/${riderId}`}
-          className="self-start rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
+          className="self-start rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
         >
           I have written it down
         </Link>
@@ -134,7 +134,7 @@ export function EditRiderForm({
           {...register('phone')}
         />
         {phoneChanging && (
-          <p className="-mt-2 rounded-[--radius-card] border border-[color:var(--color-warning)]/40 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <p className="-mt-2 rounded-(--radius-card) border border-[color:var(--color-warning)]/40 bg-amber-50 px-3 py-2 text-xs text-amber-900">
             Changing the phone number replaces this rider&rsquo;s PIN. A new
             temporary PIN will be shown once when you save — write it down and give
             it to them, or they will not be able to sign in.
@@ -194,13 +194,13 @@ export function EditRiderForm({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+          className="rounded-(--radius-card) bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
         >
           {isSubmitting ? 'Saving…' : 'Save changes'}
         </button>
         <Link
           href={`/owner/riders/${riderId}`}
-          className="rounded-[--radius-card] border border-border bg-white px-4 py-3 font-semibold hover:bg-surface"
+          className="rounded-(--radius-card) border border-border bg-white px-4 py-3 font-semibold hover:bg-surface"
         >
           Cancel
         </Link>

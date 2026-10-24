@@ -101,7 +101,7 @@ export function SignaturePad({
         onPointerMove={move}
         onPointerUp={end}
         onPointerLeave={end}
-        className="h-40 w-full touch-none rounded-[--radius-card] border border-border bg-white"
+        className="h-40 w-full touch-none rounded-(--radius-card) border border-border bg-white"
       />
       <button
         type="button"

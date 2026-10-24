@@ -24,14 +24,14 @@ export function RequisitionTable({
 }) {
   if (requisitions.length === 0) {
     return (
-      <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">
+      <p className="rounded-(--radius-card) border border-border bg-white p-6 text-center text-muted-foreground">
         {emptyMessage}
       </p>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-[--radius-card] border border-border bg-white">
+    <div className="overflow-x-auto rounded-(--radius-card) border border-border bg-white">
       <table className="w-full min-w-[760px] text-left text-sm">
         <thead className="text-muted-foreground border-b border-border text-xs uppercase">
           <tr>
@@ -62,7 +62,7 @@ export function RequisitionTable({
               <td className="px-3 py-3">{DEPARTMENT_LABELS[r.department] ?? r.department}</td>
               <td className="px-3 py-3">{formatDate(r.requestDate)}</td>
               {showRequester && <td className="px-3 py-3">{r.requestedByName}</td>}
-              <td className="px-3 py-3 text-right font-mono font-semibold tabular-nums">
+              <td className="px-3 py-3 text-right font-semibold tabular-nums">
                 {formatTZS(r.total)}
               </td>
               <td className="px-3 py-3">

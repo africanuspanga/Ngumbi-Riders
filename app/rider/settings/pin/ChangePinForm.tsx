@@ -54,7 +54,7 @@ export function ChangePinForm({ forced }: { forced: boolean }) {
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
       {forced && (
-        <p className="rounded-[--radius-card] bg-surface p-3 text-sm text-primary-dark">
+        <p className="rounded-(--radius-card) bg-surface p-3 text-sm text-primary-dark">
           {t('mustChange')}
         </p>
       )}
@@ -71,7 +71,7 @@ export function ChangePinForm({ forced }: { forced: boolean }) {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-[--radius-card] bg-primary px-6 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+        className="rounded-(--radius-card) bg-primary px-6 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
       >
         {pending ? '…' : t('changeTitle')}
       </button>

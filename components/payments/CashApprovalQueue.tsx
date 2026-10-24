@@ -87,7 +87,7 @@ export function CashApprovalQueue({
 
   if (requests.length === 0) {
     return (
-      <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">
+      <p className="rounded-(--radius-card) border border-border bg-white p-6 text-center text-muted-foreground">
         Nothing waiting for confirmation. ✓
       </p>
     );
@@ -96,18 +96,18 @@ export function CashApprovalQueue({
   return (
     <div className="flex flex-col gap-3">
       {done && (
-        <p role="status" className="rounded-[--radius-card] border border-[color:var(--color-paid)] bg-[color:var(--color-paid)]/5 p-3 text-sm font-medium text-[color:var(--color-paid)]">
+        <p role="status" className="rounded-(--radius-card) border border-[color:var(--color-paid)] bg-[color:var(--color-paid)]/5 p-3 text-sm font-medium text-[color:var(--color-paid)]">
           {done}
         </p>
       )}
       {error && (
-        <p role="alert" className="rounded-[--radius-card] border border-[color:var(--color-overdue)] bg-red-50 p-3 text-sm font-medium text-overdue">
+        <p role="alert" className="rounded-(--radius-card) border border-[color:var(--color-overdue)] bg-red-50 p-3 text-sm font-medium text-overdue">
           {error}
         </p>
       )}
 
       {requests.map((r) => (
-        <article key={r.id} className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+        <article key={r.id} className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
           <header className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="font-semibold text-primary-dark">
@@ -156,14 +156,14 @@ export function CashApprovalQueue({
                   type="button"
                   disabled={busyId === r.id}
                   onClick={() => run(r.id, () => rejectCashRequest(r.id, reason), 'Request rejected.')}
-                  className="min-h-11 rounded-[--radius-card] bg-[color:var(--color-overdue)] px-4 font-semibold text-white disabled:opacity-60"
+                  className="min-h-11 rounded-(--radius-card) bg-[color:var(--color-overdue)] px-4 font-semibold text-white disabled:opacity-60"
                 >
                   Confirm rejection
                 </button>
                 <button
                   type="button"
                   onClick={() => { setRejecting(null); setReason(''); }}
-                  className="min-h-11 rounded-[--radius-card] border border-border px-4 font-semibold"
+                  className="min-h-11 rounded-(--radius-card) border border-border px-4 font-semibold"
                 >
                   Cancel
                 </button>
@@ -178,14 +178,14 @@ export function CashApprovalQueue({
                   onClick={() =>
                     run(r.id, () => approveCashRequest(r.id), `Confirmed — ${formatTZS(r.amount)} recorded for ${r.riderName}. The rider has been notified.`)
                   }
-                  className="min-h-11 rounded-[--radius-card] bg-primary px-4 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+                  className="min-h-11 rounded-(--radius-card) bg-primary px-4 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
                 >
                   {busyId === r.id ? 'Confirming…' : 'Confirm cash received'}
                 </button>
               )}
               <Link
                 href={`${editBasePath}/${r.id}`}
-                className="flex min-h-11 items-center rounded-[--radius-card] border border-border bg-white px-4 font-semibold text-primary-dark hover:bg-surface"
+                className="flex min-h-11 items-center rounded-(--radius-card) border border-border bg-white px-4 font-semibold text-primary-dark hover:bg-surface"
               >
                 Edit
               </Link>
@@ -193,7 +193,7 @@ export function CashApprovalQueue({
                 <button
                   type="button"
                   onClick={() => setRejecting(r.id)}
-                  className="min-h-11 rounded-[--radius-card] border border-[color:var(--color-overdue)] px-4 font-semibold text-overdue"
+                  className="min-h-11 rounded-(--radius-card) border border-[color:var(--color-overdue)] px-4 font-semibold text-overdue"
                 >
                   Reject
                 </button>
@@ -202,7 +202,7 @@ export function CashApprovalQueue({
                   type="button"
                   disabled={busyId === r.id}
                   onClick={() => run(r.id, () => cancelCashRequest(r.id), 'Request withdrawn.')}
-                  className="min-h-11 rounded-[--radius-card] border border-border px-4 font-semibold text-muted-foreground disabled:opacity-60"
+                  className="min-h-11 rounded-(--radius-card) border border-border px-4 font-semibold text-muted-foreground disabled:opacity-60"
                 >
                   Withdraw
                 </button>

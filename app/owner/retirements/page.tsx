@@ -38,6 +38,7 @@ export default async function OwnerRetirementsPage({
       </header>
       <RetirementDashboard
         rows={board.rows}
+        entries={board.entries}
         entriesAvailable={board.entriesAvailable}
         basePath="/owner"
         tab={tab}

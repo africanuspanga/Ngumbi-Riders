@@ -52,7 +52,7 @@ export function FinancialNoteForm() {
   return (
     <form
       onSubmit={submit}
-      className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4"
+      className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4"
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-xs">
@@ -104,7 +104,7 @@ export function FinancialNoteForm() {
       <button
         type="submit"
         disabled={busy}
-        className="w-fit rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+        className="w-fit rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
       >
         {busy ? 'Saving…' : 'Add note'}
       </button>

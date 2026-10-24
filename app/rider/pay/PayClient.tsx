@@ -164,7 +164,7 @@ export function PayClient({
     return (
       <>
         <Confetti />
-        <div className="flex flex-col items-center gap-3 rounded-[--radius-card] border border-primary bg-white p-6 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-(--radius-card) border border-primary bg-white p-6 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface text-3xl font-bold text-primary">
             ✓
           </div>
@@ -173,7 +173,7 @@ export function PayClient({
           <button
             type="button"
             onClick={() => router.push(paymentId ? `/rider/payments/${paymentId}` : '/rider')}
-            className="mt-1 rounded-[--radius-card] bg-primary px-6 py-3 font-semibold text-white hover:bg-primary-hover"
+            className="mt-1 rounded-(--radius-card) bg-primary px-6 py-3 font-semibold text-white hover:bg-primary-hover"
           >
             Ona risiti
           </button>
@@ -191,7 +191,7 @@ export function PayClient({
 
   if (paymentId && ['pending', 'created'].includes(status)) {
     return (
-      <div className="flex flex-col gap-4 rounded-[--radius-card] border border-border bg-white p-5 text-center">
+      <div className="flex flex-col gap-4 rounded-(--radius-card) border border-border bg-white p-5 text-center">
         <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-surface border-t-primary" />
         <p className="font-semibold text-primary-dark">Inasubiri uthibitisho…</p>
         <p className="text-sm text-muted-foreground">
@@ -219,12 +219,12 @@ export function PayClient({
 
   if (status === 'failed' || status === 'expired' || status === 'cancelled' || status === 'reversed') {
     return (
-      <div className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-5 text-center">
+      <div className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-5 text-center">
         <p className="font-semibold text-overdue">Malipo hayakukamilika</p>
         <button
           type="button"
           onClick={() => { setPaymentId(null); setStatus('idle'); setSelected(null); setConfirming(false); }}
-          className="rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white"
+          className="rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white"
         >
           Jaribu tena
         </button>
@@ -239,11 +239,11 @@ export function PayClient({
   // Confirm the payer number before sending the USSD request.
   if (confirming && selected) {
     return (
-      <div className="flex flex-col gap-4 rounded-[--radius-card] border border-border bg-white p-5">
+      <div className="flex flex-col gap-4 rounded-(--radius-card) border border-border bg-white p-5">
         <p className="text-center font-semibold text-primary-dark">
           Je, hii ndiyo namba unayotaka kulipia?
         </p>
-        <div className="rounded-[--radius-card] bg-surface p-4 text-center">
+        <div className="rounded-(--radius-card) bg-surface p-4 text-center">
           <p className="text-2xl font-bold text-foreground">{payerPhone}</p>
         </div>
         <p className="text-center text-sm text-muted-foreground">
@@ -255,7 +255,7 @@ export function PayClient({
           type="button"
           disabled={busy}
           onClick={initiate}
-          className="rounded-[--radius-card] bg-primary px-6 py-4 text-lg font-bold text-white hover:bg-primary-hover disabled:opacity-60"
+          className="rounded-(--radius-card) bg-primary px-6 py-4 text-lg font-bold text-white hover:bg-primary-hover disabled:opacity-60"
         >
           {busy ? 'Inatuma ombi…' : 'Ndiyo, tuma ombi la malipo'}
         </button>
@@ -279,7 +279,7 @@ export function PayClient({
             key={o.key}
             type="button"
             onClick={() => setSelected(o)}
-            className={`flex items-center justify-between rounded-[--radius-card] border px-4 py-3 text-left ${
+            className={`flex items-center justify-between rounded-(--radius-card) border px-4 py-3 text-left ${
               selected?.key === o.key ? 'border-primary bg-surface' : 'border-border bg-white'
             }`}
           >
@@ -323,7 +323,7 @@ export function PayClient({
         type="button"
         disabled={!selected || busy}
         onClick={askConfirm}
-        className="rounded-[--radius-card] bg-primary px-6 py-4 text-lg font-bold text-white hover:bg-primary-hover disabled:opacity-60"
+        className="rounded-(--radius-card) bg-primary px-6 py-4 text-lg font-bold text-white hover:bg-primary-hover disabled:opacity-60"
       >
         {selected ? `Lipa ${tzs(selected.amount)}` : 'Chagua kiasi'}
       </button>

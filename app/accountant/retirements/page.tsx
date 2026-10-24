@@ -25,7 +25,9 @@ export default async function AccountantRetirementsPage({
     staffId: sp.staff && /^[0-9a-f-]{36}$/i.test(sp.staff) ? sp.staff : null,
   };
   const [board, staff] = await Promise.all([getRetirementBoard(filters), listRetirementStaff()]);
-  const tab = TABS.includes(sp.tab as RetirementTab) ? (sp.tab as RetirementTab) : 'eligible';
+  const tab = TABS.includes(sp.tab as RetirementTab) ? (sp.tab as RetirementTab) : board.entries.some((e) => e.submittedById === profile.userId)
+      ? 'mine'
+      : 'eligible';
 
   return (
     <div className="flex flex-col gap-5">
@@ -37,6 +39,7 @@ export default async function AccountantRetirementsPage({
       </header>
       <RetirementDashboard
         rows={board.rows}
+        entries={board.entries}
         entriesAvailable={board.entriesAvailable}
         basePath="/accountant"
         tab={tab}

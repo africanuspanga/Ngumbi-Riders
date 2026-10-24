@@ -80,7 +80,7 @@ export function ContractDocuments({
           {documents.map((doc) => (
             <li
               key={doc.id}
-              className="flex items-center justify-between gap-3 rounded-[--radius-card] border border-border bg-surface px-3 py-2"
+              className="flex items-center justify-between gap-3 rounded-(--radius-card) border border-border bg-surface px-3 py-2"
             >
               <span className="text-sm text-foreground">
                 {doc.is_signed ? 'Signed copy' : 'Contract PDF'} · v{doc.version}
@@ -92,7 +92,7 @@ export function ContractDocuments({
                 type="button"
                 onClick={() => download(doc.id)}
                 disabled={pending}
-                className="shrink-0 rounded-[--radius-card] bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+                className="shrink-0 rounded-(--radius-card) bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
               >
                 {busyId === doc.id ? 'Opening…' : 'Download'}
               </button>
@@ -104,7 +104,7 @@ export function ContractDocuments({
         type="button"
         disabled={pending}
         onClick={generate}
-        className="self-start rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+        className="self-start rounded-(--radius-card) border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
       >
         {pending && busyId === null
           ? 'Generating…'
@@ -161,7 +161,7 @@ export function SignatureCapture({
         type="button"
         onClick={save}
         disabled={pending}
-        className="self-start rounded-[--radius-card] bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+        className="self-start rounded-(--radius-card) bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
       >
         {pending ? 'Saving…' : `Save ${role} signature`}
       </button>
@@ -195,7 +195,7 @@ export function PhysicalUpload({ contractId }: { contractId: string }) {
         accept=".pdf,.jpg,.jpeg,.png"
         onChange={onChange}
         disabled={pending}
-        className="block w-full text-sm text-muted-foreground file:mr-3 file:min-h-11 file:rounded-[--radius-card] file:border-0 file:bg-surface file:px-4 file:py-2 file:font-semibold file:text-primary-dark"
+        className="block w-full text-sm text-muted-foreground file:mr-3 file:min-h-11 file:rounded-(--radius-card) file:border-0 file:bg-surface file:px-4 file:py-2 file:font-semibold file:text-primary-dark"
       />
       {error && <p className="text-xs text-overdue">{error}</p>}
     </div>
@@ -239,7 +239,7 @@ export function ActivateButton({ contractId }: { contractId: string }) {
         type="button"
         onClick={activate}
         disabled={pending}
-        className="rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+        className="rounded-(--radius-card) bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
       >
         {pending ? 'Activating…' : 'Activate & generate obligations'}
       </button>
@@ -301,14 +301,14 @@ export function LifecycleButtons({
                 ? setConfirming(a.key)
                 : run(a.key, a.label)
             }
-            className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+            className="rounded-(--radius-card) border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
           >
             {a.label}
           </button>
         ))}
       </div>
       {confirming && (
-        <div className="flex flex-col gap-2 rounded-[--radius-card] border border-overdue/40 bg-overdue/5 p-3 text-sm">
+        <div className="flex flex-col gap-2 rounded-(--radius-card) border border-overdue/40 bg-overdue/5 p-3 text-sm">
           <p>
             {confirming === 'terminate'
               ? 'Terminate this contract? Future payment days are cancelled, days already missed stay owed, and the motorcycle is released so it can be leased to another rider. A performance report is available afterwards.'
@@ -319,7 +319,7 @@ export function LifecycleButtons({
               type="button"
               disabled={pending}
               onClick={() => run(confirming, confirming === 'terminate' ? 'Terminate' : 'Complete early')}
-              className="rounded-[--radius-card] bg-overdue px-3 py-2 font-semibold text-white disabled:opacity-60"
+              className="rounded-(--radius-card) bg-overdue px-3 py-2 font-semibold text-white disabled:opacity-60"
             >
               {pending ? 'Working…' : confirming === 'terminate' ? 'Yes, terminate' : 'Yes, complete early'}
             </button>
@@ -327,7 +327,7 @@ export function LifecycleButtons({
               type="button"
               disabled={pending}
               onClick={() => setConfirming(null)}
-              className="rounded-[--radius-card] border border-border bg-white px-3 py-2 font-semibold"
+              className="rounded-(--radius-card) border border-border bg-white px-3 py-2 font-semibold"
             >
               Cancel
             </button>
@@ -410,7 +410,7 @@ export function ReactivateButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="self-start rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover"
+        className="self-start rounded-(--radius-card) bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover"
       >
         Reactivate contract
       </button>
@@ -444,14 +444,14 @@ export function ReactivateButton({
           type="button"
           onClick={run}
           disabled={pending}
-          className="min-h-11 rounded-[--radius-card] bg-primary px-4 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+          className="min-h-11 rounded-(--radius-card) bg-primary px-4 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
         >
           {pending ? 'Reactivating…' : 'Confirm reactivation'}
         </button>
         <button
           type="button"
           onClick={() => { setOpen(false); setError(null); }}
-          className="min-h-11 rounded-[--radius-card] border border-border px-4 font-semibold"
+          className="min-h-11 rounded-(--radius-card) border border-border px-4 font-semibold"
         >
           Cancel
         </button>
@@ -514,7 +514,7 @@ export function ExtendTermButton({
           type="button"
           onClick={run}
           disabled={pending}
-          className="min-h-11 rounded-[--radius-card] border border-border bg-white px-4 font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+          className="min-h-11 rounded-(--radius-card) border border-border bg-white px-4 font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
         >
           {pending ? 'Extending…' : 'Extend term'}
         </button>

@@ -43,7 +43,7 @@ export function RiderProfileView({
   return (
     <div className="flex flex-col gap-4">
       {/* Identity header */}
-      <section className="flex flex-wrap items-start gap-4 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-wrap items-start gap-4 rounded-(--radius-card) border border-border bg-white p-4">
         <RiderAvatar photoUrl={p.photoUrl} name={p.fullName} size={88} />
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold text-primary-dark">{p.fullName}</h1>
@@ -81,7 +81,7 @@ export function RiderProfileView({
       </section>
 
       {p.payment.totalCount > 0 && (
-        <section className="rounded-[--radius-card] border border-border bg-white p-4">
+        <section className="rounded-(--radius-card) border border-border bg-white p-4">
           <div className="flex items-center justify-between text-sm">
             <span className="font-semibold text-primary-dark">Payment plan progress</span>
             <span className="text-muted-foreground">
@@ -196,7 +196,7 @@ export function RiderProfileView({
                 <Info label="Payments made" value={`${p.payment.paidCount} of ${p.payment.totalCount}`} />
               </Grid>
               {p.contract.displayStatus === 'ended_outstanding' && (
-                <p className="rounded-[--radius-card] border border-[color:var(--color-overdue)] bg-red-50 p-2 text-xs font-semibold text-[color:var(--color-overdue)]">
+                <p className="rounded-(--radius-card) border border-[color:var(--color-overdue)] bg-red-50 p-2 text-xs font-semibold text-[color:var(--color-overdue)]">
                   This contract has ended but {formatTZS(p.payment.amountOutstanding)} is still
                   outstanding across {p.payment.outstandingCount} payment(s).
                 </p>
@@ -268,7 +268,7 @@ export function RiderProfileView({
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+    <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
       <h2 className="font-semibold text-primary-dark">{title}</h2>
       {children}
     </section>
@@ -290,7 +290,7 @@ function Info({ label, value }: { label: string; value?: string | null }) {
 
 function Kpi({ label, value, tone }: { label: string; value: string; tone?: 'overdue' }) {
   return (
-    <div className="rounded-[--radius-card] border border-border bg-white p-3">
+    <div className="rounded-(--radius-card) border border-border bg-white p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p
         className={`mt-0.5 text-base font-bold ${tone === 'overdue' ? 'text-[color:var(--color-overdue)]' : 'text-primary-dark'}`}

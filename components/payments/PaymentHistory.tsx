@@ -34,14 +34,14 @@ export function PaymentHistory({
 }) {
   if (payments.length === 0) {
     return (
-      <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">
+      <p className="rounded-(--radius-card) border border-border bg-white p-6 text-center text-muted-foreground">
         No payments recorded yet.
       </p>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-[--radius-card] border border-border bg-white">
+    <div className="overflow-x-auto rounded-(--radius-card) border border-border bg-white">
       <table className="w-full min-w-[640px] text-left text-sm">
         <thead className="text-muted-foreground border-b border-border">
           <tr>
@@ -91,7 +91,7 @@ export function PaymentHistory({
                     : `${p.coveredDates.length} days · ${formatDate(p.coveredDates[0])} – ${formatDate(p.coveredDates[p.coveredDates.length - 1])}`}
                 {p.note ? <span className="block italic">{p.note}</span> : null}
               </td>
-              <td className="px-3 py-2 text-right font-mono font-medium tabular-nums">
+              <td className="px-3 py-2 text-right font-medium tabular-nums">
                 {formatTZS(p.amount)}
               </td>
               <td className={`px-3 py-2 font-medium ${TONE[p.status] ?? 'text-muted-foreground'}`}>

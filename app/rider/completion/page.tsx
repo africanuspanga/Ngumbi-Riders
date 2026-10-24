@@ -37,7 +37,7 @@ export default async function RiderCompletionPage() {
 
       {/* Where they stand on money — the thing finance will check. */}
       {state.contract && (
-        <div className="rounded-[--radius-card] border border-border bg-white p-4">
+        <div className="rounded-(--radius-card) border border-border bg-white p-4">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <Row label="Mkataba" value={state.contract.number} />
             <Row
@@ -72,7 +72,7 @@ export default async function RiderCompletionPage() {
 
       {/* An open request, with its stage. */}
       {r && (
-        <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+        <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <h2 className="font-semibold text-primary-dark">Ombi lako</h2>
             <span className="shrink-0 rounded-full border border-border bg-surface px-2.5 py-0.5 text-xs font-semibold">
@@ -90,12 +90,12 @@ export default async function RiderCompletionPage() {
             {r.requestNumber} · {formatDateTime(r.requestedAt)}
           </p>
           {r.financeNote && (
-            <p className="rounded-[--radius-card] border border-border bg-surface px-3 py-2 text-sm">
+            <p className="rounded-(--radius-card) border border-border bg-surface px-3 py-2 text-sm">
               {r.financeNote}
             </p>
           )}
           {r.directorNote && (
-            <p className="rounded-[--radius-card] border border-border bg-surface px-3 py-2 text-sm">
+            <p className="rounded-(--radius-card) border border-border bg-surface px-3 py-2 text-sm">
               {r.directorNote}
             </p>
           )}
@@ -105,7 +105,7 @@ export default async function RiderCompletionPage() {
               href={`/api/completions/certificates/${r.certificate.id}`}
               target="_blank"
               rel="noreferrer"
-              className="min-h-12 rounded-[--radius-card] bg-primary px-4 py-3 text-center font-semibold text-white hover:bg-primary-hover"
+              className="min-h-12 rounded-(--radius-card) bg-primary px-4 py-3 text-center font-semibold text-white hover:bg-primary-hover"
             >
               Pakua cheti chako
             </a>
@@ -122,7 +122,7 @@ export default async function RiderCompletionPage() {
         />
       ) : (
         !r && (
-          <p className="rounded-[--radius-card] border border-border bg-surface p-4 text-sm">
+          <p className="rounded-(--radius-card) border border-border bg-surface p-4 text-sm">
             {BLOCK_REASONS_SW[state.eligibility.reason]}
           </p>
         )
@@ -132,7 +132,7 @@ export default async function RiderCompletionPage() {
       {state.history.length > 0 && (
         <section className="flex flex-col gap-2">
           <h2 className="font-semibold text-primary-dark">Maombi yaliyopita</h2>
-          <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border bg-white">
+          <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border bg-white">
             {state.history.map((h) => (
               <li key={h.id} className="flex flex-col gap-1 px-4 py-3 text-sm">
                 <div className="flex items-center justify-between gap-2">

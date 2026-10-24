@@ -38,7 +38,7 @@ export default async function OwnerStaffProfilesPage() {
       </header>
 
       {waiting.length > 0 && (
-        <p className="rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <p className="rounded-(--radius-card) border border-[color:var(--color-warning)] bg-amber-50 px-4 py-3 text-sm text-amber-900">
           {waiting.length} profile{waiting.length === 1 ? '' : 's'} awaiting your review:{' '}
           {waiting.map((p) => p.fullName).join(', ')}.
         </p>
@@ -48,7 +48,7 @@ export default async function OwnerStaffProfilesPage() {
         {people.map((p) => (
           <li
             key={p.profileId}
-            className={`flex flex-wrap items-start justify-between gap-3 rounded-[--radius-card] border bg-white p-4 ${
+            className={`flex flex-wrap items-start justify-between gap-3 rounded-(--radius-card) border bg-white p-4 ${
               awaitsReview(p.reviewStatus)
                 ? 'border-[color:var(--color-warning)]/50'
                 : 'border-border'

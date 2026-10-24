@@ -3324,6 +3324,27 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_otp_phones: {
+        Row: {
+          phone: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          phone: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          phone?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       staff_profiles: {
         Row: {
           created_at: string

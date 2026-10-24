@@ -103,7 +103,7 @@ export function PhoneLoanActions({
       )}
 
       {linking && (
-        <div className="flex flex-col gap-2 rounded-[--radius-card] border border-border bg-surface p-3">
+        <div className="flex flex-col gap-2 rounded-(--radius-card) border border-border bg-surface p-3">
           <p className="text-sm">
             Raise the purchase requisition for the handset first, then paste its id here to link
             the two. The Director approving that purchase will advance this request automatically.
@@ -122,7 +122,7 @@ export function PhoneLoanActions({
               type="button"
               disabled={busy || requisitionId.trim().length < 10}
               onClick={() => run(() => linkPhoneLoanRequisition(requestId, requisitionId.trim()))}
-              className="min-h-11 rounded-[--radius-card] bg-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+              className="min-h-11 rounded-(--radius-card) bg-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
             >
               {busy ? 'Linking…' : 'Link purchase request'}
             </button>
@@ -130,7 +130,7 @@ export function PhoneLoanActions({
               type="button"
               disabled={busy}
               onClick={() => setLinking(false)}
-              className="min-h-11 rounded-[--radius-card] border border-border bg-white px-4 py-2.5 text-sm font-semibold"
+              className="min-h-11 rounded-(--radius-card) border border-border bg-white px-4 py-2.5 text-sm font-semibold"
             >
               Cancel
             </button>
@@ -139,7 +139,7 @@ export function PhoneLoanActions({
       )}
 
       {rejecting && (
-        <div className="flex flex-col gap-2 rounded-[--radius-card] border border-border bg-surface p-3">
+        <div className="flex flex-col gap-2 rounded-(--radius-card) border border-border bg-surface p-3">
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium">Reason (the rider will see this)</span>
             <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} />
@@ -149,7 +149,7 @@ export function PhoneLoanActions({
               type="button"
               disabled={busy || reason.trim().length < 3}
               onClick={() => run(() => rejectPhoneLoanRequest(requestId, reason))}
-              className="min-h-11 rounded-[--radius-card] bg-[color:var(--color-overdue)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+              className="min-h-11 rounded-(--radius-card) bg-[color:var(--color-overdue)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
             >
               {busy ? 'Rejecting…' : 'Confirm rejection'}
             </button>
@@ -157,7 +157,7 @@ export function PhoneLoanActions({
               type="button"
               disabled={busy}
               onClick={() => setRejecting(false)}
-              className="min-h-11 rounded-[--radius-card] border border-border bg-white px-4 py-2.5 text-sm font-semibold"
+              className="min-h-11 rounded-(--radius-card) border border-border bg-white px-4 py-2.5 text-sm font-semibold"
             >
               Cancel
             </button>
@@ -202,7 +202,7 @@ export function PhoneLoanActions({
               type="button"
               disabled={busy}
               onClick={() => setRejecting(true)}
-              className="min-h-11 rounded-[--radius-card] border border-border bg-white px-4 py-2.5 text-sm font-semibold text-overdue disabled:opacity-60"
+              className="min-h-11 rounded-(--radius-card) border border-border bg-white px-4 py-2.5 text-sm font-semibold text-overdue disabled:opacity-60"
             >
               Reject
             </button>
@@ -227,7 +227,7 @@ function Primary({
       type="button"
       disabled={busy}
       onClick={onClick}
-      className="min-h-11 rounded-[--radius-card] bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+      className="min-h-11 rounded-(--radius-card) bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
     >
       {busy ? 'Working…' : children}
     </button>
@@ -248,7 +248,7 @@ function Secondary({
       type="button"
       disabled={busy}
       onClick={onClick}
-      className="min-h-11 rounded-[--radius-card] border border-border bg-white px-4 py-2.5 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+      className="min-h-11 rounded-(--radius-card) border border-border bg-white px-4 py-2.5 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
     >
       {children}
     </button>

@@ -96,7 +96,7 @@ export function ImportWizard() {
                 key={t}
                 type="button"
                 onClick={() => setType(t)}
-                className={`flex-1 rounded-[--radius-card] border px-4 py-2.5 text-sm font-semibold ${
+                className={`flex-1 rounded-(--radius-card) border px-4 py-2.5 text-sm font-semibold ${
                   type === t ? 'border-primary bg-primary text-white' : 'border-border bg-white text-muted-foreground'
                 }`}
               >
@@ -120,7 +120,7 @@ export function ImportWizard() {
             type="file"
             accept=".csv,.xlsx,.xls,text/csv"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="block w-full text-sm text-muted-foreground file:mr-3 file:min-h-11 file:rounded-[--radius-card] file:border-0 file:bg-surface file:px-4 file:py-2 file:font-semibold file:text-primary-dark"
+            className="block w-full text-sm text-muted-foreground file:mr-3 file:min-h-11 file:rounded-(--radius-card) file:border-0 file:bg-surface file:px-4 file:py-2 file:font-semibold file:text-primary-dark"
           />
         </div>
 
@@ -129,7 +129,7 @@ export function ImportWizard() {
           type="button"
           disabled={!file || busy}
           onClick={runDryRun}
-          className="rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+          className="rounded-(--radius-card) bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
         >
           {busy ? 'Checking…' : 'Validate (dry run)'}
         </button>
@@ -147,7 +147,7 @@ export function ImportWizard() {
           <Stat label="Duplicates" value={dry.summary.duplicates} tone="text-[color:var(--color-warning)]" />
         </div>
 
-        <div className="overflow-hidden rounded-[--radius-card] border border-border">
+        <div className="overflow-hidden rounded-(--radius-card) border border-border">
           <table className="w-full text-left text-sm">
             <thead className="bg-surface text-muted-foreground">
               <tr>
@@ -179,7 +179,7 @@ export function ImportWizard() {
           <button
             type="button"
             onClick={() => setPhase('select')}
-            className="flex-1 rounded-[--radius-card] border border-border bg-white px-4 py-3 font-semibold text-primary-dark"
+            className="flex-1 rounded-(--radius-card) border border-border bg-white px-4 py-3 font-semibold text-primary-dark"
           >
             Back
           </button>
@@ -187,7 +187,7 @@ export function ImportWizard() {
             type="button"
             disabled={!canCommit || busy}
             onClick={runCommit}
-            className="flex-1 rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+            className="flex-1 rounded-(--radius-card) bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
           >
             {busy ? 'Importing…' : `Import ${dry.summary.valid} valid`}
           </button>
@@ -199,7 +199,7 @@ export function ImportWizard() {
   if (phase === 'report' && report) {
     return (
       <div className="flex flex-col gap-5">
-        <div className="rounded-[--radius-card] border border-primary bg-surface p-4">
+        <div className="rounded-(--radius-card) border border-primary bg-surface p-4">
           <p className="font-semibold text-primary-dark">Import complete</p>
           <p className="text-sm text-foreground">
             {report.inserted} inserted · {report.skipped} skipped
@@ -221,7 +221,7 @@ export function ImportWizard() {
                     '\n',
                 )
               }
-              className="self-start rounded-[--radius-card] border border-border px-3 py-2 text-sm font-medium text-primary-dark hover:bg-surface"
+              className="self-start rounded-(--radius-card) border border-border px-3 py-2 text-sm font-medium text-primary-dark hover:bg-surface"
             >
               Download temp PIN list
             </button>
@@ -249,7 +249,7 @@ export function ImportWizard() {
 
 function Stat({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
-    <div className="rounded-[--radius-card] border border-border bg-white p-3">
+    <div className="rounded-(--radius-card) border border-border bg-white p-3">
       <div className={`text-2xl font-bold ${tone}`}>{value}</div>
       <div className="text-xs text-muted-foreground">{label}</div>
     </div>

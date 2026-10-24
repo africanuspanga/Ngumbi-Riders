@@ -25,7 +25,7 @@ export default async function RiderPaymentsPage() {
         <h1 className="text-xl font-bold text-primary-dark">Malipo yangu</h1>
         <Link
           href="/rider/statement"
-          className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark"
+          className="rounded-(--radius-card) border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark"
         >
           Taarifa kamili
         </Link>
@@ -33,7 +33,7 @@ export default async function RiderPaymentsPage() {
       {payments.length === 0 ? (
         <p className="text-muted-foreground">Bado hujafanya malipo.</p>
       ) : (
-        <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border bg-white">
+        <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border bg-white">
           {payments.map((p) => (
             <li key={p.id}>
               <Link href={`/rider/payments/${p.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-surface">

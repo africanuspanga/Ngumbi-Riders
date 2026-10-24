@@ -29,7 +29,7 @@ export default async function OwnerTransactionsPage() {
         </div>
         <Link
           href="/owner/reconciliation"
-          className="flex min-h-11 items-center rounded-[--radius-card] border border-border bg-white px-4 font-semibold text-primary-dark hover:bg-surface"
+          className="flex min-h-11 items-center rounded-(--radius-card) border border-border bg-white px-4 font-semibold text-primary-dark hover:bg-surface"
         >
           Reconcile
         </Link>

@@ -23,18 +23,18 @@ export default async function MotorcyclesPage() {
         </div>
         <Link
           href="/owner/motorcycles/new"
-          className="rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
+          className="rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
         >
           Add motorcycle
         </Link>
       </header>
 
       {motorcycles.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">
+        <p className="rounded-(--radius-card) border border-border bg-white p-6 text-center text-muted-foreground">
           No motorcycles yet.
         </p>
       ) : (
-        <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border bg-white">
+        <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border bg-white">
           {motorcycles.map((m) => (
             <li key={m.id}>
               <Link

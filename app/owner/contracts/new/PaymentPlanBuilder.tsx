@@ -93,7 +93,7 @@ export function PaymentPlanBuilder({
   const visibleRows = plan ? (showAll ? plan : plan.slice(0, 20)) : [];
 
   return (
-    <div className="flex flex-col gap-3 rounded-[--radius-card] border border-primary bg-surface p-4">
+    <div className="flex flex-col gap-3 rounded-(--radius-card) border border-primary bg-surface p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="font-semibold text-primary-dark">Payment plan</h3>
@@ -106,7 +106,7 @@ export function PaymentPlanBuilder({
           type="button"
           onClick={generate}
           disabled={!canGenerate}
-          className="rounded-[--radius-card] bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
+          className="rounded-(--radius-card) bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
         >
           {plan ? 'Regenerate schedule' : 'Generate schedule'}
         </button>
@@ -126,7 +126,7 @@ export function PaymentPlanBuilder({
 
       {plan && summary && (
         <>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-[--radius-card] border border-border bg-white p-3 text-sm">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-(--radius-card) border border-border bg-white p-3 text-sm">
             <span>
               <strong className="text-primary-dark">{summary.count}</strong> payment
               {summary.count === 1 ? '' : 's'}
@@ -141,7 +141,7 @@ export function PaymentPlanBuilder({
           </div>
 
           {duplicateDates.length > 0 && (
-            <p className="rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 p-2 text-xs font-medium text-[color:var(--color-warning)]">
+            <p className="rounded-(--radius-card) border border-[color:var(--color-warning)] bg-amber-50 p-2 text-xs font-medium text-[color:var(--color-warning)]">
               Two payments share the same date ({[...new Set(duplicateDates)].map((d) => formatDate(d)).join(', ')}).
               Only one payment per date is kept — change or exclude the duplicate.
             </p>
@@ -151,27 +151,27 @@ export function PaymentPlanBuilder({
             <button
               type="button"
               onClick={() => setAllIncluded(true)}
-              className="rounded-[--radius-card] border border-border bg-white px-3 py-1.5 text-xs font-semibold text-primary-dark hover:bg-surface"
+              className="rounded-(--radius-card) border border-border bg-white px-3 py-1.5 text-xs font-semibold text-primary-dark hover:bg-surface"
             >
               Select all
             </button>
             <button
               type="button"
               onClick={() => setAllIncluded(false)}
-              className="rounded-[--radius-card] border border-border bg-white px-3 py-1.5 text-xs font-semibold text-primary-dark hover:bg-surface"
+              className="rounded-(--radius-card) border border-border bg-white px-3 py-1.5 text-xs font-semibold text-primary-dark hover:bg-surface"
             >
               Deselect all
             </button>
             <button
               type="button"
               onClick={() => onChange(null)}
-              className="rounded-[--radius-card] border border-border bg-white px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-surface"
+              className="rounded-(--radius-card) border border-border bg-white px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-surface"
             >
               Discard plan (use the plain schedule)
             </button>
           </div>
 
-          <div className="max-h-96 overflow-y-auto rounded-[--radius-card] border border-border bg-white">
+          <div className="max-h-96 overflow-y-auto rounded-(--radius-card) border border-border bg-white">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-white">
                 <tr className="text-left text-xs uppercase text-muted-foreground">

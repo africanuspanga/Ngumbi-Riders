@@ -117,19 +117,19 @@ export default async function AccountantDashboard() {
       <section className="flex flex-wrap gap-2">
         <Link
           href="/accountant/payments/cash"
-          className="rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
+          className="rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
         >
           Record a payment
         </Link>
         <Link
           href="/accountant/requisitions/new"
-          className="rounded-[--radius-card] border border-border bg-white px-4 py-2.5 font-semibold text-primary-dark hover:bg-surface"
+          className="rounded-(--radius-card) border border-border bg-white px-4 py-2.5 font-semibold text-primary-dark hover:bg-surface"
         >
           New purchase request
         </Link>
         <Link
           href="/accountant/reports"
-          className="rounded-[--radius-card] border border-border bg-white px-4 py-2.5 font-semibold text-primary-dark hover:bg-surface"
+          className="rounded-(--radius-card) border border-border bg-white px-4 py-2.5 font-semibold text-primary-dark hover:bg-surface"
         >
           Reports
         </Link>
@@ -146,7 +146,7 @@ function Kpi({ label, value, tone }: { label: string; value: string; tone?: 'war
         ? 'text-[color:var(--color-warning)]'
         : 'text-primary-dark';
   return (
-    <div className="rounded-[--radius-card] border border-border bg-white p-4">
+    <div className="rounded-(--radius-card) border border-border bg-white p-4">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className={`mt-1 text-lg font-bold ${color}`}>{value}</p>
     </div>
@@ -165,7 +165,7 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-[--radius-card] border border-border bg-white p-4">
+    <div className="flex flex-col gap-2 rounded-(--radius-card) border border-border bg-white p-4">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-primary-dark">{title}</h2>
         <Link href={href} className="text-xs font-semibold text-primary underline">

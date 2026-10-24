@@ -48,7 +48,7 @@ export default async function AccountantDepartmentsPage({
 
       <form
         method="get"
-        className="flex flex-wrap items-end gap-3 rounded-[--radius-card] border border-border bg-white p-4"
+        className="flex flex-wrap items-end gap-3 rounded-(--radius-card) border border-border bg-white p-4"
       >
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted-foreground">From</span>
@@ -60,13 +60,13 @@ export default async function AccountantDepartmentsPage({
         </label>
         <button
           type="submit"
-          className="min-h-11 rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
+          className="min-h-11 rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
         >
           Apply
         </button>
         <a
           href={`/api/reports/expense-ledger/export${filtersToQuery(filters)}&format=xlsx`}
-          className="min-h-11 rounded-[--radius-card] border border-border px-4 py-2.5 font-semibold text-primary-dark hover:bg-surface"
+          className="min-h-11 rounded-(--radius-card) border border-border px-4 py-2.5 font-semibold text-primary-dark hover:bg-surface"
         >
           Export Excel
         </a>

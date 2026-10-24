@@ -18,9 +18,9 @@ export default async function AuditPage() {
       </div>
 
       {rows.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">No audit entries yet.</p>
+        <p className="rounded-(--radius-card) border border-border bg-white p-6 text-center text-muted-foreground">No audit entries yet.</p>
       ) : (
-        <div className="overflow-x-auto rounded-[--radius-card] border border-border bg-white">
+        <div className="overflow-x-auto rounded-(--radius-card) border border-border bg-white">
           <table className="w-full text-left text-sm">
             <thead className="bg-surface text-muted-foreground">
               <tr><th className="px-3 py-2">When</th><th className="px-3 py-2">Actor</th><th className="px-3 py-2">Action</th><th className="px-3 py-2">Entity</th></tr>

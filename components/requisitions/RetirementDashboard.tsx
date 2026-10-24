@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { formatTZS } from '@/lib/money/format';
-import { formatDate } from '@/lib/dates/format';
+import { formatDate, formatDateTime } from '@/lib/dates/format';
+import type { RetirementBoard } from '@/lib/requisitions/retirement-queries';
 import {
   AGING_LABELS,
   STATE_LABELS,
@@ -48,7 +49,7 @@ function daysTone(days: number | null): string {
 
 function Card({ label, value, hint, accent }: { label: string; value: string; hint?: string; accent: string }) {
   return (
-    <div className={`rounded-[--radius-card] border border-border border-l-4 ${accent} bg-white p-3`}>
+    <div className={`rounded-(--radius-card) border border-border border-l-4 ${accent} bg-white p-3`}>
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="font-display mt-1 text-lg font-bold tabular-nums text-primary-dark sm:text-xl">{value}</p>
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
@@ -56,8 +57,99 @@ function Card({ label, value, hint, accent }: { label: string; value: string; hi
   );
 }
 
+type BoardEntry = RetirementBoard['entries'][number];
+
+const ENTRY_TONE: Record<BoardEntry['status'], string> = {
+  submitted: 'bg-warning/15 text-warning',
+  approved: 'bg-paid/15 text-paid',
+  rejected: 'bg-overdue/10 text-overdue',
+};
+const ENTRY_LABEL: Record<BoardEntry['status'], string> = {
+  submitted: 'Awaiting verification',
+  approved: 'Verified',
+  rejected: 'Rejected',
+};
+
+/**
+ * Individual retirement entries with their receipts. Used for "Retirements I
+ * submitted" (the submitter's own record) and for the Director's verification
+ * queue, where the receipt must be one click away — not two pages away.
+ */
+function EntryList({
+  entries,
+  basePath,
+  title,
+  showSubmitter,
+}: {
+  entries: BoardEntry[];
+  basePath: '/owner' | '/accountant';
+  title: string;
+  showSubmitter: boolean;
+}) {
+  return (
+    <section className="flex flex-col gap-2">
+      <h2 className="text-sm font-semibold text-muted-foreground">{title}</h2>
+      <ul className="flex flex-col gap-2">
+        {entries.map((e) => (
+          <li key={e.id} className="rounded-(--radius-card) border border-border bg-white p-3 text-sm">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0">
+                <Link href={`${basePath}/requisitions/${e.requisitionId}`} className="font-semibold text-primary-dark underline">
+                  {e.requisitionNumber}
+                </Link>
+                <span className="ml-2 text-xs text-muted-foreground">{e.requisitionTitle}</span>
+                <p className="mt-1 text-foreground">{e.description}</p>
+                <p className="text-xs text-muted-foreground">
+                  {showSubmitter && <>{e.submittedByName} · </>}submitted {formatDateTime(e.submittedAt)} · spent on{' '}
+                  {formatDate(e.spentOn)}
+                </p>
+              </div>
+              <div className="text-right">
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${ENTRY_TONE[e.status]}`}>
+                  {ENTRY_LABEL[e.status]}
+                </span>
+                <p className="mt-1 font-semibold tabular-nums">{formatTZS(e.spentAmount)} spent</p>
+                {e.returnedAmount > 0 && (
+                  <p className="text-xs tabular-nums text-muted-foreground">{formatTZS(e.returnedAmount)} returned</p>
+                )}
+              </div>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-border pt-2">
+              <span className="text-xs font-semibold text-muted-foreground">Receipts:</span>
+              {e.documents.length === 0 ? (
+                <span className="text-xs font-semibold text-overdue">none attached</span>
+              ) : (
+                e.documents.map((d) => (
+                  <a
+                    key={d.id}
+                    href={`/api/requisitions/documents/${d.id}`}
+                    target="_blank"
+                    rel="noopener"
+                    className="rounded-full border border-border px-2.5 py-0.5 text-xs font-semibold text-primary hover:bg-surface"
+                  >
+                    {d.fileName}
+                  </a>
+                ))
+              )}
+              {e.status === 'rejected' && e.decisionNote && (
+                <span className="w-full text-xs text-overdue">Reason: {e.decisionNote}</span>
+              )}
+              {e.status === 'submitted' && basePath === '/owner' && (
+                <Link href={`/owner/requisitions/${e.requisitionId}`} className="ml-auto text-xs font-semibold text-primary underline">
+                  Verify →
+                </Link>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function RetirementDashboard({
   rows,
+  entries,
   entriesAvailable,
   basePath,
   tab,
@@ -67,6 +159,7 @@ export function RetirementDashboard({
   staff,
 }: {
   rows: RetirementRow[];
+  entries: BoardEntry[];
   entriesAvailable: boolean;
   basePath: '/owner' | '/accountant';
   tab: RetirementTab;
@@ -96,11 +189,17 @@ export function RetirementDashboard({
     summary: 'Summary table',
   };
 
+  // "Mine" = requests I raised OR retired against: a request is often raised
+  // by the Director on someone's behalf and retired by the person who spent.
+  const myEntries = entries.filter((e) => e.submittedById === viewerId).reverse();
+  const mineIds = new Set(myEntries.map((e) => e.requisitionId));
+  const pendingEntries = entries.filter((e) => e.status === 'submitted');
+
   const visible =
     tab === 'verify'
       ? rows.filter((r) => r.pendingCount > 0)
       : tab === 'mine'
-        ? rows.filter((r) => r.requestedById === viewerId)
+        ? rows.filter((r) => r.requestedById === viewerId || mineIds.has(r.id))
         : tab === 'eligible'
           ? rows.filter((r) => r.outstanding - r.pendingAmount > 0)
           : tab === 'retired'
@@ -110,7 +209,7 @@ export function RetirementDashboard({
   return (
     <div className="flex flex-col gap-5">
       {!entriesAvailable && (
-        <p className="rounded-[--radius-card] border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
+        <p className="rounded-(--radius-card) border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
           Itemised retirement entries are not switched on yet (database migration 0036 pending).
           Figures below use the retirements recorded so far.
         </p>
@@ -136,7 +235,7 @@ export function RetirementDashboard({
         <h2 className="text-sm font-semibold text-muted-foreground">Days overdue breakdown (money not yet retired)</h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {(Object.keys(AGING_LABELS) as AgingBucket[]).map((b) => (
-            <div key={b} className={`rounded-[--radius-card] border border-border border-l-4 ${AGING_TONE[b]} bg-white p-3 text-center`}>
+            <div key={b} className={`rounded-(--radius-card) border border-border border-l-4 ${AGING_TONE[b]} bg-white p-3 text-center`}>
               <p className="text-xs text-muted-foreground">{AGING_LABELS[b]}</p>
               <p className="font-display text-2xl font-bold tabular-nums">{s.aging[b]}</p>
             </div>
@@ -144,30 +243,30 @@ export function RetirementDashboard({
         </div>
       </section>
 
-      <form method="get" className="flex flex-wrap items-end gap-3 rounded-[--radius-card] border border-border bg-white p-3 text-sm">
+      <form method="get" className="flex flex-wrap items-end gap-3 rounded-(--radius-card) border border-border bg-white p-3 text-sm">
         <input type="hidden" name="tab" value={tab} />
         <label className="flex flex-col gap-1">
           <span className="text-muted-foreground">Paid from</span>
-          <input type="date" name="from" defaultValue={filters.from ?? ''} className="min-h-9 rounded-[--radius-card] border border-border px-2" />
+          <input type="date" name="from" defaultValue={filters.from ?? ''} className="min-h-9 rounded-(--radius-card) border border-border px-2" />
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-muted-foreground">Paid to</span>
-          <input type="date" name="to" defaultValue={filters.to ?? ''} className="min-h-9 rounded-[--radius-card] border border-border px-2" />
+          <input type="date" name="to" defaultValue={filters.to ?? ''} className="min-h-9 rounded-(--radius-card) border border-border px-2" />
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-muted-foreground">Staff</span>
-          <select name="staff" defaultValue={filters.staffId ?? ''} className="min-h-9 rounded-[--radius-card] border border-border px-2">
+          <select name="staff" defaultValue={filters.staffId ?? ''} className="min-h-9 rounded-(--radius-card) border border-border px-2">
             <option value="">Everyone</option>
             {staff.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
         </label>
-        <button type="submit" className="min-h-9 rounded-[--radius-card] bg-primary px-4 font-semibold text-white">Apply</button>
+        <button type="submit" className="min-h-9 rounded-(--radius-card) bg-primary px-4 font-semibold text-white">Apply</button>
         <Link href={`${basePath}/retirements?tab=${tab}`} className="min-h-9 px-2 py-2 text-muted-foreground underline">Clear</Link>
         <span className="ml-auto flex gap-2">
-          <a href={`/api/reports/retirements/export?${exportQuery}${exportQuery ? '&' : ''}format=xlsx`} className="min-h-9 rounded-[--radius-card] border border-border px-3 py-2 font-semibold">Excel</a>
-          <a href={`/api/reports/retirements/export?${exportQuery}${exportQuery ? '&' : ''}format=csv`} className="min-h-9 rounded-[--radius-card] border border-border px-3 py-2 font-semibold">CSV</a>
+          <a href={`/api/reports/retirements/export?${exportQuery}${exportQuery ? '&' : ''}format=xlsx`} className="min-h-9 rounded-(--radius-card) border border-border px-3 py-2 font-semibold">Excel</a>
+          <a href={`/api/reports/retirements/export?${exportQuery}${exportQuery ? '&' : ''}format=csv`} className="min-h-9 rounded-(--radius-card) border border-border px-3 py-2 font-semibold">CSV</a>
         </span>
       </form>
 
@@ -183,14 +282,21 @@ export function RetirementDashboard({
         ))}
       </nav>
 
+      {tab === 'mine' && myEntries.length > 0 && (
+        <EntryList entries={myEntries} basePath={basePath} title="Retirements I submitted" showSubmitter={false} />
+      )}
+      {tab === 'verify' && pendingEntries.length > 0 && (
+        <EntryList entries={pendingEntries} basePath={basePath} title="Entries to verify — open each receipt before deciding" showSubmitter />
+      )}
+
       {tab === 'summary' ? (
         <StaffSummary rows={rows} />
       ) : visible.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">
+        <p className="rounded-(--radius-card) border border-border bg-white p-6 text-center text-muted-foreground">
           {tab === 'verify' ? 'Nothing is waiting for your verification. ✓' : 'Nothing to show here.'}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-[--radius-card] border border-border bg-white">
+        <div className="overflow-x-auto rounded-(--radius-card) border border-border bg-white">
           <table className="w-full min-w-[60rem] text-sm">
             <thead className="border-b border-border text-left text-xs uppercase text-muted-foreground">
               <tr>
@@ -247,10 +353,10 @@ export function RetirementDashboard({
 function StaffSummary({ rows }: { rows: RetirementRow[] }) {
   const people = summarizeByStaff(rows);
   if (people.length === 0) {
-    return <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">No paid requests yet.</p>;
+    return <p className="rounded-(--radius-card) border border-border bg-white p-6 text-center text-muted-foreground">No paid requests yet.</p>;
   }
   return (
-    <div className="overflow-x-auto rounded-[--radius-card] border border-border bg-white">
+    <div className="overflow-x-auto rounded-(--radius-card) border border-border bg-white">
       <table className="w-full min-w-[44rem] text-sm">
         <thead className="border-b border-border text-left text-xs uppercase text-muted-foreground">
           <tr>

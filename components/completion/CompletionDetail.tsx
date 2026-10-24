@@ -119,14 +119,14 @@ export function CompletionDetail({
       </section>
 
       {r.outstandingNow > 0 && (
-        <p className="rounded-[--radius-card] border border-[color:var(--color-overdue)]/40 bg-red-50 px-3 py-2 text-sm text-red-900">
+        <p className="rounded-(--radius-card) border border-[color:var(--color-overdue)]/40 bg-red-50 px-3 py-2 text-sm text-red-900">
           This rider still owes {formatTZS(r.outstandingNow)}. Completion cannot be approved or
           signed off until that is settled — the database refuses it, whatever this screen says.
         </p>
       )}
 
       {/* --- the contract ------------------------------------------------- */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">Contract</h2>
         <dl className="grid gap-4 sm:grid-cols-3">
           <Detail label="Contract" value={r.contractNumber} />
@@ -140,7 +140,7 @@ export function CompletionDetail({
           />
         </dl>
         {r.riderNote && (
-          <p className="rounded-[--radius-card] border border-border bg-surface px-3 py-2 text-sm">
+          <p className="rounded-(--radius-card) border border-border bg-surface px-3 py-2 text-sm">
             <span className="font-semibold">Rider&rsquo;s note: </span>
             {r.riderNote}
           </p>
@@ -149,7 +149,7 @@ export function CompletionDetail({
 
       {/* --- decisions ---------------------------------------------------- */}
       {(r.financeNote || r.directorNote || r.transferNote || r.signoffNote || r.rejectionReason) && (
-        <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+        <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
           <h2 className="font-semibold text-primary-dark">Decisions</h2>
           <dl className="flex flex-col gap-3">
             {r.financeNote && (
@@ -187,7 +187,7 @@ export function CompletionDetail({
       )}
 
       {/* --- certificate -------------------------------------------------- */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">Certificate of accomplishment</h2>
         {r.certificate ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -202,7 +202,7 @@ export function CompletionDetail({
               href={`/api/completions/certificates/${r.certificate.id}`}
               target="_blank"
               rel="noreferrer"
-              className="shrink-0 rounded-[--radius-card] bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover"
+              className="shrink-0 rounded-(--radius-card) bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover"
             >
               Download PDF
             </a>
@@ -217,7 +217,7 @@ export function CompletionDetail({
       </section>
 
       {/* --- transfer documents ------------------------------------------- */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">Ownership-transfer documents</h2>
         {r.transferDocuments.length === 0 ? (
           <p className="text-sm text-muted-foreground">
@@ -226,7 +226,7 @@ export function CompletionDetail({
               : 'Uploaded by finance once the transfer is under way.'}
           </p>
         ) : (
-          <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border">
+          <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border">
             {r.transferDocuments.map((d) => (
               <li key={d.id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
                 <span className="min-w-0">
@@ -263,7 +263,7 @@ export function CompletionDetail({
       />
 
       {/* --- history ------------------------------------------------------ */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">History</h2>
         <CompletionTimeline events={events} />
       </section>
@@ -294,7 +294,7 @@ export function CompletionQueue({
         return (
           <li
             key={r.id}
-            className={`flex flex-col gap-2 rounded-[--radius-card] border bg-white p-4 ${
+            className={`flex flex-col gap-2 rounded-(--radius-card) border bg-white p-4 ${
               mine ? 'border-[color:var(--color-warning)]/50' : 'border-border'
             }`}
           >
@@ -373,7 +373,7 @@ function Stat({
   tone?: string;
 }) {
   return (
-    <div className="rounded-[--radius-card] border border-border bg-white p-3">
+    <div className="rounded-(--radius-card) border border-border bg-white p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className={`break-words text-lg font-bold tabular-nums ${tone ?? 'text-primary-dark'}`}>
         {value}

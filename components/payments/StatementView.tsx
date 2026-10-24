@@ -15,7 +15,7 @@ import type { ContractProgress } from '@/lib/contracts/completion';
 export function StatementSummary({ progress }: { progress: ContractProgress }) {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
-      <div className="rounded-[--radius-card] border border-[color:var(--color-paid)]/40 bg-[color:var(--color-paid)]/5 p-4">
+      <div className="rounded-(--radius-card) border border-[color:var(--color-paid)]/40 bg-[color:var(--color-paid)]/5 p-4">
         <p className="text-muted-foreground text-xs">Outstanding now (accumulated)</p>
         <p className="text-xl font-bold tabular-nums text-[color:var(--color-paid)]">
           {formatTZS(progress.outstandingNow)}
@@ -24,7 +24,7 @@ export function StatementSummary({ progress }: { progress: ContractProgress }) {
           {progress.outstandingCount} payment{progress.outstandingCount === 1 ? '' : 's'} due or overdue
         </p>
       </div>
-      <div className="rounded-[--radius-card] border border-[color:var(--color-overdue)]/40 bg-[color:var(--color-overdue)]/5 p-4">
+      <div className="rounded-(--radius-card) border border-[color:var(--color-overdue)]/40 bg-[color:var(--color-overdue)]/5 p-4">
         <p className="text-muted-foreground text-xs">Remaining to finish the contract</p>
         <p className="text-xl font-bold tabular-nums text-[color:var(--color-overdue)]">
           {formatTZS(progress.totalRemaining)}
@@ -33,7 +33,7 @@ export function StatementSummary({ progress }: { progress: ContractProgress }) {
           {progress.remainingCount} of {progress.totalCount} payments left
         </p>
       </div>
-      <div className="rounded-[--radius-card] border border-border bg-white p-4">
+      <div className="rounded-(--radius-card) border border-border bg-white p-4">
         <p className="text-muted-foreground text-xs">Expected completion</p>
         <p className="text-base font-semibold">
           {progress.projectedEndDate ? formatLongDate(progress.projectedEndDate) : 'Not enough payments yet'}
@@ -55,14 +55,14 @@ export function StatementSummary({ progress }: { progress: ContractProgress }) {
 export function StatementTable({ statement }: { statement: Statement }) {
   if (statement.lines.length === 0) {
     return (
-      <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">
+      <p className="rounded-(--radius-card) border border-border bg-white p-6 text-center text-muted-foreground">
         Nothing on the statement for this period.
       </p>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-[--radius-card] border border-border bg-white">
+    <div className="overflow-x-auto rounded-(--radius-card) border border-border bg-white">
       <table className="w-full min-w-[600px] text-left text-sm">
         <thead className="text-muted-foreground border-b border-border">
           <tr>
@@ -78,7 +78,7 @@ export function StatementTable({ statement }: { statement: Statement }) {
             <td className="px-3 py-2 font-medium" colSpan={4}>
               Opening balance
             </td>
-            <td className="px-3 py-2 text-right font-mono font-semibold tabular-nums">
+            <td className="px-3 py-2 text-right font-semibold tabular-nums">
               {formatTZS(statement.openingBalance)}
             </td>
           </tr>
@@ -91,13 +91,13 @@ export function StatementTable({ statement }: { statement: Statement }) {
                   <span className="text-muted-foreground block font-mono text-xs">{l.receiptNumber}</span>
                 ) : null}
               </td>
-              <td className="px-3 py-2 text-right font-mono tabular-nums">
+              <td className="px-3 py-2 text-right tabular-nums">
                 {l.debit ? formatTZS(l.debit) : '—'}
               </td>
-              <td className="px-3 py-2 text-right font-mono tabular-nums text-[color:var(--color-paid)]">
+              <td className="px-3 py-2 text-right tabular-nums text-[color:var(--color-paid)]">
                 {l.credit ? formatTZS(l.credit) : '—'}
               </td>
-              <td className="px-3 py-2 text-right font-mono font-medium tabular-nums">
+              <td className="px-3 py-2 text-right font-medium tabular-nums">
                 {formatTZS(l.balance)}
               </td>
             </tr>
@@ -106,13 +106,13 @@ export function StatementTable({ statement }: { statement: Statement }) {
             <td className="px-3 py-2 font-semibold" colSpan={2}>
               Totals
             </td>
-            <td className="px-3 py-2 text-right font-mono font-semibold tabular-nums">
+            <td className="px-3 py-2 text-right font-semibold tabular-nums">
               {formatTZS(statement.totalCharged)}
             </td>
-            <td className="px-3 py-2 text-right font-mono font-semibold tabular-nums text-[color:var(--color-paid)]">
+            <td className="px-3 py-2 text-right font-semibold tabular-nums text-[color:var(--color-paid)]">
               {formatTZS(statement.totalReceived)}
             </td>
-            <td className="px-3 py-2 text-right font-mono font-bold tabular-nums">
+            <td className="px-3 py-2 text-right font-bold tabular-nums">
               {formatTZS(statement.closingBalance)}
             </td>
           </tr>

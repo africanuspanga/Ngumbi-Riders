@@ -155,34 +155,38 @@ export function InstallPrompt({ labels }: { labels: InstallPromptLabels }) {
   if (state === 'hidden') return null;
   const ios = state === 'ios';
 
+  // One slim row: an offer, not an announcement. It used to be the largest
+  // block above every page's own title.
   return (
-    <div className="flex items-start gap-3 rounded-[--radius-card] border border-border bg-white px-4 py-3 text-sm shadow-sm">
-      <DownloadIcon className="mt-0.5 size-5 shrink-0 text-primary" />
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <div>
-          <p className="font-semibold">{labels.title}</p>
-          <p className="text-muted-foreground">{ios ? labels.iosBody : labels.body}</p>
-        </div>
-        {ios ? (
-          <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
+    <div className="flex items-center gap-3 rounded-(--radius-card) border border-primary/15 bg-surface/60 px-3 py-2 text-sm">
+      <DownloadIcon className="size-4 shrink-0 text-primary" aria-hidden />
+      <p className="min-w-0 flex-1">
+        <span className="font-medium text-foreground">{labels.title}</span>
+        <span className="text-muted-foreground hidden sm:inline">
+          {' · '}
+          {ios ? labels.iosBody : labels.body}
+        </span>
+        {ios && (
+          <span className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-xs">
             <ShareIcon className="size-3.5 shrink-0" aria-hidden />
             {labels.iosHint}
-          </p>
-        ) : (
-          <button
-            type="button"
-            onClick={install}
-            className="min-h-11 self-start rounded-[--radius-card] bg-primary px-4 font-semibold text-white hover:bg-primary-hover"
-          >
-            {labels.install}
-          </button>
+          </span>
         )}
-      </div>
+      </p>
+      {!ios && (
+        <button
+          type="button"
+          onClick={install}
+          className="min-h-9 shrink-0 rounded-(--radius-card) bg-primary px-3 text-sm font-semibold text-white hover:bg-primary-hover"
+        >
+          {labels.install}
+        </button>
+      )}
       <button
         type="button"
         onClick={dismiss}
         aria-label={labels.dismiss}
-        className="text-muted-foreground hover:text-foreground shrink-0"
+        className="text-muted-foreground hover:text-foreground flex size-9 shrink-0 items-center justify-center"
       >
         <XIcon className="size-4" />
       </button>

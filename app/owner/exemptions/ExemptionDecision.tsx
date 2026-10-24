@@ -44,20 +44,20 @@ export function ExemptionDecision({ id, status }: { id: string; status: string }
     <div className="flex flex-col gap-2 border-t border-border pt-2">
       <div className="flex flex-wrap gap-2">
         {status === 'submitted' && (
-          <button type="button" disabled={pending} onClick={() => run(() => setExemptionUnderReview(id))} className="rounded-[--radius-card] border border-border bg-white px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-surface">
+          <button type="button" disabled={pending} onClick={() => run(() => setExemptionUnderReview(id))} className="rounded-(--radius-card) border border-border bg-white px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-surface">
             Kagua
           </button>
         )}
-        <button type="button" disabled={pending} onClick={() => run(() => waiveExemption(id))} className="rounded-[--radius-card] bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-hover">
+        <button type="button" disabled={pending} onClick={() => run(() => waiveExemption(id))} className="rounded-(--radius-card) bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-hover">
           Samehe
         </button>
-        <button type="button" disabled={pending} onClick={() => run(() => rejectExemption(id))} className="rounded-[--radius-card] border border-border bg-white px-3 py-1.5 text-sm font-semibold text-overdue hover:bg-surface">
+        <button type="button" disabled={pending} onClick={() => run(() => rejectExemption(id))} className="rounded-(--radius-card) border border-border bg-white px-3 py-1.5 text-sm font-semibold text-overdue hover:bg-surface">
           Kataa
         </button>
       </div>
       <div className="flex items-center gap-2">
         <input type="date" className="input max-w-[10rem]" min={localDateString()} value={newDate} onChange={(e) => setNewDate(e.target.value)} />
-        <button type="button" disabled={pending || !newDate} onClick={() => run(() => postponeExemption(id, newDate))} className="rounded-[--radius-card] border border-primary bg-white px-3 py-1.5 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60">
+        <button type="button" disabled={pending || !newDate} onClick={() => run(() => postponeExemption(id, newDate))} className="rounded-(--radius-card) border border-primary bg-white px-3 py-1.5 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60">
           Ahirisha
         </button>
       </div>

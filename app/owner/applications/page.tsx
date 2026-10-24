@@ -51,11 +51,11 @@ export default async function ApplicationsPage({
       </nav>
 
       {applications.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">
+        <p className="rounded-(--radius-card) border border-border bg-white p-6 text-center text-muted-foreground">
           No applications{active ? ' with this status' : ''} yet.
         </p>
       ) : (
-        <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border bg-white">
+        <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border bg-white">
           {applications.map((a) => (
             <li key={a.id}>
               <Link

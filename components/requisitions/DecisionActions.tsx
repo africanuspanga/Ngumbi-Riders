@@ -54,7 +54,7 @@ export function DecisionActions({
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-[--radius-card] border-2 border-primary bg-surface p-4 sm:p-5">
+    <section className="flex flex-col gap-3 rounded-(--radius-card) border-2 border-primary bg-surface p-4 sm:p-5">
       <div>
         <h2 className="font-semibold text-primary-dark">Your decision</h2>
         <p className="text-sm text-muted-foreground">
@@ -93,7 +93,7 @@ export function DecisionActions({
       {error && (
         <p
           role="alert"
-          className="rounded-[--radius-card] border border-[color:var(--color-overdue)]/30 bg-white px-3 py-2 text-sm font-medium text-[color:var(--color-overdue)]"
+          className="rounded-(--radius-card) border border-[color:var(--color-overdue)]/30 bg-white px-3 py-2 text-sm font-medium text-[color:var(--color-overdue)]"
         >
           {error}
         </p>
@@ -106,7 +106,7 @@ export function DecisionActions({
               type="button"
               disabled={busy !== null}
               onClick={() => run('approve')}
-              className="inline-flex items-center gap-2 rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
             >
               <CheckIcon className="size-4" />
               {busy === 'approve' ? 'Approving…' : 'Approve request'}
@@ -115,7 +115,7 @@ export function DecisionActions({
               type="button"
               disabled={busy !== null}
               onClick={() => setRejecting(true)}
-              className="inline-flex items-center gap-2 rounded-[--radius-card] border border-[color:var(--color-overdue)] bg-white px-4 py-2.5 font-semibold text-[color:var(--color-overdue)] hover:bg-[color:var(--color-overdue)]/10 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-(--radius-card) border border-[color:var(--color-overdue)] bg-white px-4 py-2.5 font-semibold text-[color:var(--color-overdue)] hover:bg-[color:var(--color-overdue)]/10 disabled:opacity-60"
             >
               <XIcon className="size-4" /> Reject
             </button>
@@ -126,7 +126,7 @@ export function DecisionActions({
               type="button"
               disabled={busy !== null || reason.trim().length < 3}
               onClick={() => run('reject')}
-              className="inline-flex items-center gap-2 rounded-[--radius-card] bg-[color:var(--color-overdue)] px-4 py-2.5 font-semibold text-white hover:opacity-90 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-(--radius-card) bg-[color:var(--color-overdue)] px-4 py-2.5 font-semibold text-white hover:opacity-90 disabled:opacity-60"
             >
               <XIcon className="size-4" />
               {busy === 'reject' ? 'Rejecting…' : 'Confirm rejection'}
@@ -139,7 +139,7 @@ export function DecisionActions({
                 setReason('');
                 setError(null);
               }}
-              className="rounded-[--radius-card] border border-border bg-white px-4 py-2.5 font-semibold hover:bg-surface"
+              className="rounded-(--radius-card) border border-border bg-white px-4 py-2.5 font-semibold hover:bg-surface"
             >
               Cancel
             </button>

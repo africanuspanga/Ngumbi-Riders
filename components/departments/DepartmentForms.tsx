@@ -383,7 +383,7 @@ function Panel({
   onDismiss: () => void;
 }) {
   return (
-    <details className="rounded-[--radius-card] border border-border bg-white">
+    <details className="rounded-(--radius-card) border border-border bg-white">
       <summary className="cursor-pointer px-4 py-3 font-semibold text-primary-dark">
         {title}
       </summary>
@@ -391,7 +391,7 @@ function Panel({
         {done && (
           <p
             role="status"
-            className="flex items-center justify-between gap-2 rounded-[--radius-card] border border-[color:var(--color-paid)] bg-[color:var(--color-paid)]/5 px-3 py-2 text-sm font-semibold text-[color:var(--color-paid)]"
+            className="flex items-center justify-between gap-2 rounded-(--radius-card) border border-[color:var(--color-paid)] bg-[color:var(--color-paid)]/5 px-3 py-2 text-sm font-semibold text-[color:var(--color-paid)]"
           >
             ✓ {doneLabel}
             <button type="button" onClick={onDismiss} className="text-xs font-medium underline">
@@ -447,7 +447,7 @@ function Submit({
       type="button"
       disabled={busy || disabled}
       onClick={onClick}
-      className="min-h-12 self-start rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+      className="min-h-12 self-start rounded-(--radius-card) bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
     >
       {busy ? 'Saving…' : children}
     </button>

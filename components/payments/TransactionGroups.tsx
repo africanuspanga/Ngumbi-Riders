@@ -40,7 +40,7 @@ export function TransactionGroups({
 
   if (groups.length === 0) {
     return (
-      <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">
+      <p className="rounded-(--radius-card) border border-border bg-white p-6 text-center text-muted-foreground">
         No payments yet.
       </p>
     );
@@ -57,13 +57,13 @@ export function TransactionGroups({
                 ({g.payments.length})
               </span>
             </h2>
-            <span className={`font-mono text-sm font-semibold tabular-nums ${g.tone}`}>
+            <span className={`text-sm font-semibold tabular-nums ${g.tone}`}>
               {formatTZS(g.total)}
             </span>
           </div>
           <p className="text-muted-foreground -mt-1 text-xs">{g.description}</p>
 
-          <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border bg-white">
+          <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border bg-white">
             {g.payments.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-3">
                 <div className="flex min-w-0 flex-col">

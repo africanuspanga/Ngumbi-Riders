@@ -21,11 +21,11 @@ export default async function OwnerExemptionsPage() {
       </header>
 
       {exemptions.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">No exemption requests.</p>
+        <p className="rounded-(--radius-card) border border-border bg-white p-6 text-center text-muted-foreground">No exemption requests.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {exemptions.map((e) => (
-            <li key={e.id} className="flex flex-col gap-2 rounded-[--radius-card] border border-border bg-white p-4">
+            <li key={e.id} className="flex flex-col gap-2 rounded-(--radius-card) border border-border bg-white p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold text-foreground">{e.rider_name}</p>

@@ -51,7 +51,7 @@ export function NewMotorcycleForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
       {/* The internal code (NGR-REGION-DIST-M-####) is generated automatically. */}
-      <p className="rounded-[--radius-card] bg-surface p-3 text-sm text-muted-foreground">
+      <p className="rounded-(--radius-card) bg-surface p-3 text-sm text-muted-foreground">
         The motorcycle code is generated automatically from the region, district and a
         sequence number. Registration number is optional — you can add it later once it is issued.
       </p>
@@ -82,7 +82,7 @@ export function NewMotorcycleForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+        className="rounded-(--radius-card) bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
       >
         {isSubmitting ? 'Saving…' : 'Save motorcycle'}
       </button>

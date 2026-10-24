@@ -34,7 +34,7 @@ export function IncidentStatus({ id, status }: { id: string; status: string }) {
                 setError(`Could not ${a.label.toLowerCase()} this report — network error.`);
               }
             })}
-            className="rounded-[--radius-card] border border-border bg-white px-3 py-1.5 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+            className="rounded-(--radius-card) border border-border bg-white px-3 py-1.5 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
           >
             {a.label}
           </button>

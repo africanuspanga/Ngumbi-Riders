@@ -50,9 +50,19 @@ export async function isStaffOtpRequired(): Promise<boolean> {
   return data.staff_otp_required;
 }
 
-/** The phone on the auth user (where the owner set it), as E.164, or null. */
+/**
+ * Where this staff member's code goes, as E.164, or null. staff_otp_phones
+ * first (0038 — a person can be a rider too, and the rider login owns the
+ * number on the auth side); else the auth user's own phone (the owner's).
+ */
 export async function staffPhone(userId: string): Promise<string | null> {
   const admin = createAdminClient();
+  const { data: row } = await admin
+    .from('staff_otp_phones')
+    .select('phone')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (row?.phone) return tryNormalizePhone(row.phone);
   const { data, error } = await admin.auth.admin.getUserById(userId);
   if (error || !data.user?.phone) return null;
   return tryNormalizePhone(data.user.phone);

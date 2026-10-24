@@ -48,7 +48,7 @@ export function CashflowSections({
   return (
     <>
       {/* ---------------------------------------------------- statement --- */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold text-primary-dark">
             Cashflow statement{' '}
@@ -90,7 +90,7 @@ export function CashflowSections({
           />
         </div>
 
-        <p className="rounded-[--radius-card] border border-border bg-muted/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+        <p className="rounded-(--radius-card) border border-border bg-muted/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
           <strong className="font-semibold text-foreground">How to read this.</strong> Net balance
           is income minus <em>recorded expenses</em>. Requisitions are authorisations, not costs —
           they become a cost when the accountant retires them into a department expense, which is
@@ -143,7 +143,7 @@ export function CashflowSections({
       </section>
 
       {/* ------------------------------------------------------- income --- */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold text-primary-dark">Income report</h2>
           <ExportLinks report="income" q={q} />
@@ -162,7 +162,7 @@ export function CashflowSections({
       </section>
 
       {/* ----------------------------------------------------- expenses --- */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold text-primary-dark">
             Expense report{' '}
@@ -249,7 +249,7 @@ export function CashflowSections({
       </section>
 
       {/* ------------------------------------------------- requisitions --- */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold text-primary-dark">Requisition report</h2>
           <ExportLinks report="requisitions" q={q} />
@@ -359,13 +359,13 @@ function ExportLinks({ report, q }: { report: string; q: string }) {
     <div className="flex gap-2 text-sm">
       <a
         href={`/api/reports/${report}/export${q}${sep}format=csv`}
-        className="rounded-[--radius-card] border border-border px-3 py-1.5 font-medium text-primary-dark hover:bg-surface"
+        className="rounded-(--radius-card) border border-border px-3 py-1.5 font-medium text-primary-dark hover:bg-surface"
       >
         CSV
       </a>
       <a
         href={`/api/reports/${report}/export${q}${sep}format=xlsx`}
-        className="rounded-[--radius-card] border border-border px-3 py-1.5 font-medium text-primary-dark hover:bg-surface"
+        className="rounded-(--radius-card) border border-border px-3 py-1.5 font-medium text-primary-dark hover:bg-surface"
       >
         Excel
       </a>
@@ -398,7 +398,7 @@ function BigStat({
 }) {
   return (
     <div
-      className={`flex flex-col gap-1.5 rounded-[--radius-card] border p-3.5 ${
+      className={`flex flex-col gap-1.5 rounded-(--radius-card) border p-3.5 ${
         emphasise ? 'border-primary/40 bg-primary/[0.04]' : 'border-border'
       }`}
     >

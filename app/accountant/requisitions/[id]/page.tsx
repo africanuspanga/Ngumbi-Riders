@@ -77,7 +77,7 @@ export default async function AccountantRequisitionPage({
           listHref="/accountant/requisitions"
         />
       ) : (
-        <p className="rounded-[--radius-card] border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+        <p className="rounded-(--radius-card) border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
           You are viewing a request raised by {requisition.requestedByName}. Only they can edit,
           submit or withdraw it.
         </p>

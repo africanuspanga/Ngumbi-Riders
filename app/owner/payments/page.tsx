@@ -31,13 +31,13 @@ export default async function OwnerPaymentsPage() {
         <div className="flex flex-wrap gap-2">
           <Link
             href="/owner/payments/cash"
-            className="flex min-h-11 items-center gap-2 rounded-[--radius-card] bg-primary px-4 font-semibold text-white hover:bg-primary-hover"
+            className="flex min-h-10 items-center gap-2 rounded-(--radius-card) text-sm bg-primary px-4 font-semibold text-white hover:bg-primary-hover"
           >
             <BanknoteIcon className="size-4" /> Record cash
           </Link>
           <Link
             href="/owner/payments/transactions"
-            className="flex min-h-11 items-center gap-2 rounded-[--radius-card] border border-border bg-white px-4 font-semibold text-primary-dark hover:bg-surface"
+            className="flex min-h-10 items-center gap-2 rounded-(--radius-card) text-sm border border-border bg-white px-4 font-semibold text-primary-dark hover:bg-surface"
           >
             <ListIcon className="size-4" /> All transactions
           </Link>
@@ -47,7 +47,7 @@ export default async function OwnerPaymentsPage() {
       {pending.length > 0 && (
         <Link
           href="/owner/payments/approvals"
-          className="flex items-center justify-between gap-3 rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 px-4 py-3 text-sm text-amber-900 hover:bg-amber-100"
+          className="flex items-center justify-between gap-3 rounded-(--radius-card) border border-[color:var(--color-warning)] bg-amber-50 px-4 py-3 text-sm text-amber-900 hover:bg-amber-100"
         >
           <span className="font-medium">
             {pending.length} cash payment{pending.length === 1 ? '' : 's'} awaiting your confirmation ·{' '}

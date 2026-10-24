@@ -76,7 +76,7 @@ export function PaymentActions({
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4 sm:p-5">
+    <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4 sm:p-5">
       <div>
         <h2 className="text-primary-dark font-semibold">Payment</h2>
         <p className="text-muted-foreground text-sm">
@@ -94,7 +94,7 @@ export function PaymentActions({
           onChange={(e) => setNote(e.target.value)}
           maxLength={1000}
           placeholder="e.g. CRDB transfer ref 88213, paid in full"
-          className="min-h-11 rounded-[--radius-card] border border-border px-3"
+          className="min-h-11 rounded-(--radius-card) border border-border px-3"
         />
       </label>
 
@@ -118,8 +118,8 @@ export function PaymentActions({
               onClick={() => move(to)}
               className={
                 isForward
-                  ? 'flex min-h-11 items-center gap-2 rounded-[--radius-card] bg-primary px-4 font-semibold text-white hover:bg-primary-hover disabled:opacity-60'
-                  : 'text-primary-dark flex min-h-11 items-center gap-2 rounded-[--radius-card] border border-border bg-white px-4 font-semibold hover:bg-surface disabled:opacity-60'
+                  ? 'flex min-h-10 items-center gap-2 rounded-(--radius-card) text-sm bg-primary px-4 font-semibold text-white hover:bg-primary-hover disabled:opacity-60'
+                  : 'text-primary-dark flex min-h-10 items-center gap-2 rounded-(--radius-card) text-sm border border-border bg-white px-4 font-semibold hover:bg-surface disabled:opacity-60'
               }
             >
               <Icon className="size-4 shrink-0" />

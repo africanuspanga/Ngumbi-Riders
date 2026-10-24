@@ -43,7 +43,7 @@ function Stat({
   tone?: 'good' | 'bad';
 }) {
   return (
-    <div className="rounded-[--radius-card] border border-border bg-white p-4">
+    <div className="rounded-(--radius-card) border border-border bg-white p-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
       <p
         className={`font-display mt-1 text-xl font-bold tabular-nums ${
@@ -63,7 +63,7 @@ export function PerformanceReportView({ report }: { report: ContractPerformanceR
 
   return (
     <div className="flex flex-col gap-5">
-      <section className="grid gap-4 rounded-[--radius-card] border border-border bg-white p-4 sm:grid-cols-2">
+      <section className="grid gap-4 rounded-(--radius-card) border border-border bg-white p-4 sm:grid-cols-2">
         <dl className="grid grid-cols-[8rem_1fr] gap-y-1.5 text-sm">
           <dt className="text-muted-foreground">Rider</dt>
           <dd className="font-semibold">{report.rider.name}</dd>
@@ -101,7 +101,7 @@ export function PerformanceReportView({ report }: { report: ContractPerformanceR
       </section>
 
       {report.status === 'terminated' && !ended && (
-        <p className="rounded-[--radius-card] border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
+        <p className="rounded-(--radius-card) border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
           This contract is terminated but its termination date was not recorded (it predates the
           audit trail), so figures run to today.
         </p>
@@ -134,7 +134,7 @@ export function PerformanceReportView({ report }: { report: ContractPerformanceR
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-[--radius-card] border border-border bg-white p-4">
+        <div className="rounded-(--radius-card) border border-border bg-white p-4">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-semibold text-primary-dark">Payment behaviour</h2>
             <span
@@ -172,7 +172,7 @@ export function PerformanceReportView({ report }: { report: ContractPerformanceR
           </dl>
         </div>
 
-        <div className="rounded-[--radius-card] border border-border bg-white p-4">
+        <div className="rounded-(--radius-card) border border-border bg-white p-4">
           <h2 className="font-semibold text-primary-dark">Payments received</h2>
           <dl className="mt-3 grid grid-cols-[1fr_auto] gap-y-1.5 text-sm">
             <dt className="text-muted-foreground">First payment</dt>
@@ -194,7 +194,7 @@ export function PerformanceReportView({ report }: { report: ContractPerformanceR
       </section>
 
       {p.months.length > 0 && (
-        <section className="overflow-x-auto rounded-[--radius-card] border border-border bg-white">
+        <section className="overflow-x-auto rounded-(--radius-card) border border-border bg-white">
           <table className="w-full min-w-[32rem] text-sm">
             <thead className="border-b border-border text-left text-xs uppercase text-muted-foreground">
               <tr>

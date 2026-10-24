@@ -44,7 +44,7 @@ export default async function RiderLoansPage() {
       </div>
 
       {/* What am I paying right now? The question this page exists to answer. */}
-      <div className="rounded-[--radius-card] border border-primary/30 bg-primary/5 p-4">
+      <div className="rounded-(--radius-card) border border-primary/30 bg-primary/5 p-4">
         <p className="text-sm text-muted-foreground">Kwa sasa</p>
         <p className="text-lg font-bold text-primary-dark">{FOCUS_LABELS_SW[state.focus]}</p>
         {state.leasePaused && (
@@ -57,7 +57,7 @@ export default async function RiderLoansPage() {
 
       {/* The active loan and its instalments. */}
       {state.activeLoan && (
-        <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+        <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
           <h2 className="font-semibold text-primary-dark">Mkopo wako wa simu</h2>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
             <Row label="Jumla ya mkopo" value={formatTZS(state.activeLoan.totalAmount)} />
@@ -65,7 +65,7 @@ export default async function RiderLoansPage() {
             <Row label="Unadaiwa" value={formatTZS(state.activeLoan.outstanding)} strong />
             <Row label="Miezi" value={String(state.activeLoan.termMonths)} />
           </dl>
-          <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border">
+          <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border">
             {state.activeLoan.instalments.map((i, idx) => (
               <li key={i.id} className="flex items-center justify-between px-3 py-2 text-sm">
                 <span>
@@ -83,7 +83,7 @@ export default async function RiderLoansPage() {
           {state.activeLoan.outstanding > 0 && (
             <Link
               href="/rider/pay"
-              className="min-h-12 rounded-[--radius-card] bg-primary px-4 py-3 text-center font-semibold text-white hover:bg-primary-hover"
+              className="min-h-12 rounded-(--radius-card) bg-primary px-4 py-3 text-center font-semibold text-white hover:bg-primary-hover"
             >
               Lipa sasa
             </Link>
@@ -93,7 +93,7 @@ export default async function RiderLoansPage() {
 
       {/* Where an open request has got to. */}
       {state.openRequest && (
-        <section className="flex flex-col gap-2 rounded-[--radius-card] border border-border bg-white p-4">
+        <section className="flex flex-col gap-2 rounded-(--radius-card) border border-border bg-white p-4">
           <div className="flex items-start justify-between gap-2">
             <h2 className="font-semibold text-primary-dark">Ombi lako</h2>
             <span className="shrink-0 rounded-full border border-border bg-surface px-2.5 py-0.5 text-xs font-semibold">
@@ -126,7 +126,7 @@ export default async function RiderLoansPage() {
       ) : (
         !state.openRequest &&
         !state.activeLoan && (
-          <p className="rounded-[--radius-card] border border-border bg-surface p-4 text-sm">
+          <p className="rounded-(--radius-card) border border-border bg-surface p-4 text-sm">
             {BLOCKED_SW[state.blockedReason ?? ''] ?? 'Kwa sasa hauwezi kuomba mkopo wa simu.'}
           </p>
         )
@@ -136,7 +136,7 @@ export default async function RiderLoansPage() {
       {state.history.filter((r) => r.id !== state.openRequest?.id).length > 0 && (
         <section className="flex flex-col gap-2">
           <h2 className="font-semibold text-primary-dark">Maombi yaliyopita</h2>
-          <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border bg-white">
+          <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border bg-white">
             {state.history
               .filter((r) => r.id !== state.openRequest?.id)
               .map((r) => (

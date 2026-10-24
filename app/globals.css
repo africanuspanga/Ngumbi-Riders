@@ -19,13 +19,19 @@
   --color-surface: #eaf7ed;
 
   /* Payment / obligation state colours (spec §6.1, §15.1) */
-  --color-paid: #2f8f46;
-  --color-overdue: #d92d20;
-  --color-warning: #f79009;
+  /* Darkened from the 2026-07 values so state colours pass WCAG AA as TEXT on
+   * white (#2f8f46 was 4.0:1, #f79009 2.2:1 — the amber was unreadable). */
+  --color-paid: #1f7a3a;
+  --color-overdue: #c4321f;
+  --color-warning: #b86e00;
   --color-advance: #2e90fa;
   --color-exempt: #98a2b3;
 
-  --radius-card: 0.75rem;
+  /* One corner for every control and panel. Was never applied before
+   * 2026-10-24: the v3 `rounded-[var]` shorthand used on every page compiled in v4
+   * it to an invalid `border-radius: --radius-card` (guarded by
+   * tests/unit/tailwind-v4-syntax.test.ts). */
+  --radius-card: 0.625rem;
 
   /*
    * Dashboard hero band (2026-09-11 visual pass).
@@ -45,8 +51,8 @@
 :root {
   color-scheme: light;
   /* shadcn surface tokens mapped to the Ng'umbi green identity */
-  --background: #f7f9f7;
-  --foreground: #122117;
+  --background: #f4f6f4;
+  --foreground: #0f1f15;
   --card: #ffffff;
   --card-foreground: #122117;
   --popover: #ffffff;
@@ -56,12 +62,12 @@
   --secondary: #eaf7ed;
   --secondary-foreground: #163d24;
   --muted: #eef3ef;
-  --muted-foreground: #607066;
+  --muted-foreground: #56665b;
   --accent: #eaf7ed;
   --accent-foreground: #163d24;
   --destructive: #d92d20;
-  --border: #dde6df;
-  --input: #dde6df;
+  --border: #e0e7e1;
+  --input: #d3dcd5;
   --ring: #2f8f46;
   --chart-1: #2f8f46;
   --chart-2: #2e90fa;
@@ -98,7 +104,11 @@ select:not([data-slot]) {
   min-height: 44px;
 }
 
-/* Shared text-input styling. */
+/* Shared text-input styling. Inside @layer components so a page's own
+ * utilities (pl-9 for a search icon, text-sm, font-mono…) win over it — it
+ * used to be unlayered, which beat every utility and put the search icon on
+ * top of the placeholder text. */
+@layer components {
 .input {
   width: 100%;
   border-radius: var(--radius-card);
@@ -110,9 +120,18 @@ select:not([data-slot]) {
   outline: none;
 }
 
+/* Back office on a desktop: 14px controls, matching the rest of the UI. Phones
+ * keep 16px — anything smaller makes iOS zoom the page on focus. */
+@media (min-width: 768px) {
+  .workspace .input {
+    font-size: 0.875rem;
+  }
+}
+
 .input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(47, 143, 70, 0.15);
+}
 }
 
 /*
@@ -146,6 +165,7 @@ select:not([data-slot]) {
   --font-display: var(--font-display);
   --font-heading: var(--font-sans);
   --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -263,4 +283,131 @@ select:not([data-slot]) {
   .confetti-piece {
     display: none;
   }
+}
+
+/*
+ * ===== Back-office workspace normalisation (design pass 2026-10-24) =====
+ *
+ * Eighty-odd pages were each styling their own page title and table header
+ * (eight different <thead> treatments, two h1 sizes). Rather than hand-edit
+ * every file, the workspace sets ONE treatment here. These rules are
+ * deliberately UNLAYERED: Tailwind v4 emits utilities inside @layer, and
+ * unlayered CSS outranks any layer, so a page cannot drift back to its own
+ * uppercase header by accident. Scope is the back-office content column only
+ * (`.workspace`, set in components/app-shell.tsx) — the rider PWA and the
+ * public pages are untouched.
+ */
+.workspace h1 {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+
+.workspace h2 {
+  letter-spacing: -0.01em;
+}
+
+.workspace table {
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.workspace thead {
+  background: #f7f9f7;
+  border-bottom: 1px solid var(--border);
+}
+
+.workspace thead th {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+}
+
+.workspace tbody tr {
+  border-bottom: 1px solid #edf1ee;
+}
+
+.workspace tbody tr:last-child {
+  border-bottom: 0;
+}
+
+.workspace tbody tr:hover {
+  background: #f8faf8;
+}
+
+.workspace tbody td {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  vertical-align: middle;
+}
+
+/* Identifiers (REQ/2026/10/0002, NGR-C-0012, plates) are the one place a
+ * monospace belongs. Geist Mono, slightly smaller, never for money: amounts
+ * are tabular display numerals, not typewriter text. */
+.workspace .font-mono {
+  font-size: 0.92em;
+  letter-spacing: -0.01em;
+}
+
+/* Panels: a hairline and a breath of shadow, so white cards sit ON the canvas
+ * instead of being drawn on it. */
+.workspace .bg-white.border,
+.workspace .bg-card.border {
+  box-shadow: 0 1px 2px rgba(15, 31, 21, 0.04);
+}
+
+/* Links inside tables read as links without the heavy default underline. */
+.workspace td a.underline {
+  text-decoration-color: color-mix(in srgb, currentColor 30%, transparent);
+  text-underline-offset: 3px;
+}
+.workspace td a.underline:hover {
+  text-decoration-color: currentColor;
+}
+
+/* Amounts and dates never break across two lines inside a table cell. */
+.workspace td.text-right,
+.workspace th.text-right {
+  white-space: nowrap;
+}
+
+/* File pickers: the browser's raw "Choose files · No file chosen" control was
+ * the least finished-looking thing in the app. Style the button part only —
+ * the file name the browser prints next to it stays (it is the feedback). */
+input[type='file'] {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+input[type='file']::file-selector-button {
+  margin-right: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: #fff;
+  padding: 0.5rem 0.875rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--foreground);
+  cursor: pointer;
+  transition: background-color 150ms;
+}
+input[type='file']::file-selector-button:hover {
+  background: var(--color-surface);
+}
+
+/* Buttons in the workspace are 14px semibold, whatever the page set. Pages had
+ * drifted between 14, 16 and 18px, so two primary buttons on one screen could
+ * disagree in size. */
+.workspace a.bg-primary,
+.workspace button.bg-primary,
+.workspace a.border.bg-white.font-semibold,
+.workspace button.border.bg-white.font-semibold {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 }

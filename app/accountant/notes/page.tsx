@@ -25,13 +25,13 @@ export default async function AccountantNotesPage() {
       <FinancialNoteForm />
 
       {notes.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">
+        <p className="rounded-(--radius-card) border border-border bg-white p-6 text-center text-muted-foreground">
           No notes yet.
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
           {notes.map((n) => (
-            <li key={n.id} className="rounded-[--radius-card] border border-border bg-white p-4">
+            <li key={n.id} className="rounded-(--radius-card) border border-border bg-white p-4">
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                 <span className="rounded-full bg-surface px-2 py-0.5 font-semibold capitalize">
                   {n.entityType}

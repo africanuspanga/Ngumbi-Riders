@@ -65,12 +65,12 @@ export function RequesterActions({
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4 sm:p-5">
+    <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4 sm:p-5">
       <h2 className="font-semibold text-primary-dark">Actions</h2>
       {error && (
         <p
           role="alert"
-          className="rounded-[--radius-card] border border-[color:var(--color-overdue)]/30 bg-[color:var(--color-overdue)]/10 px-3 py-2 text-sm font-medium text-[color:var(--color-overdue)]"
+          className="rounded-(--radius-card) border border-[color:var(--color-overdue)]/30 bg-[color:var(--color-overdue)]/10 px-3 py-2 text-sm font-medium text-[color:var(--color-overdue)]"
         >
           {error}
         </p>
@@ -80,7 +80,7 @@ export function RequesterActions({
           <>
             <a
               href={editHref}
-              className="rounded-[--radius-card] border border-border bg-white px-4 py-2.5 font-semibold hover:bg-surface"
+              className="rounded-(--radius-card) border border-border bg-white px-4 py-2.5 font-semibold hover:bg-surface"
             >
               Edit request
             </a>
@@ -88,7 +88,7 @@ export function RequesterActions({
               type="button"
               disabled={busy !== null}
               onClick={() => run('submit', () => submitRequisition(requisitionId), 'refresh')}
-              className="inline-flex items-center gap-2 rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
             >
               <SendIcon className="size-4" />
               {busy === 'submit' ? 'Submitting…' : 'Submit to Managing Director'}
@@ -101,7 +101,7 @@ export function RequesterActions({
             type="button"
             disabled={busy !== null}
             onClick={() => run('cancel', () => cancelRequisition(requisitionId), 'refresh')}
-            className="inline-flex items-center gap-2 rounded-[--radius-card] border border-border bg-white px-4 py-2.5 font-semibold hover:bg-surface disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-(--radius-card) border border-border bg-white px-4 py-2.5 font-semibold hover:bg-surface disabled:opacity-60"
           >
             <Undo2Icon className="size-4" />
             {busy === 'cancel' ? 'Withdrawing…' : 'Withdraw request'}
@@ -117,7 +117,7 @@ export function RequesterActions({
                 onClick={() =>
                   run('delete', () => deleteDraftRequisition(requisitionId), 'list')
                 }
-                className="inline-flex items-center gap-2 rounded-[--radius-card] bg-[color:var(--color-overdue)] px-4 py-2.5 font-semibold text-white hover:opacity-90 disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-(--radius-card) bg-[color:var(--color-overdue)] px-4 py-2.5 font-semibold text-white hover:opacity-90 disabled:opacity-60"
               >
                 <Trash2Icon className="size-4" />
                 {busy === 'delete' ? 'Deleting…' : 'Yes, delete this draft'}
@@ -125,7 +125,7 @@ export function RequesterActions({
               <button
                 type="button"
                 onClick={() => setConfirmDelete(false)}
-                className="rounded-[--radius-card] border border-border bg-white px-4 py-2.5 font-semibold hover:bg-surface"
+                className="rounded-(--radius-card) border border-border bg-white px-4 py-2.5 font-semibold hover:bg-surface"
               >
                 Keep it
               </button>
@@ -134,7 +134,7 @@ export function RequesterActions({
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
-              className="inline-flex items-center gap-2 rounded-[--radius-card] border border-border bg-white px-4 py-2.5 font-semibold text-[color:var(--color-overdue)] hover:bg-[color:var(--color-overdue)]/10"
+              className="inline-flex items-center gap-2 rounded-(--radius-card) border border-border bg-white px-4 py-2.5 font-semibold text-[color:var(--color-overdue)] hover:bg-[color:var(--color-overdue)]/10"
             >
               <Trash2Icon className="size-4" /> Delete draft
             </button>

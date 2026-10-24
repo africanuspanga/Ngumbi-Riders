@@ -14,14 +14,14 @@ export default async function RiderIncidentsPage() {
     <div className="flex flex-col gap-4">
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-primary-dark">Matukio</h1>
-        <Link href="/rider/incidents/new" className="rounded-[--radius-card] bg-primary px-4 py-2 text-sm font-semibold text-white">
+        <Link href="/rider/incidents/new" className="rounded-(--radius-card) bg-primary px-4 py-2 text-sm font-semibold text-white">
           Ripoti tukio
         </Link>
       </header>
       {incidents.length === 0 ? (
         <p className="text-muted-foreground">Hakuna matukio.</p>
       ) : (
-        <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border bg-white">
+        <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border bg-white">
           {incidents.map((i) => (
             <li key={i.id} className="flex flex-col gap-0.5 px-4 py-3">
               <div className="flex justify-between">

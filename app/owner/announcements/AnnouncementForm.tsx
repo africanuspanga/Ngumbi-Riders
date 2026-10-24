@@ -38,7 +38,7 @@ export function AnnouncementForm() {
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-[--radius-card] border border-border bg-white p-4">
+    <div className="flex flex-col gap-4 rounded-(--radius-card) border border-border bg-white p-4">
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium">Audience</span>
         <select className="input bg-white" value={audience} onChange={(e) => setAudience(e.target.value as Audience)}>
@@ -54,7 +54,7 @@ export function AnnouncementForm() {
         type="button"
         disabled={busy || !title.trim() || !body.trim()}
         onClick={submit}
-        className="self-start rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+        className="self-start rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
       >
         {busy ? 'Sending…' : 'Send announcement'}
       </button>

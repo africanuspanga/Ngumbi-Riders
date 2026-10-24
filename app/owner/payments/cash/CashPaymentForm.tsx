@@ -223,7 +223,7 @@ export function CashPaymentForm({
       {recorded && (
         <div
           role="status"
-          className="flex flex-col gap-2 rounded-[--radius-card] border border-[color:var(--color-paid)] bg-[color:var(--color-paid)]/5 p-4"
+          className="flex flex-col gap-2 rounded-(--radius-card) border border-[color:var(--color-paid)] bg-[color:var(--color-paid)]/5 p-4"
         >
           <span className="font-semibold text-[color:var(--color-paid)]">
             {recorded.mode === 'request' ? '✓ Sent to the Director for confirmation' : '✓ Cash payment recorded'}
@@ -240,14 +240,14 @@ export function CashPaymentForm({
           <div className="flex gap-2">
             <Link
               href={paymentsHref}
-              className="rounded-[--radius-card] bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover"
+              className="rounded-(--radius-card) bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover"
             >
               View payments
             </Link>
             <button
               type="button"
               onClick={() => setRecorded(null)}
-              className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface"
+              className="rounded-(--radius-card) border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface"
             >
               Record another
             </button>
@@ -282,7 +282,7 @@ export function CashPaymentForm({
           <legend className="mb-1 text-sm font-medium">How should this be applied?</legend>
           <div className="flex flex-col gap-2 sm:flex-row">
             <label
-              className={`flex flex-1 cursor-pointer items-start gap-2 rounded-[--radius-card] border p-3 ${
+              className={`flex flex-1 cursor-pointer items-start gap-2 rounded-(--radius-card) border p-3 ${
                 allocation === 'manual' ? 'border-primary bg-primary/5' : 'border-border'
               }`}
             >
@@ -301,7 +301,7 @@ export function CashPaymentForm({
               </span>
             </label>
             <label
-              className={`flex flex-1 cursor-pointer items-start gap-2 rounded-[--radius-card] border p-3 ${
+              className={`flex flex-1 cursor-pointer items-start gap-2 rounded-(--radius-card) border p-3 ${
                 allocation === 'auto' ? 'border-primary bg-primary/5' : 'border-border'
               }`}
             >
@@ -340,7 +340,7 @@ export function CashPaymentForm({
           </label>
 
           {cashReceived !== '' && (
-            <div className="flex flex-col gap-2 rounded-[--radius-card] border border-border p-3">
+            <div className="flex flex-col gap-2 rounded-(--radius-card) border border-border p-3">
               {warnings.map((w) => (
                 <p
                   key={w.message}
@@ -361,7 +361,7 @@ export function CashPaymentForm({
                   confirming — the brief asks for this explicitly, and it is
                   the only thing standing between a typo and settled money. */}
               {plan.obligations.length > 0 && (
-                <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border">
+                <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border">
                   {plan.obligations.map((o) => (
                     <li
                       key={o.id}
@@ -386,7 +386,7 @@ export function CashPaymentForm({
           {visibleObligations.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nothing outstanding.</p>
           ) : (
-            <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border">
+            <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border">
               {visibleObligations.map((o) => (
                 <li key={o.id}>
                   <label className="flex min-h-11 cursor-pointer items-center justify-between px-3 py-2.5">
@@ -439,7 +439,7 @@ export function CashPaymentForm({
         type="button"
         disabled={busy || effectiveIds.length === 0}
         onClick={submit}
-        className="min-h-12 rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+        className="min-h-12 rounded-(--radius-card) bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
       >
         {busy ? 'Saving…' : submitLabel}
       </button>

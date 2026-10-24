@@ -5,6 +5,31 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-054 · Design pass 1: fix the system, not the pages (2026-10-24)
+
+The owner asked for an international-standard redesign, keeping the green.
+The review found the inconsistency was mostly SYSTEMIC, so pass 1 fixes the
+system and every page inherits it:
+
+- **485 controls had no corner radius.** `rounded-[--radius-card]` is v3
+  syntax; Tailwind v4 compiles it to an invalid declaration that browsers
+  drop. Rewritten to `rounded-(--radius-card)`; guarded by
+  `tests/unit/tailwind-v4-syntax.test.ts` in `npm run verify`.
+- **`.input` was unlayered**, so it beat every utility — the search icon sat
+  on the placeholder text. Now in `@layer components`.
+- **One workspace treatment** (`.workspace` in `components/app-shell.tsx`,
+  rules in `app/globals.css`, deliberately unlayered so pages cannot drift):
+  one h1, one table header (eight variants before), row hover, nowrap amounts,
+  14px buttons and desktop controls, panel shadow, styled file pickers. Rider
+  PWA and public pages are untouched by it.
+- **Money is not monospace.** Amounts use tabular numerals; Geist Mono (now
+  actually loaded, instead of the OS fallback) is for identifiers only.
+- State colours darkened to pass WCAG AA as text (amber was 2.2:1).
+- The green "owed now" / red "remaining" convention is KEPT — the client asked
+  for it (D-035) — although green usually reads as "good".
+- Pass 2 (not done): page-level layout of the dashboard, the rider PWA and the
+  public/apply pages.
+
 ## D-053 · Staff sign-in needs an SMS code, enforced in RLS (2026-10-24)
 
 Owner and accountants now sign in in two steps: password, then a 6-digit code
@@ -34,6 +59,10 @@ texted (via the D-052 relay) to the phone on their auth user.
 - Not covered: rows a staff member reads through their OWN-row policies
   (own profile, own notifications, own staff profile) remain readable to an
   unverified session. Business data is not.
+- **Amended same day (0038):** the code's destination is `staff_otp_phones`,
+  not the auth user's phone. Accountant DAUDI is also rider DAUD on the same
+  number, and Supabase allows a phone on one auth user only. The auth phone
+  stays an optional login identifier; `staffPhone()` reads the table first.
 - Found on the way: `auth.admin.signOut(userId, …)` in `lib/staff/actions.ts`
   is a no-op — it takes a JWT, not a user id. Deactivation still works because
   `is_active` gates every check.

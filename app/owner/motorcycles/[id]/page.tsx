@@ -122,7 +122,7 @@ export default async function MotorcycleDetailPage({
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="flex flex-col gap-2 rounded-[--radius-card] border border-border bg-white p-4">
+    <section className="flex flex-col gap-2 rounded-(--radius-card) border border-border bg-white p-4">
       <h2 className="font-semibold text-primary-dark">{title}</h2>
       {children}
     </section>

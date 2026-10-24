@@ -112,7 +112,7 @@ export function RiderDirectory({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex rounded-[--radius-card] border border-border bg-white p-0.5">
+          <div className="flex rounded-(--radius-card) border border-border bg-white p-0.5">
             <ViewButton active={view === 'card'} onClick={() => chooseView('card')} label="Card view">
               <LayoutGridIcon className="size-4" />
             </ViewButton>
@@ -123,7 +123,7 @@ export function RiderDirectory({
           {canCreate && (
             <Link
               href={`${basePath}/new`}
-              className="rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
+              className="rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
             >
               Add rider
             </Link>
@@ -163,7 +163,7 @@ export function RiderDirectory({
       </div>
 
       {/* Sort + detailed filters */}
-      <div className="grid gap-3 rounded-[--radius-card] border border-border bg-white p-3 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid gap-3 rounded-(--radius-card) border border-border bg-white p-3 md:grid-cols-3 lg:grid-cols-6">
         <Labelled label="Sort by">
           <select value={sort} onChange={(e) => setSort(e.target.value as RiderSort)} className="input">
             {(Object.keys(RIDER_SORT_LABELS) as RiderSort[]).map((k) => (
@@ -247,7 +247,7 @@ export function RiderDirectory({
       )}
 
       {results.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">
+        <p className="rounded-(--radius-card) border border-border bg-white p-6 text-center text-muted-foreground">
           {riders.length === 0 ? 'No riders yet.' : 'No riders match these filters.'}
         </p>
       ) : view === 'card' ? (
@@ -256,7 +256,7 @@ export function RiderDirectory({
             <li key={r.id}>
               <Link
                 href={`${basePath}/${r.id}`}
-                className="flex h-full flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4 hover:border-primary hover:bg-surface"
+                className="flex h-full flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4 hover:border-primary hover:bg-surface"
               >
                 <div className="flex items-center gap-3">
                   <RiderAvatar photoUrl={r.photoUrl} name={r.fullName} size={44} />
@@ -268,11 +268,18 @@ export function RiderDirectory({
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  <Chip className={RIDER_STATUS_TONE[r.status]}>{r.status}</Chip>
-                  {r.contractStatus && (
+                  {/* An active rider is the normal case; saying so next to the
+                      contract's own "Active" read as a stutter. Only an
+                      exception is worth a chip. */}
+                  {r.status !== 'active' && (
+                    <Chip className={RIDER_STATUS_TONE[r.status]}>Rider {r.status}</Chip>
+                  )}
+                  {r.contractStatus ? (
                     <Chip className={CONTRACT_STATUS_TONE[r.contractStatus]}>
-                      {CONTRACT_STATUS_LABELS[r.contractStatus]}
+                      Contract: {CONTRACT_STATUS_LABELS[r.contractStatus].replace(/^contract /i, '').toLowerCase()}
                     </Chip>
+                  ) : (
+                    <Chip className="bg-muted text-muted-foreground">No contract</Chip>
                   )}
                 </div>
                 <dl className="mt-auto grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
@@ -292,7 +299,7 @@ export function RiderDirectory({
           ))}
         </ul>
       ) : (
-        <div className="overflow-x-auto rounded-[--radius-card] border border-border bg-white">
+        <div className="overflow-x-auto rounded-(--radius-card) border border-border bg-white">
           <table className="w-full min-w-[52rem] text-sm">
             <thead>
               <tr className="text-left text-xs uppercase text-muted-foreground">
@@ -364,7 +371,7 @@ export function RiderDirectory({
             type="button"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}
-            className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark disabled:opacity-40"
+            className="rounded-(--radius-card) border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark disabled:opacity-40"
           >
             Previous
           </button>
@@ -375,7 +382,7 @@ export function RiderDirectory({
             type="button"
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
-            className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark disabled:opacity-40"
+            className="rounded-(--radius-card) border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark disabled:opacity-40"
           >
             Next
           </button>
@@ -403,7 +410,7 @@ function ViewButton({
       aria-pressed={active}
       aria-label={label}
       title={label}
-      className={`flex min-h-9 min-w-9 items-center justify-center rounded-[--radius-card] px-2 ${
+      className={`flex min-h-9 min-w-9 items-center justify-center rounded-(--radius-card) px-2 ${
         active ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-surface'
       }`}
     >

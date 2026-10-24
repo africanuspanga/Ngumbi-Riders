@@ -56,7 +56,7 @@ export default async function SystemPage() {
 
       {/* SMS (client request 2026-10-23): sent through the relay on the VPS,
           whose IP Mobishastra has whitelisted. */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">SMS · Mobishastra</h2>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Metric
@@ -87,12 +87,12 @@ export default async function SystemPage() {
         <Metric label="Last daily summary" value={ago(h.lastDailySummaryAt)} />
       </section>
 
-      <div className="rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 p-3 text-sm text-[color:var(--color-warning)]">
+      <div className="rounded-(--radius-card) border border-[color:var(--color-warning)] bg-amber-50 p-3 text-sm text-[color:var(--color-warning)]">
         ⚠ Reminder: storage objects (documents, receipts) are NOT covered by
         database backups — verify the separate storage backup process.
       </div>
 
-      <section className="flex flex-col gap-2 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-2 rounded-(--radius-card) border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">Recent job runs</h2>
         {h.recentRuns.length === 0 ? (
           <p className="text-sm text-muted-foreground">No job runs yet.</p>
@@ -118,7 +118,7 @@ export default async function SystemPage() {
 
 function Dot({ label, on }: { label: string; on: boolean }) {
   return (
-    <div className="flex items-center gap-2 rounded-[--radius-card] border border-border bg-white p-3">
+    <div className="flex items-center gap-2 rounded-(--radius-card) border border-border bg-white p-3">
       <span className={`h-3 w-3 rounded-full ${on ? 'bg-[color:var(--color-paid)]' : 'bg-[color:var(--color-exempt)]'}`} />
       <span className="text-sm font-medium">{label}</span>
       <span className="ml-auto text-xs text-muted-foreground">{on ? 'configured' : 'off'}</span>
@@ -128,7 +128,7 @@ function Dot({ label, on }: { label: string; on: boolean }) {
 function Metric({ label, value, tone = 'ok' }: { label: string; value: string; tone?: 'ok' | 'warn' | 'bad' }) {
   const color = tone === 'bad' ? 'text-overdue' : tone === 'warn' ? 'text-[color:var(--color-warning)]' : 'text-foreground';
   return (
-    <div className="rounded-[--radius-card] border border-border bg-white p-3">
+    <div className="rounded-(--radius-card) border border-border bg-white p-3">
       <div className={`text-lg font-bold ${color}`}>{value}</div>
       <div className="text-xs text-muted-foreground">{label}</div>
     </div>

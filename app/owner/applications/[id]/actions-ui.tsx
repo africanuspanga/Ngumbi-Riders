@@ -62,7 +62,7 @@ export function StatusActions({
             type="button"
             disabled={pending}
             onClick={() => move(to)}
-            className="rounded-[--radius-card] border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+            className="rounded-(--radius-card) border border-border bg-white px-3 py-2 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
           >
             {STATUS_META[to].label}
           </button>
@@ -107,7 +107,7 @@ export function RevealSecrets({ id }: { id: string }) {
         type="button"
         onClick={reveal}
         disabled={pending}
-        className="self-start rounded-[--radius-card] border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-surface disabled:opacity-60"
+        className="self-start rounded-(--radius-card) border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-surface disabled:opacity-60"
       >
         {pending ? '…' : 'Reveal NIDA & licence'}
       </button>
@@ -142,7 +142,7 @@ export function DocumentLink({
       type="button"
       onClick={open}
       disabled={pending}
-      className="flex items-center gap-2 rounded-[--radius-card] border border-border bg-white px-3 py-2 text-left text-sm hover:bg-surface disabled:opacity-60"
+      className="flex items-center gap-2 rounded-(--radius-card) border border-border bg-white px-3 py-2 text-left text-sm hover:bg-surface disabled:opacity-60"
     >
       <span>📄</span>
       <span className="font-medium text-primary-dark">{label}</span>
@@ -175,7 +175,7 @@ export function ConvertButton({ id }: { id: string }) {
 
   if (result) {
     return (
-      <div className="rounded-[--radius-card] border border-primary bg-surface p-4">
+      <div className="rounded-(--radius-card) border border-primary bg-surface p-4">
         <p className="text-sm font-semibold text-primary-dark">
           Rider created: {result.riderNumber}
         </p>
@@ -195,7 +195,7 @@ export function ConvertButton({ id }: { id: string }) {
         type="button"
         onClick={convert}
         disabled={pending}
-        className="rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+        className="rounded-(--radius-card) bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
       >
         {pending ? 'Converting…' : 'Convert to rider'}
       </button>

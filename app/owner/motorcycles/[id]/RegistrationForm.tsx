@@ -48,7 +48,7 @@ export function RegistrationForm({ id, current }: { id: string; current: string 
           type="button"
           onClick={save}
           disabled={busy || !value.trim()}
-          className="rounded-[--radius-card] bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          className="rounded-(--radius-card) bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
         >
           {busy ? 'Saving…' : current ? 'Update' : 'Add'}
         </button>

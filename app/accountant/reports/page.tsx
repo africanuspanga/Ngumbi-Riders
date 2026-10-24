@@ -96,7 +96,7 @@ export default async function AccountantReportsPage({
       {/* Income, expenses, requisitions and the period statement (#4). */}
       <CashflowSections report={cashflow} basePath="/accountant" />
 
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold text-primary-dark">
             Collections ({formatDateRange(from, to)})
@@ -114,7 +114,7 @@ export default async function AccountantReportsPage({
       </section>
 
       {/* General financial report — bank-statement style (client feedback). */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold text-primary-dark">
             Financial statement ({formatDateRange(from, to)})
@@ -153,9 +153,9 @@ export default async function AccountantReportsPage({
                       </Link>
                     </td>
                     <td className="px-2 py-2 text-right tabular-nums">{r.payments}</td>
-                    <td className="px-2 py-2 text-right font-mono tabular-nums">{formatTZS(r.cash)}</td>
-                    <td className="px-2 py-2 text-right font-mono tabular-nums">{formatTZS(r.mobile)}</td>
-                    <td className="px-2 py-2 text-right font-mono font-semibold tabular-nums">{formatTZS(r.total)}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">{formatTZS(r.cash)}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">{formatTZS(r.mobile)}</td>
+                    <td className="px-2 py-2 text-right font-semibold tabular-nums">{formatTZS(r.total)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -184,7 +184,7 @@ export default async function AccountantReportsPage({
                     <td className="px-2 py-2">{t.riderName}</td>
                     <td className="px-2 py-2">{methodLabel(t.method)}</td>
                     <td className="px-2 py-2">{t.receivedByName ?? '—'}</td>
-                    <td className="px-2 py-2 text-right font-mono tabular-nums">{formatTZS(t.amount)}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">{formatTZS(t.amount)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -193,7 +193,7 @@ export default async function AccountantReportsPage({
         </details>
       </section>
 
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold text-primary-dark">
             Arrears · {arrears.totalCount} obligation(s) · {formatTZS(arrears.totalAmount)}
@@ -247,13 +247,13 @@ function ExportLinks({ report, q }: { report: string; q: string }) {
     <span className="flex gap-2 text-xs">
       <a
         href={`/api/reports/${report}/export${q}&format=csv`}
-        className="rounded-[--radius-card] border border-border px-2.5 py-1 font-semibold text-primary-dark hover:bg-surface"
+        className="rounded-(--radius-card) border border-border px-2.5 py-1 font-semibold text-primary-dark hover:bg-surface"
       >
         CSV
       </a>
       <a
         href={`/api/reports/${report}/export${q}&format=xlsx`}
-        className="rounded-[--radius-card] border border-border px-2.5 py-1 font-semibold text-primary-dark hover:bg-surface"
+        className="rounded-(--radius-card) border border-border px-2.5 py-1 font-semibold text-primary-dark hover:bg-surface"
       >
         Excel
       </a>

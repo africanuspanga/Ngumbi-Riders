@@ -28,7 +28,7 @@ export function CollectionBalancePanel({
   const needsAttention = reconciliation.pending.count + reconciliation.failed.count > 0;
 
   return (
-    <section className="flex flex-col gap-4 rounded-[--radius-card] border border-border bg-white p-4">
+    <section className="flex flex-col gap-4 rounded-(--radius-card) border border-border bg-white p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="flex items-center gap-2 text-base font-semibold text-primary-dark">
@@ -51,7 +51,7 @@ export function CollectionBalancePanel({
           Owner only: `balance` is null for every other role (decided in
           getCollectionsOverview from the session). */}
       {balance && (
-        <div className="rounded-[--radius-card] border border-border bg-surface p-4">
+        <div className="rounded-(--radius-card) border border-border bg-surface p-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <span className="eyebrow text-muted-foreground">
@@ -101,7 +101,7 @@ export function CollectionBalancePanel({
       </div>
 
       {/* --- Money that did not arrive ------------------------------------ */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[--radius-card] border border-border px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-(--radius-card) border border-border px-4 py-3">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
           <span>
             <span className="text-muted-foreground">Pending reconciliation: </span>
@@ -130,7 +130,7 @@ export function CollectionBalancePanel({
         {basePath === '/owner' && needsAttention && (
           <Link
             href="/owner/reconciliation"
-            className="shrink-0 rounded-[--radius-card] border border-border px-3 py-1.5 text-sm font-semibold text-primary-dark hover:bg-surface"
+            className="shrink-0 rounded-(--radius-card) border border-border px-3 py-1.5 text-sm font-semibold text-primary-dark hover:bg-surface"
           >
             Reconcile
           </Link>
@@ -174,7 +174,7 @@ function PeriodCard({
 }) {
   return (
     <div
-      className={`flex flex-col gap-2.5 rounded-[--radius-card] border p-3.5 ${
+      className={`flex flex-col gap-2.5 rounded-(--radius-card) border p-3.5 ${
         emphasise ? 'border-primary/40 bg-primary/[0.04]' : 'border-border'
       }`}
     >

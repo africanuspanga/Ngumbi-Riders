@@ -40,7 +40,7 @@ export function CancelStuckButton({ paymentId }: { paymentId: string }) {
         type="button"
         disabled={busy}
         onClick={cancel}
-        className="rounded-[--radius-card] border border-border px-2.5 py-1 text-xs font-semibold text-overdue hover:bg-surface disabled:opacity-60"
+        className="rounded-(--radius-card) border border-border px-2.5 py-1 text-xs font-semibold text-overdue hover:bg-surface disabled:opacity-60"
       >
         {busy ? 'Cancelling…' : 'Cancel'}
       </button>

@@ -43,7 +43,7 @@ export default async function AccountantRiderProfilePage({
         contractHref={(cid) => `/accountant/contracts/${cid}`}
       />
 
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold text-primary-dark">Payments</h2>
           <Link

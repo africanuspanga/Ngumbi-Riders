@@ -80,7 +80,7 @@ function Control({
             type="button"
             disabled={busy}
             onClick={act}
-            className="rounded-[--radius-card] bg-[color:var(--color-overdue)] px-2 py-1 text-xs font-semibold text-white disabled:opacity-60"
+            className="rounded-(--radius-card) bg-[color:var(--color-overdue)] px-2 py-1 text-xs font-semibold text-white disabled:opacity-60"
           >
             {busy ? '…' : confirmLabel}
           </button>
@@ -88,7 +88,7 @@ function Control({
             type="button"
             disabled={busy}
             onClick={() => setConfirming(false)}
-            className="rounded-[--radius-card] border border-border px-2 py-1 text-xs font-semibold"
+            className="rounded-(--radius-card) border border-border px-2 py-1 text-xs font-semibold"
           >
             No
           </button>

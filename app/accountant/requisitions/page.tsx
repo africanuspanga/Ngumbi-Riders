@@ -47,7 +47,7 @@ export default async function AccountantRequisitionsPage() {
         </div>
         <Link
           href="/accountant/requisitions/new"
-          className="inline-flex items-center gap-2 rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
+          className="inline-flex items-center gap-2 rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
         >
           <PlusCircleIcon className="size-5" /> New request
         </Link>

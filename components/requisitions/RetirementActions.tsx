@@ -132,7 +132,7 @@ export function RetirementActions({
 
   if (!paid) {
     return (
-      <p className="rounded-[--radius-card] border border-border bg-surface px-3 py-2 text-sm text-muted-foreground">
+      <p className="rounded-(--radius-card) border border-border bg-surface px-3 py-2 text-sm text-muted-foreground">
         Retirement opens once the Managing Director marks this purchase paid. Approving a purchase
         and releasing the money are separate acts, and only the Director does the second.
       </p>
@@ -140,7 +140,7 @@ export function RetirementActions({
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-[--radius-card] border border-border bg-white p-4">
+    <div className="flex flex-col gap-4 rounded-(--radius-card) border border-border bg-white p-4">
       <h2 className="font-semibold text-primary-dark">
         {alreadyRetired ? 'Retirement evidence' : 'Retire this purchase'}
       </h2>
@@ -183,7 +183,7 @@ export function RetirementActions({
         <button
           type="submit"
           disabled={busy}
-          className="min-h-11 self-start rounded-[--radius-card] border border-border bg-white px-4 py-2.5 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+          className="min-h-11 self-start rounded-(--radius-card) border border-border bg-white px-4 py-2.5 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
         >
           {busy ? 'Uploading…' : 'Upload'}
         </button>
@@ -253,7 +253,7 @@ export function RetirementActions({
             type="button"
             disabled={busy || !Number.isFinite(actualNumber) || actualNumber < 0}
             onClick={retire}
-            className="min-h-12 self-start rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+            className="min-h-12 self-start rounded-(--radius-card) bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
           >
             {busy ? 'Retiring…' : 'Retire purchase request'}
           </button>

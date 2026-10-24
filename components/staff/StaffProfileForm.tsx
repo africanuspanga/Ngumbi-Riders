@@ -138,7 +138,7 @@ export function StaffProfileForm({
   return (
     <div className="flex flex-col gap-5">
       {/* --- who they are, from the auth record --------------------------- */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h2 className="text-lg font-semibold text-primary-dark">{record.fullName}</h2>
@@ -159,7 +159,7 @@ export function StaffProfileForm({
           {REVIEW_STATUS_HINTS[record.reviewStatus]}
         </p>
         {record.reviewNote && (
-          <p className="rounded-[--radius-card] border border-border bg-surface px-3 py-2 text-sm">
+          <p className="rounded-(--radius-card) border border-border bg-surface px-3 py-2 text-sm">
             <span className="font-semibold">
               {record.reviewedByName ? `${record.reviewedByName}: ` : 'Director: '}
             </span>
@@ -186,7 +186,7 @@ export function StaffProfileForm({
       )}
 
       {/* --- the record --------------------------------------------------- */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">Details</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Phone number">
@@ -260,7 +260,7 @@ export function StaffProfileForm({
                 'Saved.',
               )
             }
-            className="min-h-11 rounded-[--radius-card] border border-border bg-white px-4 py-2.5 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+            className="min-h-11 rounded-(--radius-card) border border-border bg-white px-4 py-2.5 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
           >
             {busy ? 'Saving…' : 'Save'}
           </button>
@@ -270,7 +270,7 @@ export function StaffProfileForm({
             onClick={() =>
               run(() => submitStaffProfile(record.profileId), 'Sent to the Managing Director.')
             }
-            className="min-h-11 rounded-[--radius-card] bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+            className="min-h-11 rounded-(--radius-card) bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
           >
             Submit for review
           </button>
@@ -282,13 +282,13 @@ export function StaffProfileForm({
       </section>
 
       {/* --- certificates ------------------------------------------------- */}
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">Certificates &amp; documents</h2>
 
         {record.certificates.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nothing attached yet.</p>
         ) : (
-          <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border">
+          <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border">
             {record.certificates.map((c) => (
               <li key={c.id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
                 <span className="min-w-0">
@@ -367,7 +367,7 @@ export function StaffProfileForm({
           <button
             type="submit"
             disabled={busy || title.trim().length < 2}
-            className="min-h-11 self-start rounded-[--radius-card] border border-border bg-white px-4 py-2.5 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+            className="min-h-11 self-start rounded-(--radius-card) border border-border bg-white px-4 py-2.5 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
           >
             {busy ? 'Uploading…' : 'Attach certificate'}
           </button>
@@ -376,7 +376,7 @@ export function StaffProfileForm({
 
       {/* --- the Director's controls -------------------------------------- */}
       {canReview && (
-        <section className="flex flex-col gap-3 rounded-[--radius-card] border border-primary/40 bg-primary/5 p-4">
+        <section className="flex flex-col gap-3 rounded-(--radius-card) border border-primary/40 bg-primary/5 p-4">
           <h2 className="font-semibold text-primary-dark">Managing Director</h2>
 
           <Field
@@ -421,7 +421,7 @@ export function StaffProfileForm({
                       'Returned for correction.',
                     )
                   }
-                  className="min-h-11 rounded-[--radius-card] bg-[color:var(--color-warning)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                  className="min-h-11 rounded-(--radius-card) bg-[color:var(--color-warning)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
                 >
                   Confirm return
                 </button>
@@ -429,7 +429,7 @@ export function StaffProfileForm({
                   type="button"
                   disabled={busy}
                   onClick={() => setReturning(false)}
-                  className="min-h-11 rounded-[--radius-card] border border-border bg-white px-4 py-2.5 text-sm font-semibold"
+                  className="min-h-11 rounded-(--radius-card) border border-border bg-white px-4 py-2.5 text-sm font-semibold"
                 >
                   Cancel
                 </button>
@@ -446,7 +446,7 @@ export function StaffProfileForm({
                     'Profile approved.',
                   )
                 }
-                className="min-h-11 rounded-[--radius-card] bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+                className="min-h-11 rounded-(--radius-card) bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
               >
                 Approve profile
               </button>
@@ -454,7 +454,7 @@ export function StaffProfileForm({
                 type="button"
                 disabled={busy}
                 onClick={() => setReturning(true)}
-                className="min-h-11 rounded-[--radius-card] border border-border bg-white px-4 py-2.5 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+                className="min-h-11 rounded-(--radius-card) border border-border bg-white px-4 py-2.5 text-sm font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
               >
                 Return for correction
               </button>

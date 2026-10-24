@@ -107,7 +107,7 @@ export default async function OwnerHome() {
       {unread > 0 && (
         <Link
           href="/owner/notifications"
-          className="group flex items-center justify-between gap-3 rounded-[--radius-card] border border-border bg-white px-4 py-2.5 text-sm hover:bg-surface"
+          className="group flex items-center justify-between gap-3 rounded-(--radius-card) border border-border bg-white px-4 py-2.5 text-sm hover:bg-surface"
         >
           <span className="flex min-w-0 items-center gap-2">
             <BellIcon className="size-4 shrink-0 text-primary" />
@@ -124,7 +124,7 @@ export default async function OwnerHome() {
       {pendingCash.length > 0 && (
         <Link
           href="/owner/payments/approvals"
-          className="flex items-center justify-between gap-3 rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 px-4 py-3 text-sm text-amber-900 hover:bg-amber-100"
+          className="flex items-center justify-between gap-3 rounded-(--radius-card) border border-[color:var(--color-warning)] bg-amber-50 px-4 py-3 text-sm text-amber-900 hover:bg-amber-100"
         >
           <span className="flex items-center gap-2 font-medium">
             <BanknoteIcon className="size-4 shrink-0" />
@@ -141,7 +141,7 @@ export default async function OwnerHome() {
       {pendingRequisitions.length > 0 && (
         <Link
           href="/owner/requisitions"
-          className="flex items-center justify-between gap-3 rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 px-4 py-3 text-sm text-amber-900 hover:bg-amber-100"
+          className="flex items-center justify-between gap-3 rounded-(--radius-card) border border-[color:var(--color-warning)] bg-amber-50 px-4 py-3 text-sm text-amber-900 hover:bg-amber-100"
         >
           <span className="flex items-center gap-2 font-medium">
             <ClipboardCheckIcon className="size-4 shrink-0" />
@@ -373,7 +373,7 @@ function StatCard({
   tone?: string;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-[--radius-card] border border-border bg-white p-4">
+    <div className="flex flex-col gap-2 rounded-(--radius-card) border border-border bg-white p-4">
       <span className="eyebrow text-muted-foreground">{label}</span>
       <p
         className={`font-display break-words text-xl font-bold leading-none sm:text-[1.75rem] ${

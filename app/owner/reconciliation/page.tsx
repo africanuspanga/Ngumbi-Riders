@@ -27,7 +27,7 @@ export default async function ReconciliationPage() {
         <Stat label="Failed" value={s.failed} tone="text-[color:var(--color-overdue)]" />
       </div>
 
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">Stale pending (&gt; 1 hour)</h2>
         {s.stalePending.length === 0 ? (
           <p className="text-sm text-muted-foreground">None. ✓</p>
@@ -55,7 +55,7 @@ export default async function ReconciliationPage() {
 
 function Stat({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
-    <div className="rounded-[--radius-card] border border-border bg-white p-4">
+    <div className="rounded-(--radius-card) border border-border bg-white p-4">
       <div className={`text-2xl font-bold ${tone}`}>{value}</div>
       <div className="text-xs text-muted-foreground">{label}</div>
     </div>

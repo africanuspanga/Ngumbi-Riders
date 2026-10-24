@@ -22,7 +22,7 @@ export default async function RiderExemptionsPage() {
       {requests.length === 0 ? (
         <p className="text-muted-foreground">Hakuna maombi ya msamaha.</p>
       ) : (
-        <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border bg-white">
+        <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border bg-white">
           {requests.map((r) => (
             <li key={r.id} className="flex flex-col gap-0.5 px-4 py-3">
               <div className="flex justify-between">

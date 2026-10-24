@@ -49,7 +49,7 @@ export function PhoneLoanQueue({
         return (
           <li
             key={r.id}
-            className={`flex flex-col gap-3 rounded-[--radius-card] border bg-white p-4 ${
+            className={`flex flex-col gap-3 rounded-(--radius-card) border bg-white p-4 ${
               mine ? 'border-[color:var(--color-warning)]/50' : 'border-border'
             }`}
           >
@@ -99,7 +99,7 @@ export function PhoneLoanQueue({
             </dl>
 
             {(r.reviewNote || r.decisionNote) && (
-              <p className="rounded-[--radius-card] border border-border bg-surface px-3 py-2 text-sm">
+              <p className="rounded-(--radius-card) border border-border bg-surface px-3 py-2 text-sm">
                 {r.decisionNote ?? r.reviewNote}
               </p>
             )}

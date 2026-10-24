@@ -63,7 +63,7 @@ export function RetirementPanel({
   const today = localDateString();
   if (requisition.paymentStatus !== 'paid') {
     return (
-      <section className="rounded-[--radius-card] border border-border bg-white p-4 text-sm text-muted-foreground">
+      <section className="rounded-(--radius-card) border border-border bg-white p-4 text-sm text-muted-foreground">
         <h2 className="mb-1 font-semibold text-primary-dark">Retirement</h2>
         Retirement opens once the Managing Director marks this purchase <strong>paid</strong>.
       </section>
@@ -91,7 +91,7 @@ export function RetirementPanel({
   const canSubmit = row.state !== 'fully_retired' && row.outstanding - row.pendingAmount > 0;
 
   return (
-    <section className="flex flex-col gap-4 rounded-[--radius-card] border border-border bg-white p-4">
+    <section className="flex flex-col gap-4 rounded-(--radius-card) border border-border bg-white p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold text-primary-dark">Retirement</h2>
         <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATE_TONE[row.state]}`}>
@@ -128,7 +128,7 @@ export function RetirementPanel({
       )}
 
       {entries.length > 0 && (
-        <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border">
+        <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border">
           {entries.map((e) => (
             <li key={e.id} className="flex flex-col gap-2 p-3 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">

@@ -23,7 +23,7 @@ export default function RouteError({
       <button
         type="button"
         onClick={reset}
-        className="rounded-[--radius-card] bg-primary px-6 py-3 font-semibold text-white hover:bg-primary-hover"
+        className="rounded-(--radius-card) bg-primary px-6 py-3 font-semibold text-white hover:bg-primary-hover"
       >
         Jaribu tena
       </button>

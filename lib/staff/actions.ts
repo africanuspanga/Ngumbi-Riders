@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getSessionProfile } from '@/lib/auth/session';
 import { writeAudit } from '@/lib/audit/audit';
-import { tryNormalizePhone } from '@/lib/auth/phone';
+import { staffPhone } from '@/lib/auth/staff-otp';
 import {
   createAccountantSchema,
   resetAccountantPasswordSchema,
@@ -61,14 +61,8 @@ export async function listAccountants(): Promise<StaffRow[]> {
     created_at: string;
     deactivated_at: string | null;
   }[];
-  // The phone lives on the auth user, not on `profiles` (which every staff
-  // member can read since 0026). A handful of accountants: one call each.
-  const phones = await Promise.all(
-    rows.map(async (p) => {
-      const { data: u } = await admin.auth.admin.getUserById(p.id);
-      return u?.user?.phone ? tryNormalizePhone(u.user.phone) : null;
-    }),
-  );
+  // Not on `profiles` (every staff member can read that since 0026).
+  const phones = await Promise.all(rows.map((p) => staffPhone(p.id)));
   return rows.map((p, i) => ({
     id: p.id,
     fullName: p.full_name,
@@ -94,15 +88,10 @@ export async function createAccountant(input: unknown): Promise<ActionResult<{ p
     email,
     password,
     email_confirm: true,
-    // The SMS sign-in code goes here (D-053). Confirmed by the owner's say-so:
-    // the owner is the one vouching that this number is the accountant's.
-    phone,
-    phone_confirm: true,
   });
   if (createError || !created?.user) {
     // Supabase reports an existing address as a 422 "already been registered".
     const msg = createError?.message ?? '';
-    if (/phone/i.test(msg)) return { ok: false, error: 'phone_taken' };
     if (/already/i.test(msg) || /registered/i.test(msg)) {
       return { ok: false, error: 'email_taken' };
     }
@@ -125,6 +114,21 @@ export async function createAccountant(input: unknown): Promise<ActionResult<{ p
     await admin.auth.admin.deleteUser(userId);
     return { ok: false, error: 'create_failed' };
   }
+
+  // Where the SMS sign-in code goes (D-053/0038) — required.
+  const { error: phoneError } = await admin
+    .from('staff_otp_phones')
+    .upsert({ user_id: userId, phone, updated_by: ownerId });
+  if (phoneError) {
+    await admin.from('profiles').delete().eq('id', userId);
+    await admin.auth.admin.deleteUser(userId);
+    return { ok: false, error: 'create_failed' };
+  }
+  // Also let them sign in by PHONE + password, when the number is not already
+  // somebody's login (e.g. a rider's). Best effort: the email works regardless.
+  await admin.auth.admin
+    .updateUserById(userId, { phone, phone_confirm: true })
+    .catch(() => undefined);
 
   await writeAudit({
     actorId: ownerId,
@@ -237,13 +241,15 @@ export async function setAccountantPhone(input: unknown): Promise<ActionResult> 
     .maybeSingle();
   if (!target) return { ok: false, error: 'not_found' };
 
-  const { error } = await admin.auth.admin.updateUserById(parsed.data.profileId, {
+  // Kept apart from the auth phone (0038): the number may already be this
+  // person's RIDER login, which Supabase would refuse to share.
+  const { error } = await admin.from('staff_otp_phones').upsert({
+    user_id: parsed.data.profileId,
     phone: parsed.data.phone,
-    phone_confirm: true,
+    updated_by: ownerId,
+    updated_at: new Date().toISOString(),
   });
-  if (error) {
-    return { ok: false, error: /phone|already|registered/i.test(error.message) ? 'phone_taken' : 'update_failed' };
-  }
+  if (error) return { ok: false, error: 'update_failed' };
   // Forget every session the OLD number vouched for. With sign-in codes on,
   // those sessions stop counting as staff in RLS on their next query (0037).
   // (auth.admin.signOut takes a JWT, not a user id, so it cannot do this.)

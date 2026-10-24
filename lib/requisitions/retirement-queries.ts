@@ -39,6 +39,9 @@ export type RetirementEntry = {
 
 export type RetirementBoard = {
   rows: RetirementRow[];
+  /** Every entry behind those rows, oldest first — for "submitted by me" and
+   *  the Director's queue, which show the receipts themselves. */
+  entries: (RetirementEntry & { requisitionNumber: string; requisitionTitle: string })[];
   /** False until migration 0036 is live: only legacy retirements are known. */
   entriesAvailable: boolean;
 };
@@ -223,7 +226,17 @@ export async function getRetirementBoard(filters: {
     .filter((r) => (!filters.from || (r.paidDate ?? '') >= filters.from) && (!filters.to || (r.paidDate ?? '9999') <= filters.to))
     .map((r) => computeRetirementRow(r, inputs, today));
 
-  return { rows, entriesAvailable: available };
+  const byId = new Map(reqs.map((r) => [r.id, r]));
+  const visibleIds = new Set(rows.map((r) => r.id));
+  const boardEntries = entries
+    .filter((e) => visibleIds.has(e.requisitionId))
+    .map((e) => ({
+      ...e,
+      requisitionNumber: byId.get(e.requisitionId)?.requisition_number ?? '—',
+      requisitionTitle: byId.get(e.requisitionId)?.title ?? '',
+    }));
+
+  return { rows, entries: boardEntries, entriesAvailable: available };
 }
 
 /** Staff who have ever held a paid requisition — the board's person filter. */

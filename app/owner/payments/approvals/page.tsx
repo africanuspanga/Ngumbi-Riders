@@ -43,7 +43,7 @@ export default async function CashApprovalsPage() {
       {decided.length > 0 && (
         <section className="flex flex-col gap-2">
           <h2 className="font-semibold text-primary-dark">Recently decided</h2>
-          <div className="overflow-x-auto rounded-[--radius-card] border border-border bg-white">
+          <div className="overflow-x-auto rounded-(--radius-card) border border-border bg-white">
             <table className="w-full min-w-[560px] text-left text-sm">
               <thead className="text-muted-foreground border-b border-border">
                 <tr>
@@ -63,7 +63,7 @@ export default async function CashApprovalsPage() {
                         cash on {formatDate(r.paymentDate)}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums">{formatTZS(r.amount)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatTZS(r.amount)}</td>
                     <td className="px-3 py-2">{r.receivedByName}</td>
                     <td className="px-3 py-2">
                       <span

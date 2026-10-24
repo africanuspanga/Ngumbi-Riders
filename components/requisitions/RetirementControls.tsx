@@ -32,7 +32,7 @@ const ERRORS: Record<string, string> = {
   reason_required: 'Give a reason so the accountant knows what to fix.',
   too_large: `Each file must be ${Math.round(MAX_REQUISITION_DOC_BYTES / (1024 * 1024))} MiB or smaller.`,
   too_many: 'This request already has ten receipts attached.',
-  invalid_type: 'Receipts must be PDF, JPG, PNG or WebP.',
+  invalid_type: 'Receipts must be PDF, JPG, PNG or WebP (iPhone HEIC photos are not accepted — send a screenshot or a JPG instead).',
   upload_failed: 'A receipt failed to upload. Try attaching it again.',
   server_error: 'A server error occurred. Reload the page before retrying.',
 };
@@ -118,25 +118,25 @@ export function RetirementEntryForm({
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium">Amount spent (TZS)</span>
-          <input type="number" min={0} step={1} required value={spent} onChange={(e) => setSpent(e.target.value)} className="min-h-10 rounded-[--radius-card] border border-border px-3 tabular-nums" />
+          <input type="number" min={0} step={1} required value={spent} onChange={(e) => setSpent(e.target.value)} className="min-h-10 rounded-(--radius-card) border border-border px-3 tabular-nums" />
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium">Cash returned (TZS)</span>
-          <input type="number" min={0} step={1} value={returned} onChange={(e) => setReturned(e.target.value)} className="min-h-10 rounded-[--radius-card] border border-border px-3 tabular-nums" />
+          <input type="number" min={0} step={1} value={returned} onChange={(e) => setReturned(e.target.value)} className="min-h-10 rounded-(--radius-card) border border-border px-3 tabular-nums" />
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium">Date spent</span>
-          <input type="date" required max={today} value={spentOn} onChange={(e) => setSpentOn(e.target.value)} className="min-h-10 rounded-[--radius-card] border border-border px-3" />
+          <input type="date" required max={today} value={spentOn} onChange={(e) => setSpentOn(e.target.value)} className="min-h-10 rounded-(--radius-card) border border-border px-3" />
         </label>
       </div>
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium">What was bought / paid</span>
-        <textarea required minLength={3} maxLength={2000} rows={2} value={description} onChange={(e) => setDescription(e.target.value)} className="rounded-[--radius-card] border border-border px-3 py-2" placeholder="e.g. 2 tyres and labour at Kariakoo, receipt no. 4471" />
+        <textarea required minLength={3} maxLength={2000} rows={2} value={description} onChange={(e) => setDescription(e.target.value)} className="rounded-(--radius-card) border border-border px-3 py-2" placeholder="e.g. 2 tyres and labour at Kariakoo, receipt no. 4471" />
       </label>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium">File the spend under</span>
-          <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} className="min-h-10 rounded-[--radius-card] border border-border px-3">
+          <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} className="min-h-10 rounded-(--radius-card) border border-border px-3">
             <option value="">— No department (not filed as an expense) —</option>
             {departments.map((d) => (
               <option key={d.id} value={d.id}>{d.name}</option>
@@ -157,7 +157,7 @@ export function RetirementEntryForm({
             : 'Once verified, the request is fully retired.'}
       </p>
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={busy} className="min-h-10 rounded-[--radius-card] bg-primary px-4 font-semibold text-white hover:bg-primary-hover disabled:opacity-60">
+        <button type="submit" disabled={busy} className="min-h-10 rounded-(--radius-card) bg-primary px-4 font-semibold text-white hover:bg-primary-hover disabled:opacity-60">
           {busy ? 'Submitting…' : 'Submit for verification'}
         </button>
         {error && <p role="alert" className="text-sm font-medium text-overdue">{error}</p>}
@@ -223,21 +223,21 @@ export function RetirementDecision({ retirementId }: { retirementId: string }) {
     <div className="flex flex-col gap-2">
       {mode === 'idle' ? (
         <div className="flex flex-wrap gap-2">
-          <button type="button" disabled={busy} onClick={() => decide('approve')} className="min-h-9 rounded-[--radius-card] bg-primary px-3 text-sm font-semibold text-white disabled:opacity-60">
+          <button type="button" disabled={busy} onClick={() => decide('approve')} className="min-h-9 rounded-(--radius-card) bg-primary px-3 text-sm font-semibold text-white disabled:opacity-60">
             {busy ? 'Saving…' : 'Verify'}
           </button>
-          <button type="button" disabled={busy} onClick={() => setMode('rejecting')} className="min-h-9 rounded-[--radius-card] border border-border bg-white px-3 text-sm font-semibold">
+          <button type="button" disabled={busy} onClick={() => setMode('rejecting')} className="min-h-9 rounded-(--radius-card) border border-border bg-white px-3 text-sm font-semibold">
             Reject
           </button>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Reason — e.g. receipt missing for the second tyre" className="rounded-[--radius-card] border border-border px-3 py-2 text-sm" />
+          <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Reason — e.g. receipt missing for the second tyre" className="rounded-(--radius-card) border border-border px-3 py-2 text-sm" />
           <div className="flex gap-2">
-            <button type="button" disabled={busy} onClick={() => decide('reject')} className="min-h-9 rounded-[--radius-card] bg-overdue px-3 text-sm font-semibold text-white disabled:opacity-60">
+            <button type="button" disabled={busy} onClick={() => decide('reject')} className="min-h-9 rounded-(--radius-card) bg-overdue px-3 text-sm font-semibold text-white disabled:opacity-60">
               {busy ? 'Saving…' : 'Reject entry'}
             </button>
-            <button type="button" disabled={busy} onClick={() => setMode('idle')} className="min-h-9 rounded-[--radius-card] border border-border bg-white px-3 text-sm font-semibold">
+            <button type="button" disabled={busy} onClick={() => setMode('idle')} className="min-h-9 rounded-(--radius-card) border border-border bg-white px-3 text-sm font-semibold">
               Cancel
             </button>
           </div>

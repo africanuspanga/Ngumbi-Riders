@@ -106,7 +106,7 @@ export function PhoneLoanRequestForm({
     return (
       <div
         role="status"
-        className="flex flex-col gap-2 rounded-[--radius-card] border border-[color:var(--color-paid)] bg-[color:var(--color-paid)]/5 p-4"
+        className="flex flex-col gap-2 rounded-(--radius-card) border border-[color:var(--color-paid)] bg-[color:var(--color-paid)]/5 p-4"
       >
         <span className="font-semibold text-[color:var(--color-paid)]">
           ✓ Ombi lako limetumwa
@@ -119,7 +119,7 @@ export function PhoneLoanRequestForm({
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-[--radius-card] border border-border bg-white p-4">
+    <div className="flex flex-col gap-4 rounded-(--radius-card) border border-border bg-white p-4">
       <div>
         <h2 className="font-semibold text-primary-dark">Omba mkopo wa simu</h2>
         <p className="text-sm text-muted-foreground">
@@ -161,7 +161,7 @@ export function PhoneLoanRequestForm({
 
       {/* The terms, before submission — the heart of the request. */}
       {quote && (
-        <dl className="flex flex-col gap-1 rounded-[--radius-card] border border-border bg-surface p-3 text-sm">
+        <dl className="flex flex-col gap-1 rounded-(--radius-card) border border-border bg-surface p-3 text-sm">
           <Row label="Kiasi cha mkopo" value={tzs(quote.principal)} />
           <Row label={`Riba (${quote.interestBps / 100}%)`} value={tzs(quote.interestAmount)} />
           <Row label="Jumla utakayolipa" value={tzs(quote.totalAmount)} strong />
@@ -205,7 +205,7 @@ export function PhoneLoanRequestForm({
         type="button"
         disabled={busy || !quote}
         onClick={submit}
-        className="min-h-12 rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+        className="min-h-12 rounded-(--radius-card) bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
       >
         {busy ? 'Inatuma…' : 'Tuma ombi'}
       </button>

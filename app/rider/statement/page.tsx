@@ -42,7 +42,7 @@ export default async function RiderStatementPage() {
         {payments.length === 0 ? (
           <p className="text-sm text-muted-foreground">Bado hujafanya malipo.</p>
         ) : (
-          <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border bg-white">
+          <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border bg-white">
             {payments.slice(0, 20).map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
                 <div className="min-w-0">

@@ -70,7 +70,7 @@ export function DepartmentBoard({
             {positions.map((p) => (
               <li
                 key={p.department.id}
-                className={`flex flex-col gap-2 rounded-[--radius-card] border bg-white p-4 ${
+                className={`flex flex-col gap-2 rounded-(--radius-card) border bg-white p-4 ${
                   p.overspent ? 'border-[color:var(--color-overdue)]/50' : 'border-border'
                 }`}
               >
@@ -152,7 +152,7 @@ export function DepartmentBoard({
       {/* Unassigned spend is surfaced, not folded into "Other" — the Director
           needs to know how much of the books is unclassified. */}
       {untagged.length > 0 && (
-        <section className="flex flex-col gap-2 rounded-[--radius-card] border border-[color:var(--color-warning)]/40 bg-amber-50 p-4">
+        <section className="flex flex-col gap-2 rounded-(--radius-card) border border-[color:var(--color-warning)]/40 bg-amber-50 p-4">
           <h2 className="font-semibold text-amber-900">
             {formatTZS(totals.untaggedSpend)} not assigned to a department
           </h2>
@@ -248,7 +248,7 @@ function Stat({
   tone?: string;
 }) {
   return (
-    <div className="flex flex-col gap-1.5 rounded-[--radius-card] border border-border bg-white p-3.5">
+    <div className="flex flex-col gap-1.5 rounded-(--radius-card) border border-border bg-white p-3.5">
       <span className="eyebrow text-muted-foreground">{label}</span>
       <p className={`font-display break-words text-xl font-bold leading-none ${tone ?? 'text-primary-dark'}`}>
         {value}

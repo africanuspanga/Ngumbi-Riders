@@ -80,7 +80,7 @@ export function LockNotice({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 p-4 text-amber-900">
+    <div className="flex flex-col gap-3 rounded-(--radius-card) border border-[color:var(--color-warning)] bg-amber-50 p-4 text-amber-900">
       <p className="flex items-start gap-2 text-sm">
         <LockIcon className="mt-0.5 size-4 shrink-0" />
         <span>
@@ -119,7 +119,7 @@ export function LockNotice({
                 type="button"
                 disabled={busy || reason.trim().length < 3}
                 onClick={unlock}
-                className="min-h-11 rounded-[--radius-card] bg-[color:var(--color-warning)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                className="min-h-11 rounded-(--radius-card) bg-[color:var(--color-warning)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
               >
                 {busy ? 'Recording…' : 'Unlock for amendment'}
               </button>
@@ -127,7 +127,7 @@ export function LockNotice({
                 type="button"
                 disabled={busy}
                 onClick={() => setOpen(false)}
-                className="min-h-11 rounded-[--radius-card] border border-amber-300 bg-white px-4 py-2.5 text-sm font-semibold"
+                className="min-h-11 rounded-(--radius-card) border border-amber-300 bg-white px-4 py-2.5 text-sm font-semibold"
               >
                 Cancel
               </button>
@@ -137,7 +137,7 @@ export function LockNotice({
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="min-h-11 self-start rounded-[--radius-card] border border-amber-300 bg-white px-4 py-2.5 text-sm font-semibold text-amber-900 hover:bg-amber-100"
+            className="min-h-11 self-start rounded-(--radius-card) border border-amber-300 bg-white px-4 py-2.5 text-sm font-semibold text-amber-900 hover:bg-amber-100"
           >
             Amend this {noun}
           </button>

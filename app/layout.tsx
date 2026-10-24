@@ -3,10 +3,13 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister';
 import './globals.css';
-import { Geist, Space_Grotesk } from "next/font/google";
+import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import { cn } from "@/lib/utils";
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
+// Identifiers only (REQ/…, NGR-C-…, plates). Replaces the OS fallback
+// monospace, which rendered as Menlo on a Mac and Droid Sans Mono on Android.
+const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono', display: 'swap' });
 
 /*
  * The display face, used with restraint: money figures, the dashboard hero and
@@ -55,7 +58,7 @@ export default async function RootLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} className={cn("font-sans", geist.variable, spaceGrotesk.variable)}>
+    <html lang={locale} className={cn("font-sans", geist.variable, geistMono.variable, spaceGrotesk.variable)}>
       <body className="min-h-dvh bg-background text-foreground antialiased">
         <NextIntlClientProvider locale={locale} messages={messages}>
           {children}

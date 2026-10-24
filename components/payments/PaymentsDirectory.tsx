@@ -146,7 +146,7 @@ export function PaymentsDirectory({
 
       {/* Rows — cards on mobile, a table from `md` up. */}
       {pageRows.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">
+        <p className="rounded-(--radius-card) border border-border bg-white p-6 text-center text-muted-foreground">
           No riders match that search.
         </p>
       ) : (
@@ -156,7 +156,7 @@ export function PaymentsDirectory({
               <li key={r.id}>
                 <Link
                   href={`${basePath}/rider/${r.id}`}
-                  className="flex items-center gap-3 rounded-[--radius-card] border border-border bg-white p-3"
+                  className="flex items-center gap-3 rounded-(--radius-card) border border-border bg-white p-3"
                 >
                   <RiderAvatar name={r.fullName} photoUrl={r.photoUrl} size={40} />
                   <div className="min-w-0 flex-1">
@@ -182,7 +182,7 @@ export function PaymentsDirectory({
             ))}
           </ul>
 
-          <div className="hidden overflow-x-auto rounded-[--radius-card] border border-border bg-white md:block">
+          <div className="hidden overflow-x-auto rounded-(--radius-card) border border-border bg-white md:block">
             <table className="w-full text-left text-sm">
               <thead className="text-muted-foreground border-b border-border">
                 <tr>
@@ -208,11 +208,11 @@ export function PaymentsDirectory({
                       {r.contractNumber ?? '—'}
                       {r.contractEndDate ? <span className="block">ends {formatDate(r.contractEndDate)}</span> : null}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums">{formatTZS(r.amountPaid)}</td>
-                    <td className="px-3 py-2 text-right font-mono font-semibold tabular-nums text-[color:var(--color-paid)]">
+                    <td className="px-3 py-2 text-right tabular-nums">{formatTZS(r.amountPaid)}</td>
+                    <td className="px-3 py-2 text-right font-semibold tabular-nums text-[color:var(--color-paid)]">
                       {formatTZS(r.amountDueNow)}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono font-semibold tabular-nums text-[color:var(--color-overdue)]">
+                    <td className="px-3 py-2 text-right font-semibold tabular-nums text-[color:var(--color-overdue)]">
                       {formatTZS(r.amountOutstanding)}
                     </td>
                     <td className="text-muted-foreground px-3 py-2 text-xs">
@@ -237,7 +237,7 @@ export function PaymentsDirectory({
             type="button"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="min-h-10 rounded-[--radius-card] border border-border bg-white px-3 font-medium disabled:opacity-50"
+            className="min-h-10 rounded-(--radius-card) border border-border bg-white px-3 font-medium disabled:opacity-50"
           >
             Previous
           </button>
@@ -248,7 +248,7 @@ export function PaymentsDirectory({
             type="button"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="min-h-10 rounded-[--radius-card] border border-border bg-white px-3 font-medium disabled:opacity-50"
+            className="min-h-10 rounded-(--radius-card) border border-border bg-white px-3 font-medium disabled:opacity-50"
           >
             Next
           </button>

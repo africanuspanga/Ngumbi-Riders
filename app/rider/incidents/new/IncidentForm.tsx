@@ -42,7 +42,7 @@ export function IncidentForm() {
       <TextAreaField label="Maelezo" required error={errors.description?.message} {...register('description')} />
       <TextField label="Mahali (hiari)" error={errors.locationText?.message} {...register('locationText')} />
       {error && <p role="alert" className="text-sm font-medium text-overdue">{error}</p>}
-      <button type="submit" disabled={isSubmitting} className="rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60">
+      <button type="submit" disabled={isSubmitting} className="rounded-(--radius-card) bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60">
         {isSubmitting ? 'Inatuma…' : 'Tuma taarifa'}
       </button>
     </form>

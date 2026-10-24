@@ -263,23 +263,23 @@ export function ApplicationForm() {
         // retries the document uploads. Edits made by walking back would be
         // silently discarded (and could desync docs from the stored identity
         // type) — so once submitted, navigation locks and we say so.
-        <p className="rounded-[--radius-card] border border-border bg-surface p-3 text-sm text-primary-dark">
+        <p className="rounded-(--radius-card) border border-border bg-surface p-3 text-sm text-primary-dark">
           {t('errors.alreadySubmitted')}
         </p>
       )}
 
       <div className="flex gap-3">
         {step > 0 && !submission && (
-          <button type="button" onClick={back} className="flex-1 rounded-[--radius-card] border border-border bg-white px-4 py-3 font-semibold text-primary-dark">
+          <button type="button" onClick={back} className="flex-1 rounded-(--radius-card) border border-border bg-white px-4 py-3 font-semibold text-primary-dark">
             {t('nav.back')}
           </button>
         )}
         {step < STEP_KEYS.length - 1 ? (
-          <button type="button" onClick={next} className="flex-1 rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover">
+          <button type="button" onClick={next} className="flex-1 rounded-(--radius-card) bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover">
             {t('nav.continue')}
           </button>
         ) : (
-          <button type="submit" disabled={submitting} className="flex-1 rounded-[--radius-card] bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60">
+          <button type="submit" disabled={submitting} className="flex-1 rounded-(--radius-card) bg-primary px-4 py-3 font-semibold text-white hover:bg-primary-hover disabled:opacity-60">
             {submitting ? t('nav.submitting') : t('nav.submit')}
           </button>
         )}
@@ -506,7 +506,7 @@ function DeclarationStep({
 }: StepProps & { signature: string; setSignature: (s: string) => void }) {
   return (
     <div className="flex flex-col gap-4">
-      <p className="rounded-[--radius-card] bg-surface p-3 text-sm text-primary-dark">
+      <p className="rounded-(--radius-card) bg-surface p-3 text-sm text-primary-dark">
         {t('declaration.text')}
       </p>
       <label className="flex items-start gap-2 text-sm">

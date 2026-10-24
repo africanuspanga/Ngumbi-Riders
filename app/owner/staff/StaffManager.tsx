@@ -149,7 +149,7 @@ export function StaffManager({ accountants }: { accountants: Row[] }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">Add an accountant</h2>
         <form onSubmit={onCreate} className="grid gap-3 md:grid-cols-2">
           <Labelled label="Full name">
@@ -205,7 +205,7 @@ export function StaffManager({ accountants }: { accountants: Row[] }) {
             <button
               type="submit"
               disabled={busy}
-              className="w-fit rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+              className="w-fit rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
             >
               {busy ? 'Creating…' : 'Create accountant'}
             </button>
@@ -213,7 +213,7 @@ export function StaffManager({ accountants }: { accountants: Row[] }) {
         </form>
       </section>
 
-      <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">Accountants</h2>
         {rowError && (
           <p role="alert" className="text-sm font-medium text-overdue">
@@ -264,7 +264,7 @@ export function StaffManager({ accountants }: { accountants: Row[] }) {
                     type="button"
                     onClick={() => toggle(a.id, !a.isActive)}
                     disabled={busy}
-                    className="rounded-[--radius-card] border border-border px-3 py-1.5 text-xs font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+                    className="rounded-(--radius-card) border border-border px-3 py-1.5 text-xs font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
                   >
                     {a.isActive ? 'Deactivate' : 'Activate'}
                   </button>
@@ -275,7 +275,7 @@ export function StaffManager({ accountants }: { accountants: Row[] }) {
                       setResetDone(false);
                     }}
                     disabled={busy}
-                    className="rounded-[--radius-card] border border-border px-3 py-1.5 text-xs font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+                    className="rounded-(--radius-card) border border-border px-3 py-1.5 text-xs font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
                   >
                     Reset password
                   </button>
@@ -287,7 +287,7 @@ export function StaffManager({ accountants }: { accountants: Row[] }) {
                       setPhoneDone(false);
                     }}
                     disabled={busy}
-                    className="rounded-[--radius-card] border border-border px-3 py-1.5 text-xs font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+                    className="rounded-(--radius-card) border border-border px-3 py-1.5 text-xs font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
                   >
                     {a.phone ? 'Change phone' : 'Add phone'}
                   </button>
@@ -295,7 +295,7 @@ export function StaffManager({ accountants }: { accountants: Row[] }) {
                     type="button"
                     onClick={() => remove(a.id, a.fullName ?? 'this accountant')}
                     disabled={busy}
-                    className="rounded-[--radius-card] border border-border px-3 py-1.5 text-xs font-semibold text-[color:var(--color-overdue)] hover:bg-red-50 disabled:opacity-60"
+                    className="rounded-(--radius-card) border border-border px-3 py-1.5 text-xs font-semibold text-[color:var(--color-overdue)] hover:bg-red-50 disabled:opacity-60"
                   >
                     Remove access
                   </button>
@@ -317,7 +317,7 @@ export function StaffManager({ accountants }: { accountants: Row[] }) {
                     <button
                       type="submit"
                       disabled={busy}
-                      className="rounded-[--radius-card] bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+                      className="rounded-(--radius-card) bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
                     >
                       Save phone
                     </button>
@@ -339,7 +339,7 @@ export function StaffManager({ accountants }: { accountants: Row[] }) {
                     <button
                       type="submit"
                       disabled={busy}
-                      className="rounded-[--radius-card] bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+                      className="rounded-(--radius-card) bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
                     >
                       Save password
                     </button>

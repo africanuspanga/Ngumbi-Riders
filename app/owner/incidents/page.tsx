@@ -18,11 +18,11 @@ export default async function OwnerIncidentsPage() {
       </header>
 
       {incidents.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">No incidents reported.</p>
+        <p className="rounded-(--radius-card) border border-border bg-white p-6 text-center text-muted-foreground">No incidents reported.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {incidents.map((i) => (
-            <li key={i.id} className="flex flex-col gap-2 rounded-[--radius-card] border border-border bg-white p-4">
+            <li key={i.id} className="flex flex-col gap-2 rounded-(--radius-card) border border-border bg-white p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold text-foreground">

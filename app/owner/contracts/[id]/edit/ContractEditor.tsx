@@ -174,7 +174,7 @@ export function ContractEditor({
 
   return (
     <div className="flex flex-col gap-5">
-      <section className="flex flex-col gap-4 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-4 rounded-(--radius-card) border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">Details</h2>
         <p className="text-xs text-muted-foreground">
           These can be corrected at any time — none of them change what anyone owes.
@@ -225,10 +225,10 @@ export function ContractEditor({
         </label>
       </section>
 
-      <section className="flex flex-col gap-4 rounded-[--radius-card] border border-border bg-white p-4">
+      <section className="flex flex-col gap-4 rounded-(--radius-card) border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">Term, schedule and amount</h2>
         {!termEditable ? (
-          <p className="rounded-[--radius-card] border border-[color:var(--color-warning)] bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="rounded-(--radius-card) border border-[color:var(--color-warning)] bg-amber-50 p-3 text-sm text-amber-900">
             This contract is <strong>{contract.status}</strong>, so its payment days already exist and
             ARE the money record. Re-dating them would restate settled history, which is why the
             term and schedule are closed here. A wrong PRICE is different and can be corrected:
@@ -306,7 +306,7 @@ export function ContractEditor({
                       onClick={() =>
                         scheduleType === 'weekly' ? setWeekdays([day]) : toggleWeekday(day)
                       }
-                      className={`min-h-11 rounded-[--radius-card] border px-3 text-sm font-semibold ${
+                      className={`min-h-11 rounded-(--radius-card) border px-3 text-sm font-semibold ${
                         weekdays.includes(day)
                           ? 'border-primary bg-primary text-white'
                           : 'border-border bg-white text-muted-foreground'
@@ -336,12 +336,12 @@ export function ContractEditor({
 
             <NumberField label="Daily rate (TZS)" value={dailyRate} onChange={setDailyRate} />
             {pricingHint && (
-              <p className="rounded-[--radius-card] bg-surface p-2 text-xs text-primary-dark">
+              <p className="rounded-(--radius-card) bg-surface p-2 text-xs text-primary-dark">
                 {pricingHint} Instalment saved: {formatTZS(derivedInstalment || contract.installmentAmount)}.
               </p>
             )}
 
-            <div className="rounded-[--radius-card] bg-surface p-2 text-sm">
+            <div className="rounded-(--radius-card) bg-surface p-2 text-sm">
               {preview ? (
                 <>
                   <p>
@@ -372,13 +372,13 @@ export function ContractEditor({
           type="button"
           onClick={save}
           disabled={busy}
-          className="min-h-12 rounded-[--radius-card] bg-primary px-5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+          className="min-h-12 rounded-(--radius-card) bg-primary px-5 font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
         >
           {busy ? 'Saving…' : 'Save changes'}
         </button>
         <Link
           href={`/owner/contracts/${contract.id}`}
-          className="flex min-h-12 items-center rounded-[--radius-card] border border-border px-5 font-semibold"
+          className="flex min-h-12 items-center rounded-(--radius-card) border border-border px-5 font-semibold"
         >
           Cancel
         </Link>

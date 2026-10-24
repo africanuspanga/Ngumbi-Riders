@@ -73,9 +73,8 @@ export function AppSidebar({ role = 'owner' }: { role?: 'owner' | 'accountant' }
           {footer.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
-                className="text-sidebar-foreground/70"
+                className="text-sidebar-foreground/80"
                 isActive={isNavItemActive(item.path, pathname)}
-                size="sm"
                 render={<Link href={item.path ?? '#'} />}
               >
                 {item.icon}

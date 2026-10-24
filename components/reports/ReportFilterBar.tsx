@@ -38,7 +38,7 @@ export function ReportFilterBar({
   return (
     <form
       method="get"
-      className="flex flex-wrap items-end gap-3 rounded-[--radius-card] border border-border bg-white p-4"
+      className="flex flex-wrap items-end gap-3 rounded-(--radius-card) border border-border bg-white p-4"
     >
       {has('dates') && (
         <>
@@ -125,7 +125,7 @@ export function ReportFilterBar({
 
       <button
         type="submit"
-        className="min-h-11 rounded-[--radius-card] bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
+        className="min-h-11 rounded-(--radius-card) bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover"
       >
         Apply
       </button>

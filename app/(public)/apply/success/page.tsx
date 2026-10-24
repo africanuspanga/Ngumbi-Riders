@@ -25,14 +25,14 @@ export default async function ApplySuccessPage({
         <p className="text-muted-foreground">{t('success.message')}</p>
       </div>
       {ref && (
-        <div className="w-full rounded-[--radius-card] border border-border bg-white p-4">
+        <div className="w-full rounded-(--radius-card) border border-border bg-white p-4">
           <p className="text-xs text-muted-foreground">{t('success.refLabel')}</p>
           <p className="text-lg font-bold tracking-wide text-primary-dark">{ref}</p>
         </div>
       )}
       <Link
         href="/"
-        className="rounded-[--radius-card] bg-primary px-6 py-3 font-semibold text-white hover:bg-primary-hover"
+        className="rounded-(--radius-card) bg-primary px-6 py-3 font-semibold text-white hover:bg-primary-hover"
       >
         {t('success.home')}
       </Link>

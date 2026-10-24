@@ -16,11 +16,11 @@ export default async function AccountantMotorcyclesPage() {
       </header>
 
       {motorcycles.length === 0 ? (
-        <p className="rounded-[--radius-card] border border-border bg-white p-6 text-center text-muted-foreground">
+        <p className="rounded-(--radius-card) border border-border bg-white p-6 text-center text-muted-foreground">
           No motorcycles yet.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-[--radius-card] border border-border bg-white">
+        <div className="overflow-x-auto rounded-(--radius-card) border border-border bg-white">
           <table className="w-full min-w-[40rem] text-sm">
             <thead>
               <tr className="text-left text-xs uppercase text-muted-foreground">

@@ -95,7 +95,7 @@ export default async function ContractDetailPage({
           {!preActivation && (
             <Link
               href={`/owner/contracts/${c.id}/performance`}
-              className={`flex min-h-9 items-center rounded-[--radius-card] px-3 text-sm font-semibold ${
+              className={`flex min-h-9 items-center rounded-(--radius-card) px-3 text-sm font-semibold ${
                 c.status === 'terminated'
                   ? 'bg-primary text-white hover:bg-primary-hover'
                   : 'border border-border bg-white text-primary-dark hover:bg-surface'
@@ -107,7 +107,7 @@ export default async function ContractDetailPage({
           {!c.locked_at && (
             <Link
               href={`/owner/contracts/${c.id}/edit`}
-              className="flex min-h-9 items-center rounded-[--radius-card] border border-border bg-white px-3 text-sm font-semibold text-primary-dark hover:bg-surface"
+              className="flex min-h-9 items-center rounded-(--radius-card) border border-border bg-white px-3 text-sm font-semibold text-primary-dark hover:bg-surface"
             >
               Edit
             </Link>
@@ -134,7 +134,7 @@ export default async function ContractDetailPage({
       )}
 
       {completion && (
-        <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+        <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="flex items-center gap-2 font-semibold text-primary-dark">
               <AwardIcon className="size-4 shrink-0" />
@@ -158,7 +158,7 @@ export default async function ContractDetailPage({
                 href={`/api/completions/certificates/${completion.certificate.id}`}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-[--radius-card] bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-hover"
+                className="rounded-(--radius-card) bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-hover"
               >
                 Download certificate
               </a>
@@ -181,7 +181,7 @@ export default async function ContractDetailPage({
       {/* Money position + expected completion (client feedback 2026-09-05) */}
       {c.obligationStats.total > 0 && (
         <section className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-[--radius-card] border border-[color:var(--color-paid)]/40 bg-[color:var(--color-paid)]/5 p-4">
+          <div className="rounded-(--radius-card) border border-[color:var(--color-paid)]/40 bg-[color:var(--color-paid)]/5 p-4">
             <p className="text-xs text-muted-foreground">Outstanding now</p>
             <p className="text-xl font-bold tabular-nums text-[color:var(--color-paid)]">
               {formatTZS(c.progress.outstandingNow)}
@@ -190,7 +190,7 @@ export default async function ContractDetailPage({
               {c.progress.outstandingCount} payment(s) due or overdue
             </p>
           </div>
-          <div className="rounded-[--radius-card] border border-[color:var(--color-overdue)]/40 bg-[color:var(--color-overdue)]/5 p-4">
+          <div className="rounded-(--radius-card) border border-[color:var(--color-overdue)]/40 bg-[color:var(--color-overdue)]/5 p-4">
             <p className="text-xs text-muted-foreground">Remaining to finish the contract</p>
             <p className="text-xl font-bold tabular-nums text-[color:var(--color-overdue)]">
               {formatTZS(c.progress.totalRemaining)}
@@ -199,7 +199,7 @@ export default async function ContractDetailPage({
               {c.progress.remainingCount} of {c.progress.totalCount} payments left
             </p>
           </div>
-          <div className="rounded-[--radius-card] border border-border bg-white p-4">
+          <div className="rounded-(--radius-card) border border-border bg-white p-4">
             <p className="text-xs text-muted-foreground">Expected completion</p>
             <p className="text-base font-semibold">
               {c.progress.projectedEndDate
@@ -216,7 +216,7 @@ export default async function ContractDetailPage({
       )}
 
       {displayStatus === 'ended_outstanding' && (
-        <p className="rounded-[--radius-card] border border-[color:var(--color-overdue)] bg-red-50 p-3 text-sm font-semibold text-[color:var(--color-overdue)]">
+        <p className="rounded-(--radius-card) border border-[color:var(--color-overdue)] bg-red-50 p-3 text-sm font-semibold text-[color:var(--color-overdue)]">
           This contract has reached its end date but {outstandingCount} payment(s) are still unpaid.
           It is not settled.
         </p>
@@ -368,7 +368,7 @@ export default async function ContractDetailPage({
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
+    <section className="flex flex-col gap-3 rounded-(--radius-card) border border-border bg-white p-4">
       <h2 className="font-semibold text-primary-dark">{title}</h2>
       {children}
     </section>

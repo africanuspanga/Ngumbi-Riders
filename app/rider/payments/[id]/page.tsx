@@ -22,7 +22,7 @@ export default async function RiderReceiptPage({
     <div className="flex flex-col gap-4">
       <Link href="/rider/payments" className="text-sm font-medium text-muted-foreground">← Malipo</Link>
 
-      <div className="flex flex-col gap-4 rounded-[--radius-card] border border-border bg-white p-5">
+      <div className="flex flex-col gap-4 rounded-(--radius-card) border border-border bg-white p-5">
         <div className="text-center">
           {receipt.status === 'completed' ? (
             <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-surface text-2xl text-[color:var(--color-paid)]">✓</div>

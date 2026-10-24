@@ -43,7 +43,7 @@ export default async function AccountantApprovalsPage() {
       {decided.length > 0 && (
         <section className="flex flex-col gap-2">
           <h2 className="font-semibold text-primary-dark">Recently decided</h2>
-          <ul className="flex flex-col divide-y divide-border rounded-[--radius-card] border border-border bg-white">
+          <ul className="flex flex-col divide-y divide-border rounded-(--radius-card) border border-border bg-white">
             {decided.map((r) => (
               <li key={r.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
                 <div className="min-w-0">

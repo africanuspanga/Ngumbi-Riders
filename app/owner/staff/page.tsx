@@ -31,7 +31,7 @@ export default async function StaffPage() {
         </p>
       </header>
 
-      <section className="rounded-[--radius-card] border border-border bg-white p-4 text-sm">
+      <section className="rounded-(--radius-card) border border-border bg-white p-4 text-sm">
         <h2 className="font-semibold text-primary-dark">SMS sign-in codes</h2>
         <p className="mt-1 text-muted-foreground">
           {otpOn
