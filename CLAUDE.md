@@ -37,6 +37,15 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
 
+**🟢 2026-10-24 (end of day): EVERYTHING DEPLOYED (`12c3277`) and SMS sign-in
+codes are ON** (`app_settings.staff_otp_required = true`). Proven on
+production: a session that skipped the code reads 0 payments and is sent to
+/login/owner; a verified one gets 200. Active staff: owner (+255753522155),
+DAUDI (+255657551831), LEAH (+255792674427). EUFRASIA deactivated (left the
+company; account kept) — she still holds **3,409,000 TZS unretired**
+(REQ/2026/09/0003, 10/0001, 10/0002). **Break-glass if SMS fails:**
+`npx tsx scripts/db-query.ts --sql "update app_settings set staff_otp_required=false"`.
+
 **🆕 2026-10-24 (later): 0038 staff_otp_phones APPLIED LIVE; staff set up;
 retirements; design pass 1 (D-054).** Code phones now live in `staff_otp_phones`
 (Daudi's number is also his rider login). Daudi → +255657551831; new
