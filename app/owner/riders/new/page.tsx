@@ -17,8 +17,8 @@ export default async function NewRiderPage() {
         </Link>
         <h1 className="mt-1 text-2xl font-bold text-primary-dark">Add rider</h1>
         <p className="text-sm text-muted-foreground">
-          Create an existing or new rider. A contract can be created later
-          (Phase 4).
+          Register a rider who is already with you or is just joining. You can
+          create their contract afterwards.
         </p>
       </div>
       <ManualRiderForm

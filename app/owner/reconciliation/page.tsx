@@ -17,8 +17,9 @@ export default async function ReconciliationPage() {
         <Link href="/owner/payments" className="text-sm font-medium text-muted-foreground">← Payments</Link>
         <h1 className="mt-1 text-2xl font-bold text-primary-dark">Snippe reconciliation</h1>
         <p className="text-sm text-muted-foreground">
-          Pending and failed payments to review. The reconciliation cron (Phase 8)
-          will auto-resolve stale pending attempts against Snippe.
+          Pending and failed payments to review. Every night at midnight the
+          system asks Snippe about each pending payment and settles or closes
+          it; anything still listed here needs your attention.
         </p>
       </div>
 

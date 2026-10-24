@@ -10,7 +10,7 @@ export default async function ImportsPage() {
     <div className="mx-auto flex max-w-lg flex-col gap-6">
       <div>
         <Link href="/owner" className="text-sm font-medium text-muted-foreground">
-          ← Owner
+          ← Dashboard
         </Link>
         <h1 className="mt-1 text-2xl font-bold text-primary-dark">Imports</h1>
         <p className="text-sm text-muted-foreground">
