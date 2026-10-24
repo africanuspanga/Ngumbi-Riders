@@ -35,7 +35,7 @@ export default async function RiderStatementPage() {
         </p>
       </header>
 
-      <StatementSummary progress={statement.progress} />
+      <StatementSummary progress={statement.progress} lang="sw" />
 
       <section className="flex flex-col gap-2">
         <h2 className="font-semibold text-primary-dark">Malipo uliyofanya</h2>
@@ -66,7 +66,7 @@ export default async function RiderStatementPage() {
 
       <section className="flex flex-col gap-2">
         <h2 className="font-semibold text-primary-dark">Taarifa kamili</h2>
-        <StatementTable statement={statement.statement} />
+        <StatementTable statement={statement.statement} lang="sw" />
       </section>
     </div>
   );

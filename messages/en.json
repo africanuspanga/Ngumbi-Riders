@@ -12,9 +12,25 @@
     "offline": "Offline"
   },
   "landing": {
-    "tagline": "Payment and contract management for motorcycle riders.",
+    "tagline": "Payments and contracts for motorcycle riders.",
     "apply": "Apply to become a rider",
-    "login": "Sign in"
+    "login": "Sign in",
+    "eyebrow": "Lease-to-own motorcycles · Tanzania",
+    "headline": "Pay a little every day. The motorcycle becomes yours.",
+    "lede": "Ng'umbi Riders gives you a motorcycle on contract. You pay by phone every day, and when the contract is complete you receive the ownership papers.",
+    "stripStart": "Day one",
+    "stripEnd": "Yours",
+    "stepsTitle": "How it works",
+    "step1Title": "Apply online",
+    "step1Body": "Fill in the form, upload your ID and name one guarantor. It takes a few minutes.",
+    "step2Title": "Sign the contract",
+    "step2Body": "Once your application is approved, you sign the contract and receive the motorcycle.",
+    "step3Title": "Pay by phone",
+    "step3Body": "Pay daily with mobile money. Every payment gets a receipt, and you can see your balance any time.",
+    "step4Title": "Own the motorcycle",
+    "step4Body": "When every payment is made you receive a certificate and the ownership transfer papers.",
+    "haveAccount": "Already have an account?",
+    "staff": "Staff: sign in here"
   },
   "login": {
     "title": "Sign in",

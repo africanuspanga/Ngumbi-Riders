@@ -179,3 +179,22 @@ export function formatLongDate(value: DateInput, fallback = EMPTY_DATE): string 
   const month = at.toLocaleDateString('en-GB', { month: 'long', timeZone: 'UTC' });
   return `${weekday}, ${d} ${month} ${y}`;
 }
+
+const SW_WEEKDAYS = ['Jumapili', 'Jumatatu', 'Jumanne', 'Jumatano', 'Alhamisi', 'Ijumaa', 'Jumamosi'];
+const SW_MONTHS = [
+  'Januari', 'Februari', 'Machi', 'Aprili', 'Mei', 'Juni',
+  'Julai', 'Agosti', 'Septemba', 'Oktoba', 'Novemba', 'Desemba',
+];
+
+/**
+ * Swahili long date — "Jumapili, 8 Novemba 2026" — for the rider app, which
+ * is Swahili-first. Spelled out by hand rather than via Intl's `sw` locale,
+ * whose presence depends on the ICU build of the runtime.
+ */
+export function formatLongDateSw(value: DateInput, fallback = EMPTY_DATE): string {
+  const iso = toIsoDate(value);
+  if (!iso) return fallback;
+  const [y, m, d] = iso.split('-').map(Number);
+  const weekday = SW_WEEKDAYS[new Date(Date.UTC(y!, m! - 1, d!)).getUTCDay()]!;
+  return `${weekday}, ${d} ${SW_MONTHS[m! - 1]} ${y}`;
+}

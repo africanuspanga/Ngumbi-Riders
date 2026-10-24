@@ -14,7 +14,23 @@
   "landing": {
     "tagline": "Mfumo wa malipo na mikataba kwa waendesha pikipiki.",
     "apply": "Omba kuwa mwendeshaji",
-    "login": "Ingia"
+    "login": "Ingia",
+    "eyebrow": "Pikipiki kwa mkataba · Tanzania",
+    "headline": "Lipa kidogo kila siku. Pikipiki inakuwa yako.",
+    "lede": "Ng'umbi Riders inakupa pikipiki kwa mkataba. Unalipa kwa simu yako kila siku, na mkataba ukikamilika unapata hati ya umiliki.",
+    "stripStart": "Siku ya kwanza",
+    "stripEnd": "Yako",
+    "stepsTitle": "Inavyofanya kazi",
+    "step1Title": "Omba mtandaoni",
+    "step1Body": "Jaza fomu, pakia kitambulisho na taja mdhamini mmoja. Inachukua dakika chache.",
+    "step2Title": "Saini mkataba",
+    "step2Body": "Ombi lako likikubaliwa, unasaini mkataba na kupokea pikipiki.",
+    "step3Title": "Lipa kwa simu",
+    "step3Body": "Lipa kila siku kwa pesa ya simu. Kila malipo yanapata risiti, na unaona salio lako wakati wowote.",
+    "step4Title": "Miliki pikipiki",
+    "step4Body": "Ukimaliza malipo yote unapata cheti na hati ya kuhamisha umiliki.",
+    "haveAccount": "Tayari una akaunti?",
+    "staff": "Wafanyakazi: ingia hapa"
   },
   "login": {
     "title": "Ingia",

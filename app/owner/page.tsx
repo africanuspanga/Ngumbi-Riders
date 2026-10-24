@@ -202,45 +202,10 @@ export default async function OwnerHome() {
         />
       </section>
 
-      {/* Current collection balance, by source (client feedback #1). */}
-      <CollectionBalancePanel overview={collections} basePath="/owner" />
-
-      {/* Phone-loan status (client feedback #3). */}
-      <PhoneLoanPanel portfolio={phoneLoans} basePath="/owner" />
-
-      {/*
-        The 14-day area chart used to sit beside this. The 30-day ribbon in the
-        band covers twice the period and answers the same question, and two
-        "collections over time" charts on one screen is one too many — so the
-        balance chart takes the full width it always needed for rider names.
-      */}
-      <section className="grid gap-4 lg:grid-cols-5">
-        <div className="lg:col-span-3">
-          <BalanceChart
-            points={balances.points}
-            totalOutstandingNow={balances.totalOutstandingNow}
-            totalRemaining={balances.totalRemaining}
-            riderCount={balances.riderCount}
-          />
-        </div>
-
-        <Card className="shadow-none lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Arrears aging</CardTitle>
-            <CardDescription>
-              How old the {formatTZS(d.kpis.totalArrears)} of unpaid days is
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <AgingBar label="1 day" value={d.aging.oneDay} total={d.kpis.totalArrears} depth={1} />
-            <AgingBar label="2–3 days" value={d.aging.twoToThree} total={d.kpis.totalArrears} depth={2} />
-            <AgingBar label="4–7 days" value={d.aging.fourToSeven} total={d.kpis.totalArrears} depth={3} />
-            <AgingBar label="8–30 days" value={d.aging.eightToThirty} total={d.kpis.totalArrears} depth={4} />
-            <AgingBar label="31+ days" value={d.aging.overThirty} total={d.kpis.totalArrears} depth={5} />
-          </CardContent>
-        </Card>
-      </section>
-
+      {/* Order is by what the Director ACTS on (design pass 2, 2026-10-24):
+          who to chase, then how bad the debt is, then where the money sits.
+          The balance panel is reference material and used to sit above the
+          chase list, which was the last thing on the page. */}
       <section className="grid gap-4 lg:grid-cols-3">
         <Card className="shadow-none lg:col-span-2">
           <CardHeader>
@@ -351,6 +316,45 @@ export default async function OwnerHome() {
           </Card>
         </div>
       </section>
+      {/*
+        The 14-day area chart used to sit beside this. The 30-day ribbon in the
+        band covers twice the period and answers the same question, and two
+        "collections over time" charts on one screen is one too many — so the
+        balance chart takes the full width it always needed for rider names.
+      */}
+      <section className="grid gap-4 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <BalanceChart
+            points={balances.points}
+            totalOutstandingNow={balances.totalOutstandingNow}
+            totalRemaining={balances.totalRemaining}
+            riderCount={balances.riderCount}
+          />
+        </div>
+
+        <Card className="shadow-none lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Arrears aging</CardTitle>
+            <CardDescription>
+              How old the {formatTZS(d.kpis.totalArrears)} of unpaid days is
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <AgingBar label="1 day" value={d.aging.oneDay} total={d.kpis.totalArrears} depth={1} />
+            <AgingBar label="2–3 days" value={d.aging.twoToThree} total={d.kpis.totalArrears} depth={2} />
+            <AgingBar label="4–7 days" value={d.aging.fourToSeven} total={d.kpis.totalArrears} depth={3} />
+            <AgingBar label="8–30 days" value={d.aging.eightToThirty} total={d.kpis.totalArrears} depth={4} />
+            <AgingBar label="31+ days" value={d.aging.overThirty} total={d.kpis.totalArrears} depth={5} />
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Current collection balance, by source (client feedback #1). */}
+      <CollectionBalancePanel overview={collections} basePath="/owner" />
+
+      {/* Phone-loan status (client feedback #3). */}
+      <PhoneLoanPanel portfolio={phoneLoans} basePath="/owner" />
+
     </div>
   );
 }

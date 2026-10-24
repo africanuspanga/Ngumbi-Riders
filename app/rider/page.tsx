@@ -3,7 +3,7 @@ import { requireRider } from '@/lib/auth/session';
 import { getRiderHome } from '@/lib/dashboard/queries';
 import { formatTZS } from '@/lib/money/format';
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card';
-import { formatDate, formatLongDate } from '@/lib/dates/format';
+import { formatDate, formatLongDateSw } from '@/lib/dates/format';
 import {
   BikeIcon,
   CalendarDaysIcon,
@@ -78,7 +78,7 @@ export default async function RiderHome() {
               </p>
             )}
             {home.dashboard.nextDueDate && home.dashboard.state === 'paid' && (
-              <p className="text-sm opacity-90">Malipo yajayo: {home.dashboard.nextDueDate}</p>
+              <p className="text-sm opacity-90">Malipo yajayo: {formatDate(home.dashboard.nextDueDate)}</p>
             )}
             <Link
               href="/rider/pay"
@@ -147,7 +147,7 @@ export default async function RiderHome() {
                 <p className="text-xs text-muted-foreground">
                   Kwa mwendo wa sasa utamaliza:{' '}
                   <strong className="text-foreground">
-                    {formatLongDate(home.progress.projectedEndDate)}
+                    {formatLongDateSw(home.progress.projectedEndDate)}
                   </strong>
                 </p>
               )}

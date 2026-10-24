@@ -27,8 +27,15 @@ system and every page inherits it:
 - State colours darkened to pass WCAG AA as text (amber was 2.2:1).
 - The green "owed now" / red "remaining" convention is KEPT — the client asked
   for it (D-035) — although green usually reads as "good".
-- Pass 2 (not done): page-level layout of the dashboard, the rider PWA and the
-  public/apply pages.
+- **Pass 2 (same day):** dashboard reordered by what the Director acts on
+  (chase list → debt → balance → loans); a real public landing page (the
+  lease-to-own offer, four real steps, and a CSS "payment strip" that echoes
+  the owner's 30-day ribbon — no images or extra fonts for low-cost phones);
+  sign-in and apply pages share its header; custom select chevron; rider app
+  fully Swahili (dates via `formatLongDateSw`, statement `lang="sw"`) and the
+  statement is a list on phones, with a negative balance shown as "paid ahead".
+  Reviewed with a temporary demo rider (`demo:seed` → screenshots →
+  `demo:cleanup`, verified 0 rows left).
 
 ## D-053 · Staff sign-in needs an SMS code, enforced in RLS (2026-10-24)
 
