@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOutIcon, UserRoundIcon } from 'lucide-react';
+import { KeyRoundIcon, LogOutIcon, UserRoundIcon } from 'lucide-react';
 
 /*
  * The header avatar and its menu.
@@ -52,6 +52,7 @@ export function NavUser({
       .join('') || 'N';
 
   const profileHref = role === 'accountant' ? '/accountant/profile' : '/owner/staff-profiles';
+  const passwordHref = role === 'accountant' ? '/accountant/password' : '/owner/password';
   const profileLabel = role === 'accountant' ? 'My staff profile' : 'Staff profiles';
   const subtitle = roleLabel ?? (role === 'accountant' ? 'Mhasibu · Accountant' : 'Mmiliki · Owner');
 
@@ -87,6 +88,14 @@ export function NavUser({
           >
             <UserRoundIcon />
             {profileLabel}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="w-full cursor-pointer"
+            render={<Link href={passwordHref} />}
+            nativeButton={false}
+          >
+            <KeyRoundIcon />
+            Change password
           </DropdownMenuItem>
           <DropdownMenuItem className="w-full cursor-pointer" variant="destructive" onClick={logout}>
             <LogOutIcon />

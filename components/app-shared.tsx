@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import {
+  KeyRoundIcon,
   LayoutGridIcon,
   UsersIcon,
   BikeIcon,
@@ -139,11 +140,19 @@ export const accountantNavGroups: SidebarNavGroup[] = [
 
 export const accountantFooterNavLinks: SidebarNavItem[] = [];
 
+/* Reached from the avatar menu, not the sidebar — listed only so the header
+ * breadcrumb can name them. */
+const accountMenuItems: SidebarNavItem[] = [
+  { title: 'Change password', path: '/owner/password', icon: <KeyRoundIcon /> },
+  { title: 'Change password', path: '/accountant/password', icon: <KeyRoundIcon /> },
+];
+
 const allItems: SidebarNavItem[] = [
   ...[...navGroups, ...accountantNavGroups].flatMap((g) =>
     g.items.flatMap((i) => (i.subItems?.length ? [i, ...i.subItems] : [i])),
   ),
   ...footerNavLinks,
+  ...accountMenuItems,
 ];
 
 /** True when the nav item's path matches the current pathname (exact for the
