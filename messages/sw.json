@@ -36,7 +36,20 @@
     "locked": "Akaunti imefungwa kwa muda. Jaribu tena baadaye.",
     "tooManyAttempts": "Umejaribu mara nyingi. Subiri dakika 30.",
     "network": "Imeshindikana kuunganisha na seva. Angalia mtandao kisha jaribu tena.",
-    "accountDisabled": "Akaunti yako imezimwa. Wasiliana na mmiliki."
+    "accountDisabled": "Akaunti yako imezimwa. Wasiliana na mmiliki.",
+    "otpSent": "Tumetuma nambari ya tarakimu 6 kwa SMS kwenda {phone}. Iandike ili kumaliza kuingia.",
+    "otpLabel": "Nambari kutoka SMS",
+    "otpSubmit": "Thibitisha na uingie",
+    "otpResend": "Tuma nambari tena",
+    "otpBack": "Rudi",
+    "otpResent": "Nambari mpya imetumwa. Ya zamani haifanyi kazi tena.",
+    "otpWrong": "Nambari si sahihi. Majaribio {left} yamebaki.",
+    "otpExpired": "Nambari imeisha muda. Bonyeza “Tuma nambari tena”.",
+    "otpStartOver": "Nambari hii haiwezi kutumika tena. Ingia upya kupata nyingine.",
+    "otpCooldown": "Subiri dakika moja kabla ya kuomba nambari nyingine.",
+    "otpTooMany": "Umeomba nambari nyingi mno. Subiri dakika 15 ujaribu tena.",
+    "otpSmsFailed": "Hatukuweza kutuma SMS kwa sasa. Jaribu tena baada ya dakika chache.",
+    "otpNoPhone": "Akaunti yako haina namba ya simu. Muombe Mkurugenzi aiongeze."
   },
   "pin": {
     "changeTitle": "Badilisha PIN",

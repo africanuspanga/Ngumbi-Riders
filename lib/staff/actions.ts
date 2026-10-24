@@ -4,9 +4,11 @@ import { revalidatePath } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getSessionProfile } from '@/lib/auth/session';
 import { writeAudit } from '@/lib/audit/audit';
+import { tryNormalizePhone } from '@/lib/auth/phone';
 import {
   createAccountantSchema,
   resetAccountantPasswordSchema,
+  setAccountantPhoneSchema,
 } from './validation';
 
 /*
@@ -33,6 +35,8 @@ export type StaffRow = {
   id: string;
   fullName: string | null;
   email: string | null;
+  /** E.164 phone on the auth user — where SMS sign-in codes go (D-053). */
+  phone: string | null;
   isActive: boolean;
   createdAt: string;
   deactivatedAt: string | null;
@@ -49,17 +53,27 @@ export async function listAccountants(): Promise<StaffRow[]> {
     .order('created_at', { ascending: false });
   if (error) throw new Error(`listAccountants failed: ${error.message}`);
 
-  return ((data ?? []) as {
+  const rows = (data ?? []) as {
     id: string;
     full_name: string | null;
     email: string | null;
     is_active: boolean;
     created_at: string;
     deactivated_at: string | null;
-  }[]).map((p) => ({
+  }[];
+  // The phone lives on the auth user, not on `profiles` (which every staff
+  // member can read since 0026). A handful of accountants: one call each.
+  const phones = await Promise.all(
+    rows.map(async (p) => {
+      const { data: u } = await admin.auth.admin.getUserById(p.id);
+      return u?.user?.phone ? tryNormalizePhone(u.user.phone) : null;
+    }),
+  );
+  return rows.map((p, i) => ({
     id: p.id,
     fullName: p.full_name,
     email: p.email,
+    phone: phones[i] ?? null,
     isActive: p.is_active,
     createdAt: p.created_at,
     deactivatedAt: p.deactivated_at,
@@ -73,17 +87,22 @@ export async function createAccountant(input: unknown): Promise<ActionResult<{ p
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'validation' };
   }
-  const { fullName, email, password } = parsed.data;
+  const { fullName, email, phone, password } = parsed.data;
 
   const admin = createAdminClient();
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
+    // The SMS sign-in code goes here (D-053). Confirmed by the owner's say-so:
+    // the owner is the one vouching that this number is the accountant's.
+    phone,
+    phone_confirm: true,
   });
   if (createError || !created?.user) {
     // Supabase reports an existing address as a 422 "already been registered".
     const msg = createError?.message ?? '';
+    if (/phone/i.test(msg)) return { ok: false, error: 'phone_taken' };
     if (/already/i.test(msg) || /registered/i.test(msg)) {
       return { ok: false, error: 'email_taken' };
     }
@@ -113,7 +132,7 @@ export async function createAccountant(input: unknown): Promise<ActionResult<{ p
     action: 'accountant.created',
     entityType: 'profile',
     entityId: userId,
-    metadata: { email },
+    metadata: { email, phone },
   });
   revalidatePath('/owner/staff');
   return { ok: true, data: { profileId: userId } };
@@ -194,6 +213,51 @@ export async function resetAccountantPassword(input: unknown): Promise<ActionRes
     entityType: 'profile',
     entityId: parsed.data.profileId,
   });
+  return { ok: true };
+}
+
+/**
+ * Set or change the phone an accountant's SMS sign-in codes go to (D-053).
+ * Sessions verified through the old number are forgotten: whoever held it
+ * must not keep a session that number vouched for.
+ */
+export async function setAccountantPhone(input: unknown): Promise<ActionResult> {
+  const ownerId = await assertOwner();
+  const parsed = setAccountantPhoneSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'validation' };
+  }
+  const admin = createAdminClient();
+
+  const { data: target } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('id', parsed.data.profileId)
+    .eq('role', 'accountant')
+    .maybeSingle();
+  if (!target) return { ok: false, error: 'not_found' };
+
+  const { error } = await admin.auth.admin.updateUserById(parsed.data.profileId, {
+    phone: parsed.data.phone,
+    phone_confirm: true,
+  });
+  if (error) {
+    return { ok: false, error: /phone|already|registered/i.test(error.message) ? 'phone_taken' : 'update_failed' };
+  }
+  // Forget every session the OLD number vouched for. With sign-in codes on,
+  // those sessions stop counting as staff in RLS on their next query (0037).
+  // (auth.admin.signOut takes a JWT, not a user id, so it cannot do this.)
+  await admin.from('staff_verified_sessions').delete().eq('user_id', parsed.data.profileId);
+
+  await writeAudit({
+    actorId: ownerId,
+    actorRole: 'owner',
+    action: 'accountant.phone_set',
+    entityType: 'profile',
+    entityId: parsed.data.profileId,
+    metadata: { phone: parsed.data.phone },
+  });
+  revalidatePath('/owner/staff');
   return { ok: true };
 }
 

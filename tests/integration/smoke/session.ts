@@ -4,7 +4,8 @@
  *
  * Owner and accountant are email users, so the service role generates a
  * one-time OTP for them (`generateLink` GENERATES, it does not send mail — no
- * email reaches the real owner). Riders are phone-only with no email address,
+ * email reaches the real owner), and records the session as having passed the
+ * SMS code step (no SMS is sent either). Riders are phone-only with no email address,
  * so no OTP can be generated for them; a rider session needs a real phone and
  * PIN supplied through the environment. See the header of routes.test.ts.
  *
@@ -96,12 +97,36 @@ export async function sessionForEmail(opts: {
     throw new Error(`verifyOtp(${opts.email}) failed: ${verifyError?.message ?? 'no session'}`);
   }
 
+  // With SMS sign-in codes on (0037, D-053) a staff session counts as staff in
+  // RLS only once its session_id is recorded as verified — exactly what the
+  // app's own code step does. Without this every staff page would render as
+  // "signed out" and the run would fail at /login/owner.
+  const sessionId = sessionIdOf(verified.session.access_token);
+  if (!sessionId) throw new Error(`no session_id claim in ${opts.email}'s token`);
+  const { error: markError } = await admin
+    .from('staff_verified_sessions')
+    .insert({ session_id: sessionId, user_id: verified.session.user.id });
+  if (markError) {
+    throw new Error(`could not mark ${opts.email}'s session verified: ${markError.message}`);
+  }
+
   return jarFromTokens(
     opts.url,
     opts.publishableKey,
     verified.session.access_token,
     verified.session.refresh_token,
   );
+}
+
+function sessionIdOf(accessToken: string): string | null {
+  try {
+    const payload = JSON.parse(
+      Buffer.from(accessToken.split('.')[1] ?? '', 'base64url').toString('utf8'),
+    ) as { session_id?: unknown };
+    return typeof payload.session_id === 'string' ? payload.session_id : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

@@ -18,6 +18,97 @@ export function LoginForm({ mode, next }: { mode: Mode; next?: string }) {
   // Owner fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // Staff second step (D-053): set once the password is accepted and a code
+  // has been texted to the phone on the account.
+  const [challenge, setChallenge] = useState<{ id: string; maskedPhone: string } | null>(null);
+  const [code, setCode] = useState('');
+  const [notice, setNotice] = useState<string | null>(null);
+
+  function goHome(redirectTo: string | undefined) {
+    // Only follow same-origin relative paths — a crafted ?next=//evil.com
+    // link must not redirect a freshly logged-in user off-site.
+    const safeNext = next && /^\/(?!\/)/.test(next) && !next.includes('\\') ? next : null;
+    router.push(safeNext || redirectTo || '/');
+    router.refresh();
+  }
+
+  function otpError(error: string | undefined, attemptsLeft?: number): string {
+    switch (error) {
+      case 'otp_wrong_code':
+        return t('otpWrong', { left: attemptsLeft ?? 0 });
+      case 'otp_expired':
+        return t('otpExpired');
+      case 'otp_too_many_attempts':
+      case 'otp_consumed':
+      case 'otp_not_found':
+        return t('otpStartOver');
+      case 'otp_cooldown':
+        return t('otpCooldown');
+      case 'otp_too_many_sends':
+      case 'otp_too_many_codes':
+        return t('otpTooMany');
+      case 'otp_sms_failed':
+        return t('otpSmsFailed');
+      case 'otp_no_phone':
+        return t('otpNoPhone');
+      case 'locked':
+        return t('locked');
+      case 'account_disabled':
+        return t('accountDisabled');
+      default:
+        return t('network');
+    }
+  }
+
+  async function submitCode(e: React.FormEvent) {
+    e.preventDefault();
+    if (!challenge) return;
+    setError(null);
+    setNotice(null);
+    setPending(true);
+    try {
+      const res = await fetch('/api/auth/owner-login/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challengeId: challenge.id, code }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(otpError(data?.error, data?.attemptsLeft));
+        if (data?.error === 'otp_too_many_attempts' || data?.error === 'otp_not_found') {
+          setChallenge(null);
+          setCode('');
+        }
+        return;
+      }
+      goHome(data?.redirectTo);
+    } catch {
+      setError(t('network'));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function resend() {
+    if (!challenge) return;
+    setError(null);
+    setNotice(null);
+    setPending(true);
+    try {
+      const res = await fetch('/api/auth/owner-login/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challengeId: challenge.id }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) setError(otpError(data?.error));
+      else setNotice(t('otpResent'));
+    } catch {
+      setError(t('network'));
+    } finally {
+      setPending(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,7 +129,8 @@ export function LoginForm({ mode, next }: { mode: Mode; next?: string }) {
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        if (data?.error === 'locked') setError(t('locked'));
+        if (data?.error?.startsWith('otp_')) setError(otpError(data.error));
+        else if (data?.error === 'locked') setError(t('locked'));
         // A deactivated accountant must be told WHY, not left retrying a
         // password that is in fact correct (spec #10 — the owner can withdraw
         // access at any time).
@@ -47,16 +139,79 @@ export function LoginForm({ mode, next }: { mode: Mode; next?: string }) {
         else setError(t('invalidCredentials'));
         return;
       }
-      // Only follow same-origin relative paths — a crafted ?next=//evil.com
-      // link must not redirect a freshly logged-in user off-site.
-      const safeNext = next && /^\/(?!\/)/.test(next) && !next.includes('\\') ? next : null;
-      router.push(safeNext || data.redirectTo || '/');
-      router.refresh();
+      if (data?.otpRequired) {
+        setChallenge({ id: data.challengeId, maskedPhone: data.maskedPhone });
+        setCode('');
+        setPassword('');
+        return;
+      }
+      goHome(data?.redirectTo);
     } catch {
       setError(t('network'));
     } finally {
       setPending(false);
     }
+  }
+
+  if (challenge) {
+    return (
+      <form onSubmit={submitCode} className="flex flex-col gap-4">
+        <p className="text-sm text-muted-foreground">
+          {t('otpSent', { phone: challenge.maskedPhone })}
+        </p>
+        <Field label={t('otpLabel')}>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="\d{6}"
+            maxLength={6}
+            required
+            autoFocus
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            placeholder="••••••"
+            className="input tracking-[0.5em]"
+          />
+        </Field>
+
+        {error && (
+          <p role="alert" className="text-sm font-medium text-overdue">
+            {error}
+          </p>
+        )}
+        {notice && <p className="text-sm font-medium text-primary">{notice}</p>}
+
+        <button
+          type="submit"
+          disabled={pending || code.length !== 6}
+          className="mt-1 cursor-pointer rounded-[--radius-card] bg-primary px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-default disabled:opacity-60"
+        >
+          {pending ? t('pending') : t('otpSubmit')}
+        </button>
+        <div className="flex items-center justify-between text-sm">
+          <button
+            type="button"
+            onClick={resend}
+            disabled={pending}
+            className="cursor-pointer font-medium text-primary underline-offset-2 hover:underline disabled:opacity-60"
+          >
+            {t('otpResend')}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setChallenge(null);
+              setError(null);
+              setNotice(null);
+            }}
+            className="cursor-pointer text-muted-foreground underline-offset-2 hover:underline"
+          >
+            {t('otpBack')}
+          </button>
+        </div>
+      </form>
+    );
   }
 
   return (

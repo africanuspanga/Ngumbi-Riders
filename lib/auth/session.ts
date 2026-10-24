@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { can, homePathFor, type Permission } from '@/lib/auth/roles';
 import type { UserRole } from '@/lib/supabase/types';
+import { currentStaffSessionOk } from '@/lib/auth/staff-otp';
 
 /*
  * Server-side authorization helpers. These read the *server-verified* user
@@ -47,6 +48,13 @@ export async function getSessionProfile(): Promise<SessionProfile | null> {
     must_change_pin: boolean | null;
     is_active: boolean | null;
   };
+
+  // A staff session that skipped the SMS code is signed in to Supabase but is
+  // nobody to RLS (0037, D-053). Treat it as signed out so the gates send the
+  // person to the sign-in page instead of rendering pages full of nothing.
+  if ((p.role === 'owner' || p.role === 'accountant') && !(await currentStaffSessionOk())) {
+    return null;
+  }
 
   let riderId: string | null = null;
   if (p.role === 'rider') {

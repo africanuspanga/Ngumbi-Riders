@@ -133,6 +133,7 @@ export type Database = {
           phone_loan_max_amount: number
           phone_loan_max_months: number
           reminder_config: Json
+          staff_otp_required: boolean
           timezone: string
           updated_at: string
         }
@@ -148,6 +149,7 @@ export type Database = {
           phone_loan_max_amount?: number
           phone_loan_max_months?: number
           reminder_config?: Json
+          staff_otp_required?: boolean
           timezone?: string
           updated_at?: string
         }
@@ -163,6 +165,7 @@ export type Database = {
           phone_loan_max_amount?: number
           phone_loan_max_months?: number
           reminder_config?: Json
+          staff_otp_required?: boolean
           timezone?: string
           updated_at?: string
         }
@@ -3279,6 +3282,48 @@ export type Database = {
           },
         ]
       }
+      staff_login_challenges: {
+        Row: {
+          attempts: number
+          code_hash: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          ip: string | null
+          last_sent_at: string
+          phone: string
+          sent_count: number
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          ip?: string | null
+          last_sent_at?: string
+          phone: string
+          sent_count?: number
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip?: string | null
+          last_sent_at?: string
+          phone?: string
+          sent_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       staff_profiles: {
         Row: {
           created_at: string
@@ -3354,6 +3399,35 @@ export type Database = {
           },
         ]
       }
+      staff_verified_sessions: {
+        Row: {
+          challenge_id: string | null
+          session_id: string
+          user_id: string
+          verified_at: string
+        }
+        Insert: {
+          challenge_id?: string | null
+          session_id: string
+          user_id: string
+          verified_at?: string
+        }
+        Update: {
+          challenge_id?: string | null
+          session_id?: string
+          user_id?: string
+          verified_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_verified_sessions_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "staff_login_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_job_runs: {
         Row: {
           completed_at: string | null
@@ -3419,6 +3493,7 @@ export type Database = {
       is_accountant: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
+      staff_session_ok: { Args: never; Returns: boolean }
       postpone_lease_day_for_loan: {
         Args: {
           p_due_at: string

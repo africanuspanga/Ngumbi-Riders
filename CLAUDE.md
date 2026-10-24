@@ -37,6 +37,16 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
 
+**🆕 STAFF SMS SIGN-IN CODES (2026-10-24, migration `0037`, D-053) — NOT YET
+APPLIED LIVE.** Owner/accountant sign-in = password → 6-digit SMS code
+(`lib/auth/staff-otp*.ts`, `/api/auth/owner-login{,/verify,/resend}`), enforced
+in RLS via `staff_session_ok()` inside `is_owner()`/`is_accountant()`. Kill
+switch `app_settings.staff_otp_required` ships OFF. **Rollout order:** apply
+0037 (+ record in schema_migrations) → deploy → owner adds both accountants'
+phones at `/owner/staff` (neither has one today) → set the switch true.
+Dry-run proven (rollback-only): unverified owner session sees 0 payments,
+verified one is owner, another session/user id is refused. 670 unit tests (+16) ✅, build ✅.
+
 **🆕 CLIENT-FEEDBACK BUILD #6 (2026-10-23, migration `0036` APPLIED LIVE; D-048…D-052).**
 ⚠ **Deploy to Vercel + add 4 env vars is the remaining step** (below).
 

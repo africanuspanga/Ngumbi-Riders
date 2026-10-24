@@ -36,7 +36,20 @@
     "locked": "Account temporarily locked. Please try again later.",
     "tooManyAttempts": "Too many attempts. Wait 30 minutes.",
     "network": "Could not reach the server. Check your connection and try again.",
-    "accountDisabled": "Your account has been deactivated. Contact the owner."
+    "accountDisabled": "Your account has been deactivated. Contact the owner.",
+    "otpSent": "We sent a 6-digit code by SMS to {phone}. Enter it to finish signing in.",
+    "otpLabel": "Code from SMS",
+    "otpSubmit": "Verify and sign in",
+    "otpResend": "Send the code again",
+    "otpBack": "Back",
+    "otpResent": "A new code has been sent. The old one no longer works.",
+    "otpWrong": "That code is not correct. {left} tries left.",
+    "otpExpired": "The code has expired. Tap “Send the code again”.",
+    "otpStartOver": "This code can no longer be used. Sign in again to get a new one.",
+    "otpCooldown": "Please wait a minute before asking for another code.",
+    "otpTooMany": "Too many codes requested. Wait 15 minutes and try again.",
+    "otpSmsFailed": "We could not send the SMS right now. Try again in a few minutes.",
+    "otpNoPhone": "No phone number is set on your account. Ask the Director to add it."
   },
   "pin": {
     "changeTitle": "Change PIN",

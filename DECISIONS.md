@@ -5,6 +5,39 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-053 · Staff sign-in needs an SMS code, enforced in RLS (2026-10-24)
+
+Owner and accountants now sign in in two steps: password, then a 6-digit code
+texted (via the D-052 relay) to the phone on their auth user.
+
+- **Enforced by the database, not the login page.** The anon key is public, so
+  anyone with a password can get a JWT from Supabase Auth directly and skip our
+  route. `is_owner()`/`is_accountant()` (and so `is_staff()`) now also require
+  `staff_session_ok()`: the JWT's `session_id` must be in
+  `staff_verified_sessions`, which only the code step (service role) writes.
+  `getSessionProfile()` treats an unverified staff session as signed out.
+- **Step 1 creates no session**: the password is checked on a throwaway
+  client and that session is revoked. Step 2 mints the cookie session with an
+  admin-generated one-time login (generateLink — sends nothing), so the
+  password is never held between steps.
+- Codes: CSPRNG, HMAC(pepper, challenge id : code) stored, 5 min TTL, 5 wrong
+  guesses burn the challenge, 60 s resend cooldown, 3 sends per challenge,
+  5 challenges per account per 15 min, plus the existing IP lockout.
+- **Kill switch `app_settings.staff_otp_required`, shipped OFF** so applying
+  0037 before the deploy changes nothing. Turned on only after the deploy and
+  after every accountant has a phone. It is also the break-glass if SMS dies —
+  flipped via the Management API only (an unverified session is not the owner,
+  so cannot switch the code off).
+- The accountant's phone lives on the auth user, not `profiles` (staff-wide
+  readable since 0026). The owner sets it at `/owner/staff`; changing it
+  forgets that accountant's verified sessions.
+- Not covered: rows a staff member reads through their OWN-row policies
+  (own profile, own notifications, own staff profile) remain readable to an
+  unverified session. Business data is not.
+- Found on the way: `auth.admin.signOut(userId, …)` in `lib/staff/actions.ts`
+  is a no-op — it takes a JWT, not a user id. Deactivation still works because
+  `is_active` gates every check.
+
 ## D-052 · SMS goes through a relay on the whitelisted VPS (2026-10-23)
 
 Mobishastra accepts API calls only from whitelisted IPs; Vercel has no fixed

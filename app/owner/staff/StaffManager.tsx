@@ -7,18 +7,21 @@ import {
   removeAccountantAccess,
   resetAccountantPassword,
   setAccountantActive,
+  setAccountantPhone,
 } from '@/lib/staff/actions';
 
 type Row = {
   id: string;
   fullName: string | null;
   email: string | null;
+  phone: string | null;
   isActive: boolean;
   createdLabel: string;
 };
 
 const ERRORS: Record<string, string> = {
   email_taken: 'That email address already has an account.',
+  phone_taken: 'That phone number already belongs to another account (a rider or another staff member).',
   create_failed: 'Could not create the account. Try again.',
   update_failed: 'Could not save the change. Try again.',
   not_found: 'That account no longer exists — reload the page.',
@@ -35,6 +38,7 @@ export function StaffManager({ accountants }: { accountants: Row[] }) {
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
   const [created, setCreated] = useState(false);
@@ -43,19 +47,23 @@ export function StaffManager({ accountants }: { accountants: Row[] }) {
   const [resetFor, setResetFor] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [resetDone, setResetDone] = useState(false);
+  const [phoneFor, setPhoneFor] = useState<string | null>(null);
+  const [newPhone, setNewPhone] = useState('');
+  const [phoneDone, setPhoneDone] = useState(false);
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
     setCreateError(null);
     setCreated(false);
     try {
-      const res = await createAccountant({ fullName, email, password });
+      const res = await createAccountant({ fullName, email, phone, password });
       if (!res.ok) {
         setCreateError(ERRORS[res.error] ?? res.error);
         return;
       }
       setFullName('');
       setEmail('');
+      setPhone('');
       setPassword('');
       setCreated(true);
       startTransition(() => router.refresh());
@@ -119,11 +127,31 @@ export function StaffManager({ accountants }: { accountants: Row[] }) {
     }
   }
 
+  async function submitPhone(e: React.FormEvent) {
+    e.preventDefault();
+    setRowError(null);
+    setPhoneDone(false);
+    if (!phoneFor) return;
+    try {
+      const res = await setAccountantPhone({ profileId: phoneFor, phone: newPhone });
+      if (!res.ok) {
+        setRowError(ERRORS[res.error] ?? res.error);
+        return;
+      }
+      setNewPhone('');
+      setPhoneFor(null);
+      setPhoneDone(true);
+      startTransition(() => router.refresh());
+    } catch {
+      setRowError('Network error — the phone number was not changed.');
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-3 rounded-[--radius-card] border border-border bg-white p-4">
         <h2 className="font-semibold text-primary-dark">Add an accountant</h2>
-        <form onSubmit={onCreate} className="grid gap-3 md:grid-cols-3">
+        <form onSubmit={onCreate} className="grid gap-3 md:grid-cols-2">
           <Labelled label="Full name">
             <input value={fullName} onChange={(e) => setFullName(e.target.value)} required className="input" />
           </Labelled>
@@ -137,6 +165,18 @@ export function StaffManager({ accountants }: { accountants: Row[] }) {
               className="input"
             />
           </Labelled>
+          <Labelled label="Phone (sign-in codes are sent here)">
+            <input
+              type="tel"
+              inputMode="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+              autoComplete="off"
+              placeholder="0712 345 678"
+              className="input"
+            />
+          </Labelled>
           <Labelled label="Initial password">
             <input
               type="password"
@@ -147,7 +187,7 @@ export function StaffManager({ accountants }: { accountants: Row[] }) {
               className="input"
             />
           </Labelled>
-          <div className="md:col-span-3 flex flex-col gap-2">
+          <div className="md:col-span-2 flex flex-col gap-2">
             <p className="text-xs text-muted-foreground">
               At least 10 characters with an uppercase letter, a lowercase letter
               and a number. Share it with them directly and change it if it leaks.
@@ -183,6 +223,11 @@ export function StaffManager({ accountants }: { accountants: Row[] }) {
         {resetDone && (
           <p className="text-sm font-medium text-[color:var(--color-paid)]">Password updated.</p>
         )}
+        {phoneDone && (
+          <p className="text-sm font-medium text-[color:var(--color-paid)]">
+            Phone saved. Their next sign-in code goes to the new number.
+          </p>
+        )}
 
         {accountants.length === 0 ? (
           <p className="text-sm text-muted-foreground">No accountant accounts yet.</p>
@@ -194,6 +239,15 @@ export function StaffManager({ accountants }: { accountants: Row[] }) {
                   <p className="font-semibold text-foreground">{a.fullName ?? '—'}</p>
                   <p className="text-xs text-muted-foreground">
                     {a.email ?? '—'} · added {a.createdLabel}
+                  </p>
+                  <p className="text-xs">
+                    {a.phone ? (
+                      <span className="text-muted-foreground">Codes to {a.phone}</span>
+                    ) : (
+                      <span className="font-semibold text-[color:var(--color-overdue)]">
+                        No phone — cannot receive a sign-in code
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -227,6 +281,18 @@ export function StaffManager({ accountants }: { accountants: Row[] }) {
                   </button>
                   <button
                     type="button"
+                    onClick={() => {
+                      setPhoneFor(phoneFor === a.id ? null : a.id);
+                      setNewPhone(a.phone ?? '');
+                      setPhoneDone(false);
+                    }}
+                    disabled={busy}
+                    className="rounded-[--radius-card] border border-border px-3 py-1.5 text-xs font-semibold text-primary-dark hover:bg-surface disabled:opacity-60"
+                  >
+                    {a.phone ? 'Change phone' : 'Add phone'}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => remove(a.id, a.fullName ?? 'this accountant')}
                     disabled={busy}
                     className="rounded-[--radius-card] border border-border px-3 py-1.5 text-xs font-semibold text-[color:var(--color-overdue)] hover:bg-red-50 disabled:opacity-60"
@@ -234,6 +300,29 @@ export function StaffManager({ accountants }: { accountants: Row[] }) {
                     Remove access
                   </button>
                 </div>
+
+                {phoneFor === a.id && (
+                  <form onSubmit={submitPhone} className="flex w-full flex-wrap items-end gap-2">
+                    <Labelled label={`Phone for ${a.fullName ?? a.email ?? 'this account'}`}>
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        value={newPhone}
+                        onChange={(e) => setNewPhone(e.target.value)}
+                        required
+                        placeholder="0712 345 678"
+                        className="input"
+                      />
+                    </Labelled>
+                    <button
+                      type="submit"
+                      disabled={busy}
+                      className="rounded-[--radius-card] bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+                    >
+                      Save phone
+                    </button>
+                  </form>
+                )}
 
                 {resetFor === a.id && (
                   <form onSubmit={submitReset} className="flex w-full flex-wrap items-end gap-2">

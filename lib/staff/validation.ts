@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { tryNormalizePhone } from '@/lib/auth/phone';
 
 /*
  * Accountant account creation (build spec #10). The owner sets an initial
@@ -16,9 +17,23 @@ const password = z
     message: 'Include an uppercase letter, a lowercase letter and a number',
   });
 
+// Where the SMS sign-in code goes (D-053). Stored canonical E.164.
+const staffPhone = z
+  .string()
+  .trim()
+  .transform((v, ctx) => {
+    const phone = tryNormalizePhone(v);
+    if (!phone) {
+      ctx.addIssue({ code: 'custom', message: 'Enter a valid phone number, e.g. 0712 345 678' });
+      return z.NEVER;
+    }
+    return phone;
+  });
+
 export const createAccountantSchema = z.object({
   fullName: z.string().trim().min(2, 'Required').max(120),
   email: z.string().trim().toLowerCase().email('Invalid email'),
+  phone: staffPhone,
   password,
 });
 
@@ -30,3 +45,8 @@ export const resetAccountantPasswordSchema = z.object({
 });
 
 export type ResetAccountantPasswordInput = z.infer<typeof resetAccountantPasswordSchema>;
+
+export const setAccountantPhoneSchema = z.object({
+  profileId: z.string().uuid(),
+  phone: staffPhone,
+});
