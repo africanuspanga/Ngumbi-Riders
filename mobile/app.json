@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Ng'umbi Riders",
+    "slug": "ngumbi-riders",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F7F9F7",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "tz.co.ngumbi.riders"
+    },
+    "android": {
+      "package": "tz.co.ngumbi.riders",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "permissions": ["android.permission.CAMERA", "android.permission.INTERNET"],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "imageWidth": 240,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF"
+        }
+      ]
+    ]
+  }
+}

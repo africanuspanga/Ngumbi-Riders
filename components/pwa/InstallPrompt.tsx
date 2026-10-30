@@ -60,7 +60,10 @@ function isStandalone(): boolean {
   return (
     window.matchMedia?.('(display-mode: standalone)').matches ||
     // iOS Safari's own flag, which predates the standard media query.
-    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true ||
+    // Inside the Android app (mobile/), which tags its user agent. It is
+    // already installed; offering to install it again would confuse people.
+    /NgumbiApp\//.test(window.navigator.userAgent)
   );
 }
 

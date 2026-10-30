@@ -13,6 +13,7 @@ const eslintConfig = [
       '.next/**',
       'node_modules/**',
       'supabase/functions/**',
+      'mobile/**',
       'next-env.d.ts',
     ],
   },

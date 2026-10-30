@@ -37,6 +37,15 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 
 ## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
 
+**🆕 2026-10-30: ANDROID APP (`mobile/`, Expo SDK 58).** A native shell
+(react-native-webview) around the live site, opening at the new `/app` route
+(redirects by role). Web deploys update the app; a new APK is needed only for
+shell changes. Build: `cd mobile && ./scripts/build-apk.sh` →
+`mobile/dist/ngumbi-riders-<ver>.apk`. JDK 17 = Temurin in `~/.jdks/` (Homebrew
+has no bottle for this Intel Mac and compiles from source). **The release key
+is in `mobile/credentials/` (git-ignored) — back it up; updates must be signed
+with it.** `mobile/` is excluded from the web tsconfig/eslint and `.vercelignore`.
+
 **🆕 2026-10-30: PAUSE + FREQUENCY CHANGE (migration `0039`, D-055) —
 0039 APPLIED LIVE 2026-10-30.**
 Pause now frees the motorcycle and postpones paused days (debt stops growing);
