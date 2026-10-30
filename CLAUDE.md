@@ -38,7 +38,7 @@ Stack: **Next.js 16.2** (App Router, React 19) · TypeScript · **Tailwind v4** 
 ## 2. Current status — LIVE DB provisioned (2026-07-09); go-live in progress
 
 **🆕 2026-10-30: PAUSE + FREQUENCY CHANGE (migration `0039`, D-055) —
-⚠ 0039 NOT YET APPLIED LIVE; apply it BEFORE pushing/deploying this code.**
+0039 APPLIED LIVE 2026-10-30.**
 Pause now frees the motorcycle and postpones paused days (debt stops growing);
 suspending/deactivating/terminating a rider pauses their active contract;
 "Change payment frequency" on the contract edit page turns daily ⇄ weekly ⇄
