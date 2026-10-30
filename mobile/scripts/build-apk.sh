@@ -85,6 +85,13 @@ open(path, 'w').write(s)
 print('release signing configured')
 PY
 
+# Real phones are ARM. Leaving out the x86 emulator builds roughly halves the
+# APK, which matters when it is sent to riders over WhatsApp on mobile data.
+# For an emulator test build: ABIS=x86_64 ./scripts/build-apk.sh
+ABIS="${ABIS:-armeabi-v7a,arm64-v8a}"
+sed -i '' "s/^reactNativeArchitectures=.*/reactNativeArchitectures=$ABIS/" android/gradle.properties
+grep -q "^reactNativeArchitectures=$ABIS" android/gradle.properties
+
 (cd android && ./gradlew --no-daemon assembleRelease)
 
 VERSION="$(node -p "require('./app.json').expo.version")"

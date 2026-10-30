@@ -7,7 +7,7 @@
  */
 // Bump the version WHENEVER the precached shell (offline page, icons,
 // manifest) changes — sw.js bytes must change for browsers to reinstall.
-const SHELL_CACHE = 'ngr-shell-v3';
+const SHELL_CACHE = 'ngr-shell-v4';
 const SHELL_ASSETS = ['/offline', '/icons/icon-192.png', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

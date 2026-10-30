@@ -10,6 +10,18 @@ export default async function OfflinePage() {
       <p className="text-muted-foreground">
         Hakuna mtandao kwa sasa. Malipo hayawezi kufanyika bila mtandao.
       </p>
+      {/* Plain HTML on purpose: the service worker serves this page from its
+          cache WITHOUT its JavaScript, so a client-side button would never
+          work. A GET form with no action re-requests the address the person
+          was on, which the service worker tries on the network first. */}
+      <form method="get" className="mt-3">
+        <button
+          type="submit"
+          className="min-h-12 rounded-(--radius-card) bg-primary px-6 font-semibold text-white"
+        >
+          Jaribu tena
+        </button>
+      </form>
     </main>
   );
 }
