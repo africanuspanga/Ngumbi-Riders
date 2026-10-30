@@ -12,6 +12,7 @@ import { getPaymentStatus } from '@/lib/snippe/client';
 import { settlePaymentCompleted, markPaymentFailed, expireStalePayment } from '@/lib/payments/settle';
 import { recomputeRiskForRider } from '@/lib/risk/recompute';
 import { planPostponements } from '@/lib/loans/lease-pause';
+import { postponePausedDays } from '@/lib/contracts/pause';
 import { sweepCompletedPhoneLoans } from '@/lib/loans/settle';
 import { computeOwnerKpis, type KpiObligation } from '@/lib/dashboard/kpis';
 import { composeDailySummaryHtml } from '@/lib/resend/summary';
@@ -38,6 +39,7 @@ export const obligationStatusTask: CronTask = async () => {
   // this job "succeeded" nightly while transitioning nothing (D-033).
   const rows = await fetchAllPages<{
     id: string;
+    contract_id: string;
     rider_id: string;
     due_date: string;
     due_at: string;
@@ -46,7 +48,7 @@ export const obligationStatusTask: CronTask = async () => {
     (from, to) =>
       admin
         .from('payment_obligations')
-        .select('id, rider_id, due_date, due_at, status')
+        .select('id, contract_id, rider_id, due_date, due_at, status')
         .in('status', ['scheduled', 'due'])
         .lte('due_date', today)
         .order('due_date', { ascending: true })
@@ -55,7 +57,19 @@ export const obligationStatusTask: CronTask = async () => {
     { label: 'obligation-status select' },
   );
 
-  const obligations: TransitionObligation[] = rows.map((o) => ({
+  // A PAUSED contract's days never fall due (D-055): contractPauseTask runs
+  // first and moves them, and this keeps any day it could not move (a payment
+  // in flight, say) from being announced to the rider as a debt tonight.
+  const { data: pausedRows, error: pausedErr } = await admin
+    .from('contracts')
+    .select('id')
+    .eq('status', 'paused');
+  if (pausedErr) throw new Error(`paused contracts read failed: ${pausedErr.message}`);
+  const paused = new Set(((pausedRows ?? []) as { id: string }[]).map((c) => c.id));
+
+  const obligations: TransitionObligation[] = rows
+    .filter((o) => !paused.has(o.contract_id))
+    .map((o) => ({
     id: o.id,
     dueDate: o.due_date,
     dueAtUtcMs: Date.parse(o.due_at),
@@ -717,6 +731,31 @@ export const phoneLoanLeasePauseTask: CronTask = async () => {
 };
 
 /**
+ * Owner-paused contracts (client feedback 2026-10-29, D-055): every lease day
+ * that arrives while a contract is paused is postponed to the end of its
+ * calendar, so a paused rider's debt stops growing. Runs BEFORE the status
+ * sweep for the same reason the phone-loan pause does.
+ */
+export const contractPauseTask: CronTask = async () => {
+  const admin = createAdminClient();
+  const { data, error } = await admin.from('contracts').select('id').eq('status', 'paused');
+  if (error) throw new Error(`paused contracts read failed: ${error.message}`);
+  const counts = { pausedContracts: 0, daysPostponed: 0, failures: 0 };
+  for (const { id } of (data ?? []) as { id: string }[]) {
+    counts.pausedContracts++;
+    try {
+      const r = await postponePausedDays(admin, id);
+      counts.daysPostponed += r.postponed;
+      counts.failures += r.failures;
+    } catch (e) {
+      console.error('[cron] contract pause failed:', id, (e as Error).message);
+      counts.failures++;
+    }
+  }
+  return counts;
+};
+
+/**
  * Late-payment SMS reminders + the owner's morning summary (client request
  * 2026-10-23). Runs at 08:00 EAT from /api/cron/morning — never from the
  * midnight dispatcher, so nobody's phone buzzes at 00:05.
@@ -909,6 +948,7 @@ export const DAILY_TASKS: [name: string, task: CronTask][] = [
   // phone loan must never first be flipped to 'due' and announced to the rider
   // as money they owe tonight (client feedback #13).
   ['phone-loan-lease-pause', phoneLoanLeasePauseTask],
+  ['contract-pause', contractPauseTask],
   ['obligation-status', obligationStatusTask],
   // Completion runs right after the status sweep: a lease that ended yesterday
   // should be marked complete before the dashboard and summary are computed.

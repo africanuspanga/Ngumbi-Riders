@@ -248,6 +248,16 @@ export function ActivateButton({ contractId }: { contractId: string }) {
   );
 }
 
+const LIFECYCLE_ERRORS: Record<string, string> = {
+  motorcycle_reassigned:
+    'The motorcycle was given to another rider while this contract was paused. Choose a free motorcycle on the Edit page, then resume.',
+  rider_has_other_motorcycle:
+    'This rider already holds another motorcycle. Release it, or put that motorcycle on this contract from the Edit page, then resume.',
+  motorcycle_unavailable:
+    'The motorcycle is inactive or has been transferred. Choose another motorcycle on the Edit page, then resume.',
+  invalid_status: 'The contract is no longer in a state that allows this. Reload the page.',
+};
+
 export function LifecycleButtons({
   contractId,
   status,
@@ -260,7 +270,7 @@ export function LifecycleButtons({
   const [error, setError] = useState<string | null>(null);
   // Ending a contract is not undone by a second click, so it asks first —
   // inline, never a browser dialog (those block the page).
-  const [confirming, setConfirming] = useState<'complete_early' | 'terminate' | null>(null);
+  const [confirming, setConfirming] = useState<'complete_early' | 'terminate' | 'pause' | null>(null);
 
   type Key = 'pause' | 'resume' | 'complete_early' | 'terminate';
   const actions: { key: Key; label: string }[] = [];
@@ -277,7 +287,9 @@ export function LifecycleButtons({
       try {
         const res = await contractLifecycle(contractId, key);
         if (!res.ok) {
-          setError(`Could not ${label.toLowerCase()} this contract (${res.error}).`);
+          setError(
+            LIFECYCLE_ERRORS[res.error] ?? `Could not ${label.toLowerCase()} this contract (${res.error}).`,
+          );
           return;
         }
         setConfirming(null);
@@ -297,7 +309,7 @@ export function LifecycleButtons({
             type="button"
             disabled={pending}
             onClick={() =>
-              a.key === 'terminate' || a.key === 'complete_early'
+              a.key === 'terminate' || a.key === 'complete_early' || a.key === 'pause'
                 ? setConfirming(a.key)
                 : run(a.key, a.label)
             }
@@ -310,7 +322,9 @@ export function LifecycleButtons({
       {confirming && (
         <div className="flex flex-col gap-2 rounded-(--radius-card) border border-overdue/40 bg-overdue/5 p-3 text-sm">
           <p>
-            {confirming === 'terminate'
+            {confirming === 'pause'
+              ? 'Pause this contract? The motorcycle is released so it can be given to another rider, and from today no payment days fall due — each paused day is moved to the end of the contract, so nothing is forgiven. Days already missed stay owed. To resume later the motorcycle must be free again (or swap it on the edit page first).'
+              : confirming === 'terminate'
               ? 'Terminate this contract? Future payment days are cancelled, days already missed stay owed, and the motorcycle is released so it can be leased to another rider. A performance report is available afterwards.'
               : 'Complete this contract early? Future payment days are cancelled. If ownership does not transfer to the rider, the motorcycle is released back to the fleet.'}
           </p>
@@ -318,10 +332,21 @@ export function LifecycleButtons({
             <button
               type="button"
               disabled={pending}
-              onClick={() => run(confirming, confirming === 'terminate' ? 'Terminate' : 'Complete early')}
+              onClick={() =>
+                run(
+                  confirming,
+                  confirming === 'terminate' ? 'Terminate' : confirming === 'pause' ? 'Pause' : 'Complete early',
+                )
+              }
               className="rounded-(--radius-card) bg-overdue px-3 py-2 font-semibold text-white disabled:opacity-60"
             >
-              {pending ? 'Working…' : confirming === 'terminate' ? 'Yes, terminate' : 'Yes, complete early'}
+              {pending
+                ? 'Working…'
+                : confirming === 'terminate'
+                  ? 'Yes, terminate'
+                  : confirming === 'pause'
+                    ? 'Yes, pause'
+                    : 'Yes, complete early'}
             </button>
             <button
               type="button"

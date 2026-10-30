@@ -54,7 +54,9 @@ export async function releaseContractMotorcycle(
     .select('id')
     .eq('motorcycle_id', input.motorcycleId)
     .neq('id', input.contractId)
-    .in('status', ['draft', 'awaiting_signatures', 'scheduled', 'active', 'paused'])
+    // A PAUSED contract is not listed: pausing releases its motorcycle
+    // (D-055), so it holds no claim on it until it is resumed.
+    .in('status', ['draft', 'awaiting_signatures', 'scheduled', 'active'])
     .limit(1);
   if (otherErr) throw new Error(`live contract check failed: ${otherErr.message}`);
   if ((other ?? []).length > 0) return { released: false, reason: 'still_in_contract' };
@@ -103,6 +105,17 @@ export async function reclaimContractMotorcycle(
   input: { contractId: string; riderId: string; motorcycleId: string | null; startDate: string },
 ): Promise<ReclaimOutcome> {
   if (!input.motorcycleId) return { ok: true, assignmentId: null };
+
+  // While this contract was paused the motorcycle could be put under another
+  // contract (D-055). If one names it now, the motorcycle is not ours to take.
+  const { data: rival } = await admin
+    .from('contracts')
+    .select('id')
+    .eq('motorcycle_id', input.motorcycleId)
+    .neq('id', input.contractId)
+    .in('status', ['draft', 'awaiting_signatures', 'scheduled', 'active'])
+    .limit(1);
+  if ((rival ?? []).length > 0) return { ok: false, error: 'motorcycle_reassigned' };
 
   const { data: open } = await admin
     .from('motorcycle_assignments')

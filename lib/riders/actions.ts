@@ -10,6 +10,7 @@ import { generateTempPin } from '@/lib/auth/temp-pin';
 import { derivePassword } from '@/lib/auth/pin-derive';
 import { encryptOptionalPII, decryptPII } from '@/lib/security/crypto';
 import { writeAudit } from '@/lib/audit/audit';
+import { pauseContract } from '@/lib/contracts/pause';
 import { localDateString } from '@/lib/dates/tz';
 import { assignMotorcycle } from '@/lib/assignments/actions';
 import { manualRiderSchemaWithGeo, editRiderSchema } from './validation';
@@ -219,16 +220,61 @@ export async function setRiderStatus(
     return { ok: false, error: 'auth_ban_failed' };
   }
 
+  /*
+   * Taking a rider off the road pauses their contract (client feedback
+   * 2026-10-29, D-055). The owner suspended, deactivated and then terminated
+   * VIKTA MZOVELA and reasonably expected the debt to stop — but the rider's
+   * status never touched the contract, so it went on billing every day.
+   * A pause frees the motorcycle and stops days falling due; it does NOT
+   * cancel anything. Ending the lease for good stays a deliberate act on the
+   * contract page (Terminate), as D-050 decided. Reactivating the rider does
+   * not resume the contract by itself: the owner resumes it once the rider has
+   * a motorcycle again.
+   */
+  const pausedContracts: string[] = [];
+  if (!active) {
+    const { data: live, error: liveErr } = await admin
+      .from('contracts')
+      .select('id')
+      .eq('rider_id', id)
+      .eq('status', 'active');
+    if (liveErr) return { ok: false, error: 'contract_pause_failed' };
+    for (const { id: contractId } of (live ?? []) as { id: string }[]) {
+      try {
+        const outcome = await pauseContract(admin, contractId, {
+          reason: `Rider ${status}`,
+        });
+        if (outcome) {
+          pausedContracts.push(contractId);
+          await writeAudit({
+            actorId: ownerId,
+            actorRole: 'owner',
+            action: 'contract.pause',
+            entityType: 'contract',
+            entityId: contractId,
+            metadata: { to: 'paused', cause: `rider.${status}`, ...outcome },
+          });
+          revalidatePath(`/owner/contracts/${contractId}`);
+        }
+      } catch (e) {
+        console.error('[riders] contract pause failed:', contractId, (e as Error).message);
+        return { ok: false, error: 'contract_pause_failed' };
+      }
+    }
+  }
+
   await writeAudit({
     actorId: ownerId,
     actorRole: 'owner',
     action: 'rider.status_changed',
     entityType: 'rider',
     entityId: id,
-    metadata: { to: status },
+    metadata: { to: status, pausedContracts },
   });
   revalidatePath(`/owner/riders/${id}`);
   revalidatePath('/owner/riders');
+  revalidatePath('/owner/contracts');
+  revalidatePath('/owner/motorcycles');
   return { ok: true };
 }
 

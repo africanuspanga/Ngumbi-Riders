@@ -250,3 +250,14 @@ export const contractRepriceSchema = z.object({
 });
 
 export type ContractRepriceInput = z.infer<typeof contractRepriceSchema>;
+
+/** Change the payment frequency of a live contract (D-055). */
+export const contractRescheduleSchema = z.object({
+  scheduleType: z.enum(['daily', 'selected_weekdays', 'weekly', 'monthly']),
+  selectedWeekdays: z.array(z.number().int().min(0).max(6)).max(7).optional().default([]),
+  dueDayOfMonth: z.coerce.number().int().min(1).max(31).optional().nullable(),
+  dailyRate: z.coerce.number().int().positive().max(100_000_000),
+  reason: z.string().trim().min(10).max(500),
+});
+
+export type ContractRescheduleInput = z.infer<typeof contractRescheduleSchema>;

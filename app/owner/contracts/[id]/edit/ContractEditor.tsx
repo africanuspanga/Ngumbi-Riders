@@ -26,7 +26,7 @@ import type { ScheduleType } from '@/lib/supabase/types';
 const ERRORS: Record<string, string> = {
   validation: 'Some fields are invalid — check the highlighted values.',
   locked_after_activation:
-    'The term and schedule cannot be changed once the contract is active — the payment days are already the money record. To correct a wrong PRICE, use "Correct the repayment amount" below; to add days, use "Extend term" on the contract page.',
+    'The term and schedule cannot be changed once the contract is active — the payment days are already the money record. To switch daily/weekly/monthly use "Change payment frequency" below; to correct a wrong PRICE, use "Correct the repayment amount"; to add days, use "Extend term" on the contract page.',
   motorcycle_in_contract: 'That motorcycle is already under another contract.',
   motorcycle_unavailable: 'That motorcycle is inactive and cannot be leased.',
   motorcycle_not_found: 'That motorcycle no longer exists — reload the page.',
@@ -231,9 +231,11 @@ export function ContractEditor({
           <p className="rounded-(--radius-card) border border-[color:var(--color-warning)] bg-amber-50 p-3 text-sm text-amber-900">
             This contract is <strong>{contract.status}</strong>, so its payment days already exist and
             ARE the money record. Re-dating them would restate settled history, which is why the
-            term and schedule are closed here. A wrong PRICE is different and can be corrected:
-            use <strong>Correct the repayment amount</strong> below, which re-prices only the unpaid
-            days. To add days at the end, use <strong>Extend term</strong> on the contract page.
+            term and schedule are closed here. To switch between <strong>daily, weekly and
+            monthly</strong> payments, use <strong>Change payment frequency</strong> below — it
+            changes only the days still to come. A wrong PRICE can be fixed with{' '}
+            <strong>Correct the repayment amount</strong>. To add days at the end, use{' '}
+            <strong>Extend term</strong> on the contract page.
           </p>
         ) : (
           <>

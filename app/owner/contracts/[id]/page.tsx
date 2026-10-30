@@ -345,6 +345,13 @@ export default async function ContractDetailPage({
       {(c.status === 'active' || c.status === 'paused') && (
         <Section title="Lifecycle">
           <div className="flex flex-col gap-4">
+            {c.status === 'paused' && (
+              <p className="rounded-(--radius-card) border border-border bg-surface p-3 text-sm">
+                Paused{c.paused_from ? ` since ${formatDate(c.paused_from)}` : ''}. The motorcycle is free for other riders and no payment days fall due; each
+                paused day is moved to the end of the contract. Days missed before the pause
+                stay owed.
+              </p>
+            )}
             <LifecycleButtons contractId={c.id} status={c.status} />
             <ExtendTermButton contractId={c.id} currentEndDate={c.end_date} />
           </div>

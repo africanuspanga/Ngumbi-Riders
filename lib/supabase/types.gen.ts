@@ -866,6 +866,7 @@ export type Database = {
           motorcycle_id: string
           ownership_transfer_notes: string | null
           ownership_transfers: boolean
+          paused_from: string | null
           payment_days_target: number | null
           payment_deadline_time: string
           payment_frequency: string | null
@@ -910,6 +911,7 @@ export type Database = {
           motorcycle_id: string
           ownership_transfer_notes?: string | null
           ownership_transfers?: boolean
+          paused_from?: string | null
           payment_days_target?: number | null
           payment_deadline_time?: string
           payment_frequency?: string | null
@@ -954,6 +956,7 @@ export type Database = {
           motorcycle_id?: string
           ownership_transfer_notes?: string | null
           ownership_transfers?: boolean
+          paused_from?: string | null
           payment_days_target?: number | null
           payment_deadline_time?: string
           payment_frequency?: string | null
@@ -3515,6 +3518,15 @@ export type Database = {
       is_owner: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
       staff_session_ok: { Args: never; Returns: boolean }
+      postpone_day_for_contract_pause: {
+        Args: {
+          p_due_at: string
+          p_local_due_time: string
+          p_new_date: string
+          p_obligation_id: string
+        }
+        Returns: string
+      }
       postpone_lease_day_for_loan: {
         Args: {
           p_due_at: string
@@ -3524,6 +3536,22 @@ export type Database = {
           p_obligation_id: string
         }
         Returns: string
+      }
+      reschedule_contract_obligations: {
+        Args: {
+          p_actor: string
+          p_cancel_ids: string[]
+          p_contract_id: string
+          p_daily_rate: number
+          p_due_day_of_month: number
+          p_end_date: string
+          p_inserts: Json
+          p_installment_amount: number
+          p_schedule_type: Database["public"]["Enums"]["schedule_type"]
+          p_selected_weekdays: number[]
+          p_updates: Json
+        }
+        Returns: Json
       }
       record_completed_payment: {
         Args: {

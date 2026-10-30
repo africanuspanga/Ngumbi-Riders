@@ -185,6 +185,12 @@ export function RiderStatusActions({ id, current }: { id: string; current: Rider
           </button>
         ))}
       </div>
+      <p className="text-xs text-muted-foreground">
+        Suspending, deactivating or terminating a rider also <strong>pauses</strong> their active
+        contract: the motorcycle is freed for another rider and no new payment days fall due.
+        Days already missed stay owed. Setting the rider back to active does not resume the
+        contract — resume it from the contract page.
+      </p>
       {error && <p role="alert" className="text-sm font-medium text-overdue">{error}</p>}
     </div>
   );

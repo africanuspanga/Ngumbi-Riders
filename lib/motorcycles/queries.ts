@@ -114,7 +114,8 @@ export async function listContractableMotorcycles(): Promise<ContractableMotorcy
     .from('contracts')
     .select('motorcycle_id')
     .in('motorcycle_id', ids)
-    .in('status', ['draft', 'active', 'paused']);
+    // A paused contract has released its motorcycle (D-055).
+    .in('status', ['draft', 'active']);
   const contracted = new Set(
     ((liveContracts ?? []) as { motorcycle_id: string }[]).map((c) => c.motorcycle_id),
   );

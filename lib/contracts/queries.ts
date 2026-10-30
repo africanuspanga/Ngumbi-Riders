@@ -53,6 +53,8 @@ export type ContractDetail = {
   /* Set by a completion sign-off (0034). While non-null the contract's terms
      are frozen and a change needs a recorded amendment (client feedback #10). */
   locked_at: string | null;
+  /** First day an owner pause covers (D-055); null unless paused. */
+  paused_from: string | null;
   lock_reason: string | null;
   completion_request_id: string | null;
   /* Non-null while the lease is paused for an active phone loan (0031). */
@@ -225,6 +227,7 @@ export async function getContract(id: string): Promise<ContractDetail | null> {
     start_date: (raw.start_date as string) ?? null,
     end_date: (raw.end_date as string) ?? null,
     locked_at: (raw.locked_at as string) ?? null,
+    paused_from: (raw.paused_from as string) ?? null,
     lock_reason: (raw.lock_reason as string) ?? null,
     completion_request_id: (raw.completion_request_id as string) ?? null,
     lease_paused_for_loan_id: (raw.lease_paused_for_loan_id as string) ?? null,
@@ -306,4 +309,33 @@ export async function getRepriceSummary(contractId: string): Promise<RepriceSumm
       status: o.status,
     })),
   );
+}
+
+/**
+ * What a frequency change (D-055) would re-cut: the future, still-scheduled
+ * lease days and what the rider owes on them. Small enough to send to the
+ * browser for a live preview; the server re-plans from the full calendar.
+ */
+export async function getRescheduleSummary(
+  contractId: string,
+): Promise<{ count: number; total: number; firstDate: string | null; lastDate: string | null }> {
+  const supabase = await createServerSupabase();
+  const today = localDateString();
+  const rows = await fetchAllPages<{ due_date: string; amount_due: number }>((from, to) =>
+    supabase
+      .from('payment_obligations')
+      .select('due_date, amount_due')
+      .eq('contract_id', contractId)
+      .eq('kind', 'lease')
+      .eq('status', 'scheduled')
+      .gt('due_date', today)
+      .order('due_date', { ascending: true })
+      .range(from, to),
+  );
+  return {
+    count: rows.length,
+    total: rows.reduce((s, o) => s + o.amount_due, 0),
+    firstDate: rows[0]?.due_date ?? null,
+    lastDate: rows[rows.length - 1]?.due_date ?? null,
+  };
 }

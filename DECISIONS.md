@@ -5,6 +5,36 @@ business rules (spec §36.18). Newest first.
 
 ---
 
+## D-055 · A pause frees the motorcycle and stops the debt; live contracts can change frequency (2026-10-30)
+
+Migration 0039. Three client reports (2026-10-29):
+
+- **Pause.** Pausing used to flip `contracts.status` only. Now it records
+  `paused_from`, releases the motorcycle (D-050's helper), and **postpones**
+  every lease day that falls inside the pause to the end of the calendar, the
+  same way the phone-loan pause does (D-043): nothing forgiven, nothing
+  invented, the lease runs longer. Days missed BEFORE the pause stay owed (the
+  DB function refuses to move them). Moving happens at pause time for days
+  that have already arrived, then nightly (`contract-pause`, before the status
+  sweep). The status sweep also skips paused contracts. A paused contract no
+  longer counts as holding its motorcycle, so the bike can go under a new
+  contract. **Resume** reclaims the motorcycle and refuses if it has been
+  leased since; the owner swaps the motorcycle on the edit page, then resumes.
+- **Rider status → contract.** Suspending, deactivating or terminating a
+  RIDER now pauses their active contract (the owner did exactly this for VIKTA
+  MZOVELA and the debt kept growing). It does not terminate it: ending the
+  lease stays a deliberate act on the contract page (D-050). Re-activating the
+  rider does not auto-resume.
+- **Frequency change** (`rescheduleContract`, `lib/contracts/reschedule.ts`):
+  daily ⇄ selected weekdays ⇄ weekly ⇄ monthly on an active/paused contract.
+  Only future, still-scheduled lease days are re-cut; today, arrears, settled
+  days and phone-loan instalments never move. The sum owed on the re-cut days
+  is conserved exactly (N full instalments + a smaller last one). Existing days
+  that land on a chosen date are kept and re-priced (no unique-date
+  collisions); dates held by untouched rows are skipped. One transaction
+  (`reschedule_contract_obligations`) re-checks the scope and refuses unless
+  the money balances.
+
 ## D-054 · Design pass 1: fix the system, not the pages (2026-10-24)
 
 The owner asked for an international-standard redesign, keeping the green.

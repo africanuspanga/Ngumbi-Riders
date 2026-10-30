@@ -29,7 +29,14 @@ import { dueTimestampUtc } from '@/lib/obligations/schedule';
 import { normalizePlan, planToObligations, validatePlan, type PlanEntry } from '@/lib/obligations/plan';
 import { phoneLoanSchedule, splitLoanTotal } from '@/lib/loans/phone';
 import { renderContractPdf } from './pdf';
-import { contractBuilderSchema, contractEditSchema, contractRepriceSchema } from './validation';
+import {
+  contractBuilderSchema,
+  contractEditSchema,
+  contractRepriceSchema,
+  contractRescheduleSchema,
+} from './validation';
+import { pauseContract, postponePausedDays } from './pause';
+import { planReschedule, RescheduleError, type ReschedulePlan } from './reschedule';
 import type {
   ContractStatus,
   Database,
@@ -157,7 +164,7 @@ export async function createContract(
     .from('contracts')
     .select('id')
     .eq('motorcycle_id', d.motorcycleId)
-    .in('status', ['draft', 'active', 'paused'])
+    .in('status', ['draft', 'active']) // a paused contract has released its motorcycle (D-055)
     .maybeSingle();
   if (liveContract) return { ok: false, error: 'motorcycle_in_contract' };
   if ((moto as { status: string }).status === 'assigned') {
@@ -669,6 +676,32 @@ export async function contractLifecycle(
   const ownerId = await assertOwner();
   const cfg = LIFECYCLE[action];
   if (!cfg) return { ok: false, error: 'bad_action' };
+
+  // Pause and resume move the motorcycle and the calendar, not just the
+  // status (D-055), so they have their own paths.
+  if (action === 'pause') {
+    const admin = createAdminClient();
+    let outcome;
+    try {
+      outcome = await pauseContract(admin, contractId, { reason: 'Contract paused' });
+    } catch (e) {
+      console.error('[contracts] pause failed:', contractId, (e as Error).message);
+      return { ok: false, error: 'update_failed' };
+    }
+    if (!outcome) return { ok: false, error: 'invalid_status' };
+    await writeAudit({
+      actorId: ownerId,
+      actorRole: 'owner',
+      action: 'contract.pause',
+      entityType: 'contract',
+      entityId: contractId,
+      metadata: { to: 'paused', ...outcome },
+    });
+    revalidateContractAndFleet(contractId);
+    return { ok: true };
+  }
+  if (action === 'resume') return resumeContract(contractId, ownerId);
+
   const supabase = await createServerSupabase();
 
   // State machine enforced server-side: the update only applies when the
@@ -677,7 +710,7 @@ export async function contractLifecycle(
   // obligations were already cancelled.
   const { data: changed, error } = await supabase
     .from('contracts')
-    .update({ status: cfg.to })
+    .update({ status: cfg.to, paused_from: null })
     .eq('id', contractId)
     .in('status', cfg.from)
     .select('id');
@@ -742,6 +775,75 @@ export async function contractLifecycle(
   });
   revalidatePath(`/owner/contracts/${contractId}`);
   revalidatePath('/owner/contracts');
+  return { ok: true };
+}
+
+function revalidateContractAndFleet(contractId: string) {
+  revalidatePath(`/owner/contracts/${contractId}`);
+  revalidatePath('/owner/contracts');
+  revalidatePath('/owner/motorcycles');
+  revalidatePath('/owner/riders');
+}
+
+/**
+ * Resume a paused contract (D-055). The motorcycle was released when it was
+ * paused, so it is reclaimed first — and if it has been leased to another
+ * rider in the meantime, the resume STOPS: the owner swaps the motorcycle on
+ * the edit page, then resumes. The days postponed during the pause are already
+ * at the end of the calendar; nothing else moves.
+ */
+async function resumeContract(contractId: string, ownerId: string): Promise<ActionResult> {
+  const admin = createAdminClient();
+  const { data: row, error: readErr } = await admin
+    .from('contracts')
+    .select('id, status, rider_id, motorcycle_id, paused_from')
+    .eq('id', contractId)
+    .maybeSingle();
+  if (readErr) return { ok: false, error: 'update_failed' };
+  const c = row as {
+    status: ContractStatus;
+    rider_id: string;
+    motorcycle_id: string | null;
+    paused_from: string | null;
+  } | null;
+  if (!c) return { ok: false, error: 'not_found' };
+  if (c.status !== 'paused') return { ok: false, error: 'invalid_status' };
+
+  // Anything that arrived inside the pause and has not been moved yet (tonight's
+  // job had not run) is moved now, before the status flips back.
+  try {
+    await postponePausedDays(admin, contractId);
+  } catch (e) {
+    console.error('[contracts] resume postpone failed:', contractId, (e as Error).message);
+  }
+
+  const today = localDateString();
+  const reclaim = await reclaimContractMotorcycle(admin, {
+    contractId,
+    riderId: c.rider_id,
+    motorcycleId: c.motorcycle_id,
+    startDate: today,
+  });
+  if (!reclaim.ok) return { ok: false, error: reclaim.error };
+
+  const { data: changed, error } = await admin
+    .from('contracts')
+    .update({ status: 'active', paused_from: null })
+    .eq('id', contractId)
+    .eq('status', 'paused')
+    .select('id');
+  if (error) return { ok: false, error: 'update_failed' };
+  if (!changed || changed.length === 0) return { ok: false, error: 'invalid_status' };
+
+  await writeAudit({
+    actorId: ownerId,
+    actorRole: 'owner',
+    action: 'contract.resume',
+    entityType: 'contract',
+    entityId: contractId,
+    metadata: { to: 'active', pausedFrom: c.paused_from, motorcycleId: c.motorcycle_id },
+  });
+  revalidateContractAndFleet(contractId);
   return { ok: true };
 }
 
@@ -846,7 +948,7 @@ export async function updateContract(
       .from('contracts')
       .select('id')
       .eq('motorcycle_id', d.motorcycleId)
-      .in('status', ['draft', 'active', 'paused'])
+      .in('status', ['draft', 'active']) // a paused contract has released its motorcycle (D-055)
       .neq('id', contractId)
       .maybeSingle();
     if (liveContract) return { ok: false, error: 'motorcycle_in_contract' };
@@ -1486,4 +1588,197 @@ export async function repriceContract(
   revalidatePath('/owner/contracts');
   revalidatePath('/owner/payments');
   return { ok: true, data: { plan, repriced, added, endDate } };
+}
+
+/**
+ * Change the payment FREQUENCY of a live contract (client feedback
+ * 2026-10-29, D-055) — daily → weekly, daily → monthly, and back.
+ *
+ * Only future, still-scheduled lease days are re-cut (lib/contracts/reschedule.ts
+ * has the full rule): today, arrears and settled days never move, and what the
+ * rider still owes for the rest of the lease is exactly the same before and
+ * after. The write is ONE database transaction
+ * (`reschedule_contract_obligations`, 0039) that re-checks the scope and
+ * refuses unless the money is conserved, so a stale read can never half-apply.
+ */
+export async function rescheduleContract(
+  contractId: string,
+  input: unknown,
+): Promise<
+  ActionResult<{
+    instalment: number;
+    instalmentCount: number;
+    lastAmount: number;
+    firstDate: string;
+    endDate: string;
+    scopeTotal: number;
+  }>
+> {
+  const ownerId = await assertOwner();
+  const parsed = contractRescheduleSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'validation' };
+  const d = parsed.data;
+
+  const admin = createAdminClient();
+  const { data: current, error: readErr } = await admin
+    .from('contracts')
+    .select(
+      'id, rider_id, status, locked_at, schedule_type, selected_weekdays, due_day_of_month, installment_amount, daily_rate, payment_deadline_time, end_date',
+    )
+    .eq('id', contractId)
+    .maybeSingle();
+  if (readErr) return { ok: false, error: 'read_failed' };
+  if (!current) return { ok: false, error: 'not_found' };
+  const c = current as {
+    rider_id: string;
+    status: ContractStatus;
+    locked_at: string | null;
+    schedule_type: ScheduleType;
+    selected_weekdays: number[] | null;
+    due_day_of_month: number | null;
+    installment_amount: number;
+    daily_rate: number | null;
+    payment_deadline_time: string;
+    end_date: string | null;
+  };
+  if (c.locked_at) return { ok: false, error: 'locked' };
+  if (c.status !== 'active' && c.status !== 'paused') return { ok: false, error: 'not_live' };
+
+  const weekdays =
+    d.scheduleType === 'weekly' || d.scheduleType === 'selected_weekdays'
+      ? [...new Set(d.selectedWeekdays)].sort()
+      : [];
+  const dueDay = d.scheduleType === 'monthly' ? (d.dueDayOfMonth ?? null) : null;
+  const instalment = instalmentFromDailyRate(d.dailyRate, d.scheduleType);
+  if (!instalment) return { ok: false, error: 'invalid_amount' };
+
+  const sameCadence =
+    d.scheduleType === c.schedule_type &&
+    JSON.stringify(weekdays) === JSON.stringify([...(c.selected_weekdays ?? [])].sort()) &&
+    (dueDay ?? null) === (c.schedule_type === 'monthly' ? c.due_day_of_month : null);
+  if (sameCadence) return { ok: false, error: 'unchanged' };
+
+  const rows = await fetchAllPages<{
+    id: string;
+    due_date: string;
+    amount_due: number;
+    status: ObligationStatus;
+    kind: string;
+  }>((from, to) =>
+    admin
+      .from('payment_obligations')
+      .select('id, due_date, amount_due, status, kind')
+      .eq('contract_id', contractId)
+      .order('due_date', { ascending: true })
+      .range(from, to),
+  );
+
+  let plan: ReschedulePlan;
+  try {
+    plan = planReschedule({
+      obligations: rows.map((o) => ({
+        id: o.id,
+        dueDate: o.due_date,
+        amountDue: o.amount_due,
+        status: o.status,
+        kind: o.kind,
+      })),
+      today: localDateString(),
+      cadence: { scheduleType: d.scheduleType, selectedWeekdays: weekdays, dueDayOfMonth: dueDay },
+      instalment,
+      deadlineTime: String(c.payment_deadline_time).slice(0, 5),
+    });
+  } catch (e) {
+    return { ok: false, error: e instanceof RescheduleError ? e.code : 'plan_failed' };
+  }
+
+  const { error: rpcErr } = await admin.rpc('reschedule_contract_obligations', {
+    p_contract_id: contractId,
+    p_schedule_type: d.scheduleType,
+    p_selected_weekdays: weekdays,
+    p_due_day_of_month: dueDay as number,
+    p_installment_amount: instalment,
+    p_daily_rate: d.dailyRate,
+    p_cancel_ids: plan.cancelIds,
+    p_updates: plan.updates,
+    p_inserts: plan.inserts.map((i) => ({
+      due_date: i.dueDate,
+      due_at: i.dueAt,
+      local_due_time: i.localDueTime,
+      amount: i.amount,
+    })),
+    p_end_date: plan.endDate,
+    p_actor: ownerId,
+  });
+  if (rpcErr) {
+    console.error('[contracts] reschedule failed:', contractId, rpcErr.message);
+    return {
+      ok: false,
+      error: /in progress/.test(rpcErr.message)
+        ? 'obligation_reserved'
+        : /reload/.test(rpcErr.message)
+          ? 'stale'
+          : 'reschedule_failed',
+    };
+  }
+
+  await writeAudit({
+    actorId: ownerId,
+    actorRole: 'owner',
+    action: 'contract.rescheduled',
+    entityType: 'contract',
+    entityId: contractId,
+    metadata: {
+      reason: d.reason,
+      from: {
+        scheduleType: c.schedule_type,
+        selectedWeekdays: c.selected_weekdays,
+        dueDayOfMonth: c.due_day_of_month,
+        instalment: c.installment_amount,
+        endDate: c.end_date,
+      },
+      to: {
+        scheduleType: d.scheduleType,
+        selectedWeekdays: weekdays,
+        dueDayOfMonth: dueDay,
+        instalment,
+        endDate: plan.endDate,
+      },
+      dailyRate: d.dailyRate,
+      daysRecut: plan.scopeCount,
+      totalConserved: plan.scopeTotal,
+      instalments: plan.instalmentCount,
+      lastAmount: plan.lastAmount,
+    },
+  });
+
+  try {
+    await notifyRider(c.rider_id, {
+      type: 'contract_repriced',
+      title: 'Ratiba ya malipo imebadilika',
+      body:
+        `Sasa unalipa TZS ${instalment.toLocaleString('en-US')} ` +
+        (d.scheduleType === 'monthly' ? 'kila mwezi' : d.scheduleType === 'weekly' ? 'kila wiki' : 'kwa siku') +
+        `. Malipo ya kwanza ya ratiba mpya: ${plan.firstDate.split('-').reverse().join('/')}.`,
+      deepLink: '/rider/calendar',
+    });
+  } catch {
+    /* the change is done; a failed notification never un-does it */
+  }
+
+  revalidatePath(`/owner/contracts/${contractId}`);
+  revalidatePath(`/owner/contracts/${contractId}/edit`);
+  revalidatePath('/owner/contracts');
+  revalidatePath('/owner/payments');
+  return {
+    ok: true,
+    data: {
+      instalment,
+      instalmentCount: plan.instalmentCount,
+      lastAmount: plan.lastAmount,
+      firstDate: plan.firstDate,
+      endDate: plan.endDate,
+      scopeTotal: plan.scopeTotal,
+    },
+  };
 }
